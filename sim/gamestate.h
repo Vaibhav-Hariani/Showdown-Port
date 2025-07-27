@@ -17,8 +17,20 @@ struct STR_MODS {
 //Gets loaded when a pokemon is selected with HP and stats, based on base data + EVs and IVs
 struct STR_STATS {
     int stats[5];
-    int hp;
-    //Any additional stats relevant to certain moves: 
+    int item_id;
+    // not super relevant for RBG but it's also the easiest thing to flip
+    int gender;
+
+    //Future target
+    // int happiness;
+    // int ability_id;
+    // int nature_id;
+
+    // > Gen7 tomfoolery
+    // int hp_type;
+    // int dmaxlevel;
+    // int gmaxlvl;
+    // int teratype;
 } typedef poke_stats;
 
 struct STR_MOVES {
@@ -26,16 +38,23 @@ struct STR_MOVES {
     int pp;
 } typedef poke_moves;
 
-
+//Comparable to the showdown PokemonSet object, with battle data
 struct STR_POKE {
     // Corresponds to pokedex entry
     unsigned char id;
+    poke_moves moves[4];
+    //EVs and IVs combined with base stats for compression
     poke_stats stat;
+    //int item_id;
+    //int ability_id;
+    //int nature_id;
+    //int gender_id;
+
+
+    //Relevant to battle state
     modifiers mods;
     int hp;
-    poke_moves moves[4];
-    //Need to figure out how to do multi typing effectively
-    char type_id;
+
 
 } typedef pokemon;
 
