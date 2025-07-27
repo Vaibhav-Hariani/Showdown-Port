@@ -167,4 +167,4 @@ typedef enum {
     SLASH,
     SUBSTITUTE,
     STRUGGLE=164
-} Moves;
+} move_table;
