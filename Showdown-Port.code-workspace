@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../pokemon-showdown/sim"
+		}
+	],
+	"settings": {}
+}
