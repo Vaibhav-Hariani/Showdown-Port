@@ -1,5 +1,3 @@
-#define PARALYSIS 
-
 typedef enum {
     STATUS_BURN      = 1 << 0,
     STATUS_FREEZE    = 1 << 1,
@@ -9,19 +7,19 @@ typedef enum {
 } StatusFlags;
 
 struct STR_MODS {
-    //Move/ability effects that modify stats temporarily:
+    // Move/ability effects that modify stats temporarily: scales power/defense/etc.
     int stat_mods[5];
+    //Bitfield set by above
     int status_flags;
 } typedef modifiers;
 
 //Gets loaded when a pokemon is selected with HP and stats, based on base data + EVs and IVs
 struct STR_STATS {
     int stats[5];
-    int item_id;
-    // not super relevant for RBG but it's also the easiest thing to flip
-    int gender;
 
-    //Future target
+    //Future relevance
+    // bool gender;
+    // int item_id;
     // int happiness;
     // int ability_id;
     // int nature_id;
@@ -38,18 +36,13 @@ struct STR_MOVES {
     int pp;
 } typedef poke_moves;
 
-//Comparable to the showdown PokemonSet object, with battle data
+//Comparable to the showdown PokemonSet object, but with battle data.
 struct STR_POKE {
     // Corresponds to pokedex entry
     unsigned char id;
     poke_moves moves[4];
     //EVs and IVs combined with base stats for compression
     poke_stats stat;
-    //int item_id;
-    //int ability_id;
-    //int nature_id;
-    //int gender_id;
-
 
     //Relevant to battle state
     modifiers mods;
