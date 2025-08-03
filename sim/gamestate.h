@@ -1,24 +1,24 @@
-typedef enum {
-  STATUS_BURN = 1 << 0,
-  STATUS_FREEZE = 1 << 1,
-  STATUS_PARALYSIS = 1 << 2,
-  STATUS_POISON = 1 << 3,
-  STATUS_SLEEP = 1 << 4
-} StatusFlags;
+struct STR_STAT_FLAGS{
+  int paralyzed: 1;
+  int burn: 1;
+  int freeze: 1;
+  int poision: 1;
+  int sleep: 1;
+};
 
 struct STR_MODS {
-  // Move/ability effects that modify stats temporarily: scales
-  // power/defense/etc.
+  // Move/ability effects that modify stats temporarily: applies on base stats
+  // Undetermined if this should be a percentage vs. actual val...
   int stat_mods[5];
+  STR_STAT_FLAGS status;  
   // Bitfield set by above
-  int status_flags;
 } typedef modifiers;
 
-// Gets loaded when a pokemon is selected with HP and stats, based on base data
-// + EVs and IVs
-struct STR_STATS {
-  int stats[5];
 
+// Gets loaded when a pokemon is selected 
+// based on base data, selected EVs, and IVs
+struct STR_STATS {
+  unsigned char stats[5];
   // Future relevance
   //  bool gender;
   //  int item_id;
@@ -41,7 +41,7 @@ struct STR_MOVES {
   int pp;
 } typedef poke_moves;
 
-// Comparable to the showdown PokemonSet object, but with battle data.
+// Comparable to the showdown PokemonSet object, but also storing battle data.
 struct STR_POKE {
   // Corresponds to pokedex entry
   unsigned char id;

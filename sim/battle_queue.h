@@ -1,17 +1,15 @@
 // Trying to re-implement the battle queue from showdown
 #include "gamestate.h"
+#include "stdlib.h"
+/**
 
-// Basic idea: player swings, moves collide (based on priority/speed), and then
-// follow up triggers hit the stack This is less important for Gen1 but the
-// design is important for resolving multiple triggers correctly.
-//  and I'm fleshing it out now.
-
-// Likely will not need to dynamically allocate as these actions
-// will live and die on the stack when moves are done.
+Basic idea: player swings, moves collide (based on priority/speed), and then
+follow up triggers hit the stack. Less important for Gen1,
+but a model needs to exist so why not do it right.
+ **/
 
 struct STR_MOVE_ACTION {
   void* move(pokemon*, pokemon*);
-
   // Enums should be used for mega/zmove/maxmoves
   //  bool mega;
   //  bool zmove;
@@ -19,7 +17,12 @@ struct STR_MOVE_ACTION {
   //  Action source_Action: this is included in showdown but unsure about usage
 };
 
-struct STR_SWITCH_ACTION {};
+// Important: switches need to be verified by checking target HP.
+struct STR_SWITCH_ACTION {
+  int targetLoc;
+  // effect that called the switch: not relevant for gen1
+  // sourceEffect: Effect | null;
+};
 
 enum ENUM_ACTIONS {
   move_action,
@@ -31,27 +34,92 @@ enum ENUM_ACTIONS {
 union UN_ACTIONS {
   struct STR_MOVE_ACTION m;
   struct STR_SWITCH_ACTION s;
+  // This may be necessary: It's used for switch-in effects (unsure if any exist
+  // in gen1),
+  //  as well as more generic event triggers that need to happen dynamically.
+  //  struct POKEMON_ACTION p; // Used for dynamaxxing/mega evo
+
   // struct STR_TEAM_ACTION t;
   // struct STR_FIELD_ACTION m;
-} typedef action_u;
+} typedef action_union;
 
 struct STR_ACTION {
+  action_union action_d;
+  action_types action_type;
+  // which player is making the move
+  char player;
+
   int order;
-  // I believe this is unneeded for switching
   int priority;
-  // Speed can probably be pulled from the origin pokemon
+  // Can probably be pulled from the origin pokemon
   int speed;
   // (index of the pokemon making the move)
-  // if they're not the active pokemon, move is cancelled
+  // if not active pokemon, move is cancelled
   int origLoc;
 
-  // Using this to determine if the pokemon making the move
-
-  // int targetLoc; // (index of the pokemon being targeted): used for doubles
   // This is only used for more complex effects, not determining the end target
-  // pokemon initiate;
-
+  // int targetLoc; // (index of the pokemon being targeted): used for doubles
+  // pokemon initiator;
   // pokemon OriginalTarget;
-  action_u action;
-  int action_type;
 } typedef action;
+
+// The current battle state: according to showdown docs,
+// sorted by priority (not midturn) for gen 1-7.
+// not a 'true' priority queue
+struct STR_BQUEUE {
+  field field;
+  action* queue;
+  int q_size;
+} typedef battlequeue;
+
+// Sourced from sort
+// negative means a2 should be first, positive means a1 first.
+int cmp_priority_qsort(const void* a, const void* b) {
+  action a1 = *(const action*)a;
+  action a2 = *(const action*)b;
+  int diff = (a1.order) - (a2.order);
+  if (!diff) {
+    diff = (a1.priority) - (a2.priority);
+    if (!diff) {
+      diff = (a1.speed) - (a2.speed);
+    }
+    // Showdown docs have suborder and effectOrder,
+    //  I think these can be ignored for gen1
+  }
+  return diff;
+}
+
+
+
+//Both of these funcitons are used once: inlined
+inline int check_tie(action a1, action a2) {
+  return a1.order - a2.order || a1.priority - a2.priority || a1.speed - a2.speed;
+}
+
+inline void fischer_yates(action* arr, int end) {
+  action buff;
+  for(int i = end - 1; i > 0; i--){
+    int j = rand() % (i+1);
+    buff = arr[i];
+    arr[i] = arr[j];
+    arr[j] = buff;
+  }
+}
+
+// Smallish array: just using builtin sort
+// fischer yates shuffler for ties.
+void sort_queue(battlequeue* queue) {
+  // There is definitely a faster implementation somewhere
+  // Sort is also unstable (though we're randomizing ties so maybe that's not an issue?)
+  qsort(queue->queue, queue->q_size, sizeof(action), cmp_priority_qsort);
+
+  int j = 0;
+  while (j < queue->q_size - 1) {
+    int buf = 1;
+    while (j + buf < queue->q_size && !check_tie(queue->queue[j], queue->queue[j + buf])) {
+      buf++;
+    }
+    fischer_yates(queue->queue + j, buf);
+    j += buf;
+  }
+}
