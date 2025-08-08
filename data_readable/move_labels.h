@@ -1,3 +1,4 @@
+#ifndef MOVE_LABELS_H
 const char* MoveLabels[] = {
     "No Move"
     "Pound",
@@ -166,3 +167,4 @@ const char* MoveLabels[] = {
     "Substitute",
     "Struggle",
 };
+#endif

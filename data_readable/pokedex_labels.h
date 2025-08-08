@@ -1,4 +1,6 @@
-//This isn't truncated
+#ifndef POKEDEX_LABELS_H
+
+
 const char* PokemonNames[] = {
     "missingno",
     "bulbasaur",
@@ -153,3 +155,5 @@ const char* PokemonNames[] = {
     "mewtwo",
     "mew"
 };
+
+#endif

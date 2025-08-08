@@ -1,5 +1,6 @@
 //Starting at one for regular moves. nomove is buffer
-// 
+//
+#ifndef MOVES_H 
 typedef enum {
     NOMOVE=0,
     POUND=1,
@@ -168,3 +169,5 @@ typedef enum {
     SUBSTITUTE,
     STRUGGLE=164
 } move_table;
+
+#endif

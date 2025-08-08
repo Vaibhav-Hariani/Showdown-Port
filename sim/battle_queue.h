@@ -1,3 +1,4 @@
+#ifndef BATTLE_QUEUE_H
 // Trying to re-implement the battle queue from showdown
 #include "gamestate.h"
 #include "stdlib.h"
@@ -9,7 +10,7 @@ but a model needs to exist so why not do it right.
  **/
 
 struct STR_MOVE_ACTION {
-  void* move(pokemon*, pokemon*);
+  void* (*move_funct)(battle, pokemon*, pokemon*);
   // Enums should be used for mega/zmove/maxmoves
   //  bool mega;
   //  bool zmove;
@@ -66,9 +67,9 @@ struct STR_ACTION {
 // The current battle state: according to showdown docs,
 // sorted by priority (not midturn) for gen 1-7.
 // not a 'true' priority queue
+//Setting to 15 so there's no dynamic allocation
 struct STR_BQUEUE {
-  field field;
-  action* queue;
+  action queue[15];
   int q_size;
 } typedef battlequeue;
 
@@ -82,7 +83,7 @@ int cmp_priority_qsort(const void* a, const void* b) {
     diff = (a1.priority) - (a2.priority);
     if (!diff) {
       diff = (a1.speed) - (a2.speed);
-    }
+    } 
     // Showdown docs have suborder and effectOrder,
     //  I think these can be ignored for gen1
   }
@@ -108,18 +109,19 @@ inline void fischer_yates(action* arr, int end) {
 
 // Smallish array: just using builtin sort
 // fischer yates shuffler for ties.
-void sort_queue(battlequeue* queue) {
+void sort_queue(battlequeue* bqueue) {
   // There is definitely a faster implementation somewhere
   // Sort is also unstable (though we're randomizing ties so maybe that's not an issue?)
-  qsort(queue->queue, queue->q_size, sizeof(action), cmp_priority_qsort);
+  qsort(bqueue->queue, bqueue->q_size, sizeof(action), cmp_priority_qsort);
 
   int j = 0;
-  while (j < queue->q_size - 1) {
+  while (j < bqueue->q_size - 1) {
     int buf = 1;
-    while (j + buf < queue->q_size && !check_tie(queue->queue[j], queue->queue[j + buf])) {
+    while (j + buf < bqueue->q_size && !check_tie(bqueue->queue[j], bqueue->queue[j + buf])) {
       buf++;
     }
-    fischer_yates(queue->queue + j, buf);
+    fischer_yates(bqueue->queue + j, buf);
     j += buf;
   }
 }
+#endif
