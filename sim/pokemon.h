@@ -59,33 +59,44 @@ struct STR_POKE {
   modifiers mods;
   int hp;
 
+  // Add type1 and type2 fields to STR_POKE for Pokémon typing
+  TYPE type1; // Primary type
+  TYPE type2; // Secondary type
 } typedef pokemon;
 
-// Update initialize_pokemon to separate STAT_HP calculation
+// Update initialize_pokemon to use a local variable for pokemon_base[id - 1]
 pokemon initialize_pokemon(POKEDEX id) {
     pokemon p;
     p.id = id;
 
-    // Initialize stats from pokemon_base
-    for (int i = 0; i < STAT_COUNT; i++) {
-        p.stat.stats[i] = pokemon_base[id - 1].base_stats.stats[i];
-    }
+    if (id < LAST_POKEMON) {
+        const poke_ref *base = &pokemon_base[id - 1]; // Store reference to pokemon_base[id - 1]
 
-    // Apply EVs/IVs logic for Gen1
-    int iv = 15; // Max IV for Gen1 (0-15 scale)
-    int ev = 65535; // Max EV for Gen1 (0-65535 scale)
+        // Initialize stats from pokemon_base
+        for (int i = 0; i < STAT_COUNT; i++) {
+            p.stat.stats[i] = base->base_stats[i];
+        }
 
-    // Calculate HP stat separately
-    p.stat.stats[STAT_HP] += (iv * 2 + ev / 4) / 100 + 10;
+        // Set Pokémon types
+        p.type1 = base->primary_type;
+        p.type2 = base->secondary_type;
 
-    // Calculate other stats
-    for (int i = 1; i < STAT_COUNT; i++) {
-        p.stat.stats[i] += (iv * 2 + ev / 4) / 100 + 5;
-    }
+        // Apply EVs/IVs logic for Gen1
+        int iv = 15; // Max IV for Gen1 (0-15 scale)
+        int ev = 65535; // Max EV for Gen1 (0-65535 scale)
 
-    p.hp = p.stat.stats[STAT_HP];
-    for (int i = 0; i < 4; i++) {
-        p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
+        // Calculate HP stat separately
+        p.stat.stats[STAT_HP] += (iv * 2 + ev / 4) / 100 + 10;
+
+        // Calculate other stats
+        for (int i = 1; i < STAT_COUNT; i++) {
+            p.stat.stats[i] += (iv * 2 + ev / 4) / 100 + 5;
+        }
+
+        p.hp = p.stat.stats[STAT_HP];
+        for (int i = 0; i < 4; i++) {
+            p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
+        }
     }
     return p;
 }

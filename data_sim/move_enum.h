@@ -171,5 +171,11 @@ typedef enum {
     SUBSTITUTE,
     STRUGGLE=164
 } move_ids;
+// Add enums for move categories
+typedef enum {
+    PHYSICAL,
+    SPECIAL
+} move_category;
+
 
 #endif

@@ -152,6 +152,7 @@ typedef enum {
   DRATINI,
   DRAGONAIR,
   DRAGONITE = 149,
+  LAST_POKEMON
 } POKEDEX;
 //     //These two are illegal in OU.
 //     Just ending the pokedex early.

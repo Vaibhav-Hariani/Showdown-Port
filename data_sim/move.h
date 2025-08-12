@@ -16,6 +16,7 @@ struct STR_MOVES {
   int accuracy;
   TYPE move_type;
   int pp;
+  move_category category; // Add category for physical or special moves
 } typedef move;
 
 // Define an array of moves indexed by move_enum.h

@@ -128,4 +128,42 @@ void sort_queue(battlequeue* bqueue) {
     j += buf;
   }
 }
+
+void eval_queue(battle *b) {
+    for (int i = 0; i < b->action_queue.q_size; i++) {
+        action *current_action = &b->action_queue.queue[i];
+
+        // Validate action
+        if (current_action->action_type == move_action) {
+            pokemon *attacker = &current_action->p->team[current_action->origLoc];
+            if (attacker->hp <= 0) {
+                printf("Invalid move: %s has fainted.\n", PokemonNames[attacker->id]);
+                continue;
+            }
+
+            pokemon *defender = (current_action->player_num == 1) ? &b->p2.team[b->p2.active_pokemon] : &b->p1.team[b->p1.active_pokemon];
+            move *used_move = &current_action->action_d.m;
+
+            // Calculate and apply damage
+            int damage = calculate_damage(attacker, defender, used_move);
+            defender->hp -= damage;
+
+            printf("%s used %s! It dealt %d damage.\n", PokemonNames[attacker->id], MoveLabels[used_move->id], damage);
+
+            if (defender->hp <= 0) {
+                printf("%s fainted!\n", PokemonNames[defender->id]);
+            }
+        } else if (current_action->action_type == switch_action) {
+            // Validate switch
+            if (current_action->p->team[current_action->action_d.switch_target].hp <= 0) {
+                printf("Invalid switch: Target Pokémon has fainted.\n");
+                continue;
+            }
+
+            // Perform switch
+            current_action->p->active_pokemon = current_action->action_d.switch_target;
+            printf("Player %d switched to %s!\n", current_action->player_num, PokemonNames[current_action->p->team[current_action->action_d.switch_target].id]);
+        }
+    }
+}
 #endif
