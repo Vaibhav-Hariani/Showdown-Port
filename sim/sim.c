@@ -14,11 +14,38 @@ battle b = {0};
 //Then, add checks for status effects, misses, etc. etc. Follow OU rules, and implement switching mechanics.
 
 int main() {
+    // Initialize battle
+    battle b = {0};
 
+    // Initialize two Pokémon dynamically
+    pokemon bulbasaur1 = initialize_pokemon(BULBASAUR);
+    pokemon bulbasaur2 = initialize_pokemon(BULBASAUR);
+
+    // Assign Pokémon to players
+    b.p1.team[0] = bulbasaur1;
+    b.p2.team[0] = bulbasaur2;
+    b.p1.active_pokemon = 0;
+    b.p2.active_pokemon = 0;
+
+    // Print initial state
+    printf("Battle Start!\n");
+    print_state(b.p1);
+    print_state(b.p2);
+
+    // Simplified battle loop
+    while (b.p1.team[b.p1.active_pokemon].hp > 0 && b.p2.team[b.p2.active_pokemon].hp > 0) {
+        step(&b, 0); // Call step function to handle a turn
+    }
+
+    // Determine winner
+    if (b.p1.team[b.p1.active_pokemon].hp > 0) {
+        printf("Player 1 wins!\n");
+    } else {
+        printf("Player 2 wins!\n");
+    }
+
+    return 0;
 }
-
-
-
 void print_state(player active) {
   for (int i = 0; i < 6; i++) {
     pokemon p = active.team[i];
@@ -75,8 +102,6 @@ int make_move(battle* b, int active_player, player* p) {
   cur->p = p; 
   cur->player_num = active_player;
 }
-
-def execute_
 
 // Takes in a move from both players. then, resolves
 void step(battle* b, int choice) {

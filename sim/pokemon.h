@@ -1,22 +1,34 @@
 #ifndef POKEMON_H
 #define POKEMON_H
 #include "move.h"
+#include "pokemon_base.h" // For accessing pokemon_base
 
+// Add an ENUM for stat labels
+typedef enum {
+    STAT_HP,
+    STAT_ATTACK,
+    STAT_DEFENSE,
+    STAT_SPECIAL_ATTACK,
+    STAT_SPECIAL_DEFENSE,
+    STAT_SPEED,
+    STAT_COUNT // Total number of stats
+} STAT_LABELS;
+
+// Convert poke_stats to an array-based structure
 struct STR_STATS {
-  // HP, Attack, Defense, Special Attack, Special Defense, Speed
-  unsigned char stats[6];
-  // Future relevance
-  //  bool gender;
-  //  int item_id;
-  //  int happiness;
-  //  int ability_id;
-  //  int nature_id;
+    int stats[STAT_COUNT]; // Array to hold all stats
+    // Future relevance
+    //  bool gender;
+    //  int item_id;
+    //  int happiness;
+    //  int ability_id;
+    //  int nature_id;
 
-  // > Gen7 tomfoolery
-  // int hp_type;
-  // int dmaxlevel;
-  // int gmaxlvl;
-  // int teratype;
+    // > Gen7 tomfoolery
+    // int hp_type;
+    // int dmaxlevel;
+    // int gmaxlvl;
+    // int teratype;
 } typedef poke_stats;
 
 struct STR_STAT_FLAGS{
@@ -49,7 +61,33 @@ struct STR_POKE {
 
 } typedef pokemon;
 
+// Update initialize_pokemon to separate STAT_HP calculation
+pokemon initialize_pokemon(POKEDEX id) {
+    pokemon p;
+    p.id = id;
 
+    // Initialize stats from pokemon_base
+    for (int i = 0; i < STAT_COUNT; i++) {
+        p.stat.stats[i] = pokemon_base[id - 1].base_stats.stats[i];
+    }
 
+    // Apply EVs/IVs logic for Gen1
+    int iv = 15; // Max IV for Gen1 (0-15 scale)
+    int ev = 65535; // Max EV for Gen1 (0-65535 scale)
+
+    // Calculate HP stat separately
+    p.stat.stats[STAT_HP] += (iv * 2 + ev / 4) / 100 + 10;
+
+    // Calculate other stats
+    for (int i = 1; i < STAT_COUNT; i++) {
+        p.stat.stats[i] += (iv * 2 + ev / 4) / 100 + 5;
+    }
+
+    p.hp = p.stat.stats[STAT_HP];
+    for (int i = 0; i < 4; i++) {
+        p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
+    }
+    return p;
+}
 
 #endif
