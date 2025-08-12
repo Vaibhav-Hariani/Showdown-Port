@@ -1,6 +1,8 @@
 //Starting at one for regular moves. nomove is buffer
 //
-#ifndef MOVES_H 
+#ifndef MOVES_H
+#include "battle.h" 
+#include "pokedex.h"
 typedef enum {
     NOMOVE=0,
     POUND=1,
@@ -168,6 +170,6 @@ typedef enum {
     SLASH,
     SUBSTITUTE,
     STRUGGLE=164
-} move_table;
+} move_ids;
 
 #endif

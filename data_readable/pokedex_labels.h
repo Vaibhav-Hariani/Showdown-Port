@@ -1,4 +1,5 @@
 #ifndef POKEDEX_LABELS_H
+#define POKEDEX_LABELS_H
 
 
 const char* PokemonNames[] = {
