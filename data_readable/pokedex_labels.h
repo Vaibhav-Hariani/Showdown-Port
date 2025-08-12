@@ -1,7 +1,5 @@
 #ifndef POKEDEX_LABELS_H
 #define POKEDEX_LABELS_H
-
-
 const char* PokemonNames[] = {
     "missingno",
     "bulbasaur",
@@ -155,6 +153,24 @@ const char* PokemonNames[] = {
     "dragonite",
     "mewtwo",
     "mew"
+};
+
+const char* TypeLabels[] = {
+    "NORMAL",
+    "FIRE",
+    "WATER",
+    "ELECTRIC",
+    "GRASS",
+    "ICE",
+    "FIGHTING",
+    "POISON",
+    "GROUND",
+    "FLYING",
+    "PSYCHIC",
+    "BUG",
+    "ROCK",
+    "GHOST",
+    "DRAGON"
 };
 
 #endif

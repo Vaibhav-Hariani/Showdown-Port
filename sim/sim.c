@@ -9,9 +9,15 @@
 
 battle b = {0};
 
+
+//ToDo: Build randomizer for damage, implement init_battle(), evaluate the queue, build calculate_damage()
+//Then, add checks for status effects, misses, etc. etc. Follow OU rules, and implement switching mechanics.
+
 int main() {
 
 }
+
+
 
 void print_state(player active) {
   for (int i = 0; i < 6; i++) {
@@ -66,10 +72,11 @@ int make_move(battle* b, int active_player, player* p) {
   cur->action_d.switch_target = input;
   cur->order = 103;
   }
-
   cur->p = p; 
   cur->player_num = active_player;
 }
+
+def execute_
 
 // Takes in a move from both players. then, resolves
 void step(battle* b, int choice) {

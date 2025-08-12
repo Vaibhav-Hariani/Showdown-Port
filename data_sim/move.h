@@ -3,6 +3,7 @@
 
 #include "pokemon.h"
 #include "move_enum.h"
+#include "typing.h"
 
 struct STR_MOVES {
   move_ids id;
@@ -10,7 +11,12 @@ struct STR_MOVES {
   // each move obj contains a pointer to it'
   //  is a pointer to said function.
   int (*movePtr)(battle* , pokemon *, pokemon *, int);
+  int power;
+  int accuracy;
+  TYPE move_type;
   int pp;
 } typedef move;
+
+
 
 #endif

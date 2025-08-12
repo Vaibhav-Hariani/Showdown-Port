@@ -157,6 +157,6 @@ typedef enum {
 //     Just ending the pokedex early.
 //     MEWTWO,
 //     MEW=151
-// } POKEDEX;
+
 
 #endif POKEDEX_H

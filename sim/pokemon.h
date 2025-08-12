@@ -3,8 +3,8 @@
 #include "move.h"
 
 struct STR_STATS {
-  unsigned char stats[5];
-
+  // HP, Attack, Defense, Special Attack, Special Defense, Speed
+  unsigned char stats[6];
   // Future relevance
   //  bool gender;
   //  int item_id;
@@ -29,16 +29,15 @@ struct STR_STAT_FLAGS{
 
 struct STR_MODS {
   // Move/ability effects that modify stats temporarily: applies on base stats
-  
-  // Currently a percentage loss.
-  int stat_mods[5];
-  struct STR_STAT_FLAGS status;  
+  // Percentage stat debuff.
+  int stat_mods[6];
+  struct STR_STAT_FLAGS status;
   // Bitfield set by above
 } typedef modifiers;
 
 // Comparable to the showdown PokemonSet object, but also storing battle data.
 struct STR_POKE {
-  // Corresponds to pokedex entryi
+  // Corresponds to pokedex entry
   unsigned char id;
   move poke_moves[4];
   // EVs and IVs combined with base stats for compression
