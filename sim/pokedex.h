@@ -1,9 +1,11 @@
 // src:
 // https://github.com/smogon/pokemon-showdown/blob/master/data/mods/gen1/pokedex.ts
 #ifndef POKEDEX_H
+#define POKEDEX_H
+
 typedef enum {
   // MISSINGNO=0,
-  BULBASAUR = 1,
+  BULBASAUR = 0,
   IVYSAUR,
   VENUSAUR,
   CHARMANDER,
@@ -151,12 +153,9 @@ typedef enum {
   MOLTRES,
   DRATINI,
   DRAGONAIR,
-  DRAGONITE = 149,
+  DRAGONITE,
+  MEWTWO,
+  MEW,
 } POKEDEX;
-//     //These two are illegal in OU.
-//     Just ending the pokedex early.
-//     MEWTWO,
-//     MEW=151
-// } POKEDEX;
 
 #endif POKEDEX_H

@@ -16,7 +16,8 @@ follow up triggers hit the stack. Less important for Gen1.
 //   //  bool mega;
 //   //  bool zmove;
 //   //  bool maxmove;
-//   //  Action source_Action: this is included in showdown but unsure about usage
+//   //  Action source_Action: this is included in showdown but unsure about
+//   usage
 // };
 
 // Important: switches need to be verified by checking target HP.

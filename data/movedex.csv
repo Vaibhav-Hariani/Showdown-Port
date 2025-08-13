@@ -1,0 +1,166 @@
+move_id,name,type,category,pp,power,accuracy,priority,effect_fn
+1,Pound,Normal,Physical,35,40,100,0,apply_damaging_attack
+2,Karate Chop,Fighting,Physical,25,50,100,0,apply_damaging_attack
+3,Double Slap,Normal,Physical,10,15,85,0,apply_damaging_attack
+4,Comet Punch,Normal,Physical,15,18,85,0,apply_damaging_attack
+5,Mega Punch,Normal,Physical,20,80,85,0,apply_damaging_attack
+6,Pay Day,Normal,Physical,20,40,100,0,apply_damaging_attack
+7,Fire Punch,Fire,Physical,15,75,100,0,apply_damaging_attack
+8,Ice Punch,Ice,Physical,15,75,100,0,apply_damaging_attack
+9,Thunder Punch,Electric,Physical,15,75,100,0,apply_damaging_attack
+10,Scratch,Normal,Physical,35,40,100,0,apply_damaging_attack
+11,Vise Grip,Normal,Physical,30,55,100,0,apply_damaging_attack
+12,Guillotine,Normal,Physical,5,INF,30,0,apply_damaging_attack
+13,Razor Wind,Normal,Special,10,80,100,0,apply_damaging_attack
+14,Swords Dance,Normal,Status,20,0,100,0,apply_damaging_attack
+15,Cut,Normal,Physical,30,50,95,0,apply_damaging_attack
+16,Gust,Flying,Special,35,40,100,0,apply_damaging_attack
+17,Wing Attack,Flying,Physical,35,60,100,0,apply_damaging_attack
+18,Whirlwind,Normal,Status,20,0,INF,0,apply_damaging_attack
+19,Fly,Flying,Physical,15,90,95,0,apply_damaging_attack
+20,Bind,Normal,Physical,20,15,85,0,apply_damaging_attack
+21,Slam,Normal,Physical,20,80,75,0,apply_damaging_attack
+22,Vine Whip,Grass,Physical,25,45,100,0,apply_damaging_attack
+23,Stomp,Normal,Physical,20,65,100,0,apply_damaging_attack
+24,Double Kick,Fighting,Physical,30,30,100,0,apply_damaging_attack
+25,Mega Kick,Normal,Physical,5,120,75,0,apply_damaging_attack
+26,Jump Kick,Fighting,Physical,10,100,95,0,apply_damaging_attack
+27,Rolling Kick,Fighting,Physical,15,60,85,0,apply_damaging_attack
+28,Sand Attack,Ground,Status,15,0,100,0,apply_damaging_attack
+29,Headbutt,Normal,Physical,15,70,100,0,apply_damaging_attack
+30,Horn Attack,Normal,Physical,25,65,100,0,apply_damaging_attack
+31,Fury Attack,Normal,Physical,20,15,85,0,apply_damaging_attack
+32,Horn Drill,Normal,Physical,5,INF,30,0,apply_damaging_attack
+33,Tackle,Normal,Physical,35,40,100,0,apply_damaging_attack
+34,Body Slam,Normal,Physical,15,85,100,0,apply_damaging_attack
+35,Wrap,Normal,Physical,20,15,90,0,apply_damaging_attack
+36,Take Down,Normal,Physical,20,90,85,0,apply_damaging_attack
+37,Thrash,Normal,Physical,10,120,100,0,apply_damaging_attack
+38,Double-Edge,Normal,Physical,15,120,100,0,apply_damaging_attack
+39,Tail Whip,Normal,Status,30,0,100,0,apply_tail_whip
+40,Poison Sting,Poison,Physical,35,15,100,0,apply_damaging_attack
+41,Twineedle,Bug,Physical,20,25,100,0,apply_damaging_attack
+42,Pin Missile,Bug,Physical,20,25,95,0,apply_damaging_attack
+43,Leer,Normal,Status,30,0,100,0,apply_damaging_attack
+44,Bite,Normal,Physical,25,60,100,0,apply_bite
+45,Growl,Normal,Status,40,0,100,0,apply_growl
+46,Roar,Normal,Status,20,0,INF,0,apply_damaging_attack
+47,Sing,Normal,Status,15,0,55,0,apply_damaging_attack
+48,Supersonic,Normal,Status,20,0,55,0,apply_damaging_attack
+49,Sonic Boom,Normal,Special,20,0,90,0,apply_damaging_attack
+50,Disable,Normal,Status,20,0,100,0,apply_damaging_attack
+51,Acid,Poison,Special,30,40,100,0,apply_acid
+52,Ember,Fire,Special,25,40,100,0,apply_damaging_attack
+53,Flamethrower,Fire,Special,15,90,100,0,apply_damaging_attack
+54,Mist,Ice,Status,30,0,100,0,apply_damaging_attack
+55,Water Gun,Water,Special,25,40,100,0,apply_damaging_attack
+56,Hydro Pump,Water,Special,5,110,80,0,apply_damaging_attack
+57,Surf,Water,Special,15,90,100,0,apply_damaging_attack
+58,Ice Beam,Ice,Special,10,90,100,0,apply_damaging_attack
+59,Blizzard,Ice,Special,5,110,70,0,apply_damaging_attack
+60,Psybeam,Psychic,Special,20,65,100,0,apply_damaging_attack
+61,Bubble Beam,Water,Special,20,65,100,0,apply_bubble_beam
+62,Aurora Beam,Ice,Special,20,65,100,0,apply_aurora_beam
+63,Hyper Beam,Normal,Special,5,150,90,0,apply_damaging_attack
+64,Peck,Flying,Physical,35,35,100,0,apply_damaging_attack
+65,Drill Peck,Flying,Physical,20,80,100,0,apply_damaging_attack
+66,Submission,Fighting,Physical,20,80,80,0,apply_damaging_attack
+67,Low Kick,Fighting,Physical,20,0,100,0,apply_damaging_attack
+68,Counter,Fighting,Physical,20,0,100,-1,apply_damaging_attack
+69,Seismic Toss,Fighting,Physical,20,0,100,0,apply_damaging_attack
+70,Strength,Normal,Physical,15,80,100,0,apply_damaging_attack
+71,Absorb,Grass,Special,25,20,100,0,apply_damaging_attack
+72,Mega Drain,Grass,Special,15,40,100,0,apply_damaging_attack
+73,Leech Seed,Grass,Status,10,0,90,0,apply_damaging_attack
+74,Growth,Normal,Status,20,0,100,0,apply_damaging_attack
+75,Razor Leaf,Grass,Physical,25,55,95,0,apply_damaging_attack
+76,Solar Beam,Grass,Special,10,120,100,0,apply_damaging_attack
+77,Poison Powder,Poison,Status,35,0,75,0,apply_damaging_attack
+78,Stun Spore,Grass,Status,30,0,75,0,apply_damaging_attack
+79,Sleep Powder,Grass,Status,15,0,75,0,apply_damaging_attack
+80,Petal Dance,Grass,Special,10,120,100,0,apply_damaging_attack
+81,String Shot,Bug,Status,40,0,95,0,apply_damaging_attack
+82,Dragon Rage,Dragon,Special,10,0,100,0,apply_damaging_attack
+83,Fire Spin,Fire,Special,15,35,85,0,apply_damaging_attack
+84,Thunder Shock,Electric,Special,30,40,100,0,apply_damaging_attack
+85,Thunderbolt,Electric,Special,15,90,100,0,apply_damaging_attack
+86,Thunder Wave,Electric,Status,20,0,90,0,apply_thunder_wave
+87,Thunder,Electric,Special,10,110,70,0,apply_damaging_attack
+88,Rock Throw,Rock,Physical,15,50,90,0,apply_damaging_attack
+89,Earthquake,Ground,Physical,10,100,100,0,apply_damaging_attack
+90,Fissure,Ground,Physical,5,INF,30,0,apply_damaging_attack
+91,Dig,Ground,Physical,10,80,100,0,apply_damaging_attack
+92,Toxic,Poison,Status,10,0,84.6,0,apply_toxic
+93,Confusion,Psychic,Special,25,50,100,0,apply_damaging_attack
+94,Psychic,Psychic,Special,10,90,100,0,apply_damaging_attack
+95,Hypnosis,Psychic,Status,20,0,60,0,apply_damaging_attack
+96,Meditate,Psychic,Status,40,0,100,0,apply_damaging_attack
+97,Agility,Psychic,Status,30,0,100,0,apply_damaging_attack
+98,Quick Attack,Normal,Physical,30,40,100,1,apply_damaging_attack
+99,Rage,Normal,Physical,20,20,100,0,apply_damaging_attack
+100,Teleport,Psychic,Status,20,0,100,0,apply_damaging_attack
+101,Night Shade,Ghost,Special,15,0,100,0,apply_damaging_attack
+102,Mimic,Normal,Status,10,0,INF,0,apply_damaging_attack
+103,Screech,Normal,Status,40,0,85,0,apply_damaging_attack
+104,Double Team,Normal,Status,15,0,100,0,apply_damaging_attack
+105,Recover,Normal,Status,5,0,100,0,apply_damaging_attack
+106,Harden,Normal,Status,30,0,100,0,apply_damaging_attack
+107,Minimize,Normal,Status,10,0,100,0,apply_damaging_attack
+108,Smokescreen,Normal,Status,20,0,100,0,apply_damaging_attack
+109,Confuse Ray,Ghost,Status,10,0,100,0,apply_damaging_attack
+110,Withdraw,Water,Status,40,0,100,0,apply_damaging_attack
+111,Defense Curl,Normal,Status,40,0,100,0,apply_damaging_attack
+112,Barrier,Psychic,Status,20,0,100,0,apply_damaging_attack
+113,Light Screen,Psychic,Status,30,0,100,0,apply_damaging_attack
+114,Haze,Ice,Status,30,0,100,0,apply_damaging_attack
+115,Reflect,Psychic,Status,20,0,100,0,apply_damaging_attack
+116,Focus Energy,Normal,Status,30,0,100,0,apply_damaging_attack
+117,Bide,Normal,Physical,10,0,INF,0,apply_bide
+118,Metronome,Normal,Status,10,0,100,0,apply_damaging_attack
+119,Mirror Move,Flying,Status,20,0,100,0,apply_damaging_attack
+120,Self-Destruct,Normal,Physical,5,200,100,0,apply_damaging_attack
+121,Egg Bomb,Normal,Physical,10,100,75,0,apply_damaging_attack
+122,Lick,Ghost,Physical,30,30,100,0,apply_damaging_attack
+123,Smog,Poison,Special,20,30,70,0,apply_damaging_attack
+124,Sludge,Poison,Special,20,65,100,0,apply_damaging_attack
+125,Bone Club,Ground,Physical,20,65,85,0,apply_damaging_attack
+126,Fire Blast,Fire,Special,5,110,85,0,apply_fire_blast
+127,Waterfall,Water,Physical,15,80,100,0,apply_damaging_attack
+128,Clamp,Water,Physical,15,35,85,0,apply_damaging_attack
+129,Swift,Normal,Special,20,60,INF,0,apply_damaging_attack
+130,Skull Bash,Normal,Physical,10,130,100,0,apply_damaging_attack
+131,Spike Cannon,Normal,Physical,15,20,100,0,apply_damaging_attack
+132,Constrict,Normal,Physical,35,10,100,0,apply_constrict
+133,Amnesia,Psychic,Status,20,0,100,0,apply_damaging_attack
+134,Kinesis,Psychic,Status,15,0,80,0,apply_damaging_attack
+135,Soft-Boiled,Normal,Status,5,0,100,0,apply_damaging_attack
+136,High Jump Kick,Fighting,Physical,10,130,90,0,apply_damaging_attack
+137,Glare,Normal,Status,30,0,74.6,0,apply_glare
+138,Dream Eater,Psychic,Special,15,100,100,0,apply_damaging_attack
+139,Poison Gas,Poison,Status,40,0,90,0,apply_damaging_attack
+140,Barrage,Normal,Physical,20,15,85,0,apply_damaging_attack
+141,Leech Life,Bug,Physical,10,80,100,0,apply_damaging_attack
+142,Lovely Kiss,Normal,Status,10,0,75,0,apply_damaging_attack
+143,Sky Attack,Flying,Physical,5,140,90,0,apply_damaging_attack
+144,Transform,Normal,Status,10,0,INF,0,apply_damaging_attack
+145,Bubble,Water,Special,30,40,100,0,apply_bubble
+146,Dizzy Punch,Normal,Physical,10,70,100,0,apply_damaging_attack
+147,Spore,Grass,Status,15,0,100,0,apply_damaging_attack
+148,Flash,Normal,Status,20,0,100,0,apply_damaging_attack
+149,Psywave,Psychic,Special,15,0,100,0,apply_damaging_attack
+150,Splash,Normal,Status,40,0,100,0,apply_damaging_attack
+151,Acid Armor,Poison,Status,20,0,100,0,apply_damaging_attack
+152,Crabhammer,Water,Physical,10,100,90,0,apply_damaging_attack
+153,Explosion,Normal,Physical,5,250,100,0,apply_damaging_attack
+154,Fury Swipes,Normal,Physical,15,18,80,0,apply_damaging_attack
+155,Bonemerang,Ground,Physical,10,50,90,0,apply_damaging_attack
+156,Rest,Psychic,Status,5,0,100,0,apply_damaging_attack
+157,Rock Slide,Rock,Physical,10,75,90,0,apply_damaging_attack
+158,Hyper Fang,Normal,Physical,15,80,90,0,apply_damaging_attack
+159,Sharpen,Normal,Status,30,0,100,0,apply_damaging_attack
+160,Conversion,Normal,Status,30,0,100,0,apply_conversion
+161,Tri Attack,Normal,Special,10,80,100,0,apply_damaging_attack
+162,Super Fang,Normal,Physical,10,0,90,0,apply_damaging_attack
+163,Slash,Normal,Physical,20,70,100,0,apply_damaging_attack
+164,Substitute,Normal,Status,10,0,100,0,apply_damaging_attack
+165,Struggle,Normal,Physical,1,50,INF,0,apply_damaging_attack

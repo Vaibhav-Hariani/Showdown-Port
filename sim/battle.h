@@ -3,8 +3,8 @@
 
 #ifndef BATTLE_H
 #define BATTLE_H
-#include "pokemon.h"
 #include "move.h"
+#include "pokemon.h"
 // Their battle object contains a loooot of metadata.
 // I'm combining battleOptions and battle into one "big" system
 
@@ -27,7 +27,6 @@ struct STR_PLAYER {
   pokemon team[6];
   char active_pokemon;
 } typedef player;
-
 
 struct STR_BATTLE {
   int seed;
