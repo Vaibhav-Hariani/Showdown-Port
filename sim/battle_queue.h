@@ -150,8 +150,17 @@ void eval_queue(battle *b) {
 
             printf("%s used %s! It dealt %d damage.\n", PokemonNames[attacker->id], MoveLabels[used_move->id], damage);
 
+            // Check if the defender fainted
             if (defender->hp <= 0) {
                 printf("%s fainted!\n", PokemonNames[defender->id]);
+
+                // Invalidate and shift the queue
+                int fainted_pokemon_loc = defender - current_action->p->team;
+                invalidate_queue(&b->action_queue, fainted_pokemon_loc);
+
+                // Prompt for a switch
+                printf("Player %d must switch in a new Pokémon.\n", current_action->player_num);
+                // Add logic to handle forced switch here
             }
         } else if (current_action->action_type == switch_action) {
             // Validate switch
@@ -163,6 +172,21 @@ void eval_queue(battle *b) {
             // Perform switch
             current_action->p->active_pokemon = current_action->action_d.switch_target;
             printf("Player %d switched to %s!\n", current_action->player_num, PokemonNames[current_action->p->team[current_action->action_d.switch_target].id]);
+        }
+    }
+}
+
+// Add a function to invalidate and shift the queue
+void invalidate_queue(battlequeue *queue, int fainted_pokemon_loc) {
+    for (int i = 0; i < queue->q_size; i++) {
+        if (queue->queue[i].origLoc == fainted_pokemon_loc) {
+            printf("Removing invalid action for fainted Pokémon.\n");
+            // Shift remaining actions up
+            for (int j = i; j < queue->q_size - 1; j++) {
+                queue->queue[j] = queue->queue[j + 1];
+            }
+            queue->q_size--;
+            i--; // Recheck the current index
         }
     }
 }
