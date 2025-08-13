@@ -10,6 +10,15 @@ To generate them, run
 python3 data/write_move_array.py
 ```
 
+## Adding a move handler
+
+Because the move effect is bound to the class, you need to add the appropriate
+funciton name to movedex.csv.
+
+You will also need to define your corresponding function in movedex.h.
+
+Could this be done in a LUT? Probably.
+
 ## Building
 
 For convenience, all files are in one directory.
