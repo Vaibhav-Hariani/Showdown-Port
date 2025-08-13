@@ -25,17 +25,14 @@ void apply_damaging_attack(BattlePokemon *attacker,
                            Move *attacker_move,
                            BattlePokemon *defender,
                            __attribute__((unused)) Move *defender_move) {
-  float critical_hit_denom = 512.0;
+  float crit_rate = attacker->crit_rate;
   if (attacker_move->move_id == KARATE_CHOP_MOVE_ID ||
       attacker_move->move_id == RAZOR_LEAF_MOVE_ID ||
       attacker_move->move_id == SLASH_MOVE_ID ||
       attacker_move->move_id == CRABHAMMER_MOVE_ID) {
-    critical_hit_denom = 64.0;
+    crit_rate *= 8;
   }
-  float critical =
-      (attacker->crit_rate >= ((float)(rand() % 100) / critical_hit_denom))
-          ? 2.0
-          : 1.0;
+  float critical = (crit_rate * 100 >= ((float)(rand() % 100))) ? 2.0 : 1.0;
   float stab = 1.0;
   if (attacker->entry.type1 == attacker_move->type ||
       attacker->entry.type2 == attacker_move->type) {
