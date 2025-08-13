@@ -1,6 +1,7 @@
 #ifndef POKEMON_H
 #define POKEMON_H
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -137,18 +138,39 @@ void build_pokemon(BattlePokemon *p,
                    Move moves[4]) {
   p->entry = entry;
   p->level = level;
-  uint16_t hp_dv = ((dvs.attack & 1) << 3) | ((dvs.defense & 1) << 2) |
-                   ((dvs.speed & 1) << 1) | (dvs.special & 1);
-  p->max_hp = ((base_stats.hp + hp_dv) * 2 * level) / 100 + level + 10;  // int
+
+  // STAT = int(((BaseStat + DV)*2+StatPoint)*Level/100)+E
+  // where E = Level + 10 for HP
+  // E = 5 for any other stat.
+  // And StatPoint = int((SQRT(StatExp-1)+1)/4)
+
+  int hp_dv = ((dvs.attack & 1) << 3) | ((dvs.defense & 1) << 2) |
+              ((dvs.speed & 1) << 1) | (dvs.special & 1);
+  int hp_stat_point = (int)((sqrt(evs.hp - 1) + 1) / 4);
+
+  p->max_hp =
+      ((base_stats.hp + hp_dv) * 2 + hp_stat_point) * level / 100 + level + 10;
   p->hp = p->max_hp;
-  p->attack = ((base_stats.attack + dvs.attack) * 2 * level) / 100 +
-              (evs.attack / 4) + 5;  // int
-  p->defense = ((base_stats.defense + dvs.defense) * 2 * level) / 100 +
-               (evs.defense / 4) + 5;  // int
-  p->speed = ((base_stats.speed + dvs.speed) * 2 * level) / 100 +
-             (evs.speed / 4) + 5;  // int
-  p->special = ((base_stats.special + dvs.special) * 2 * level) / 100 +
-               (evs.special / 4) + 5;  // int
+
+  int attack_stat_point = (int)((sqrt(evs.attack - 1) + 1) / 4);
+  p->attack =
+      ((base_stats.attack + dvs.attack) * 2 + attack_stat_point) * level / 100 +
+      5;
+
+  int defense_stat_point = (int)((sqrt(evs.defense - 1) + 1) / 4);
+  p->defense = ((base_stats.defense + dvs.defense) * 2 + defense_stat_point) *
+                   level / 100 +
+               5;
+
+  int speed_stat_point = (int)((sqrt(evs.speed - 1) + 1) / 4);
+  p->speed =
+      ((base_stats.speed + dvs.speed) * 2 + speed_stat_point) * level / 100 + 5;
+
+  int special_stat_point = (int)((sqrt(evs.special - 1) + 1) / 4);
+  p->special = ((base_stats.special + dvs.special) * 2 + special_stat_point) *
+                   level / 100 +
+               5;
+
   p->accuracy = 100;
   p->evasion = 100;
   p->crit_rate = (float)base_stats.speed * 100.0f / (100.0f * 512.0f);
