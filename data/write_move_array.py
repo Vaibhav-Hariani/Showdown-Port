@@ -35,7 +35,7 @@ if __name__ == "__main__":
         # insert the no move entry
         f.write("    {.move_id = NO_MOVE,\n")
         f.write("     .type = NONE_TYPE,\n")
-        f.write("     .category = STATUS,\n")
+        f.write("     .category = STATUS_MOVE_CATEGORY,\n")
         f.write("     .pp = 0,\n")
         f.write("     .power = 0,\n")
         f.write("     .accuracy = -1,\n")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
         for move, rendered_move_name in zip(moves, rendered_move_names):
             f.write(f"    {{.move_id = {rendered_move_name},\n")
             f.write(f"     .type = {move['type'].upper()},\n")
-            f.write(f"     .category = {move['category'].upper()},\n")
+            f.write(f"     .category = {move['category'].upper()}_MOVE_CATEGORY,\n")
             f.write(f"     .pp = {move['pp']},\n")
             f.write(f"     .power = {-1 if move['power'] == 'INF' else move['power']},\n")
             f.write(f"     .accuracy = {-1 if move['accuracy'] == 'INF' else float(move['accuracy'])/100.0},\n")

@@ -62,9 +62,9 @@ struct Gen1StatModifier {
 } typedef Gen1StatModifier;
 
 enum MoveCategory {
-  PHYSICAL = 0,
-  SPECIAL,
-  STATUS,
+  PHYSICAL_MOVE_CATEGORY = 0,
+  SPECIAL_MOVE_CATEGORY,
+  STATUS_MOVE_CATEGORY,
 } typedef MoveCategory;
 
 struct BattlePokemon;
