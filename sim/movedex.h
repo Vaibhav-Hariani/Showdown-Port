@@ -25,14 +25,12 @@ void apply_damaging_attack(BattlePokemon *attacker,
                            Move *attacker_move,
                            BattlePokemon *defender,
                            __attribute__((unused)) Move *defender_move) {
-  float critical_hit_denom = 100.0;
+  float critical_hit_denom = 512.0;
   if (attacker_move->move_id == KARATE_CHOP_MOVE_ID ||
       attacker_move->move_id == RAZOR_LEAF_MOVE_ID ||
       attacker_move->move_id == SLASH_MOVE_ID ||
       attacker_move->move_id == CRABHAMMER_MOVE_ID) {
     critical_hit_denom = 64.0;  // Gen 1 crits are 1/256
-  } else if (attacker_move->category == SPECIAL) {
-    critical_hit_denom = 512.0;  // Gen 1 special crits are 1/512
   }
   float critical =
       (attacker->crit_rate >= ((float)(rand() % 100) / critical_hit_denom))
