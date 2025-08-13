@@ -37,7 +37,6 @@ struct Gen1DV {
   uint8_t defense : 4;
   uint8_t speed : 4;
   uint8_t special : 4;
-  uint8_t health : 4;
 } typedef Gen1DV;
 
 struct Gen1Status {
@@ -138,8 +137,9 @@ void build_pokemon(BattlePokemon *p,
                    Move moves[4]) {
   p->entry = entry;
   p->level = level;
-  p->max_hp =
-      ((base_stats.hp + dvs.health) * 2 * level) / 100 + level + 10;  // int
+  uint16_t hp_dv = ((dvs.attack & 1) << 3) | ((dvs.defense & 1) << 2) |
+                   ((dvs.speed & 1) << 1) | (dvs.special & 1);
+  p->max_hp = ((base_stats.hp + hp_dv) * 2 * level) / 100 + level + 10;  // int
   p->hp = p->max_hp;
   p->attack = ((base_stats.attack + dvs.attack) * 2 * level) / 100 +
               (evs.attack / 4) + 5;  // int

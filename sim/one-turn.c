@@ -14,7 +14,7 @@
 int main() {
   srand(time(NULL));
   BattlePokemon poke1, poke2;
-  Gen1DV dvs = {15, 10, 10, 10, 10};
+  Gen1DV dvs = {15, 10, 10, 10};
   Gen1StatExperience evs = {0, 0, 0, 0, 0};
   // Need to double check that this doesn't have to be a memcpy
   // because of pointers
