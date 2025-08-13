@@ -173,7 +173,7 @@ void build_pokemon(BattlePokemon *p,
 
   p->accuracy = 100;
   p->evasion = 100;
-  p->crit_rate = (float)base_stats.speed * 100.0f / (100.0f * 512.0f);
+  p->crit_rate = (float)base_stats.speed * 100.0f / 512.0f;
   for (int i = 0; i < 4; i++) {
     p->moves[i] = moves[i];
   }

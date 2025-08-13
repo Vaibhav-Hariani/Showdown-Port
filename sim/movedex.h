@@ -32,7 +32,7 @@ void apply_damaging_attack(BattlePokemon *attacker,
       attacker_move->move_id == CRABHAMMER_MOVE_ID) {
     crit_rate *= 8;
   }
-  float critical = (crit_rate * 100 >= ((float)(rand() % 100))) ? 2.0 : 1.0;
+  float critical = (crit_rate >= ((float)(rand() % 100))) ? 2.0 : 1.0;
   float stab = 1.0;
   if (attacker->entry.type1 == attacker_move->type ||
       attacker->entry.type2 == attacker_move->type) {
