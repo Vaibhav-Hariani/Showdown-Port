@@ -30,7 +30,7 @@ void apply_damaging_attack(BattlePokemon *attacker,
       attacker_move->move_id == RAZOR_LEAF_MOVE_ID ||
       attacker_move->move_id == SLASH_MOVE_ID ||
       attacker_move->move_id == CRABHAMMER_MOVE_ID) {
-    critical_hit_denom = 64.0;  // Gen 1 crits are 1/256
+    critical_hit_denom = 64.0;
   }
   float critical =
       (attacker->crit_rate >= ((float)(rand() % 100) / critical_hit_denom))
