@@ -3,15 +3,17 @@
 #include "move_labels.h"
 #include "pokedex_labels.h"
 
+#include "poke_enum.h"
+#include "pokedex.h"
 #include "pokemon.h"
 #include "move.h"
 #include "stdio.h"
 
-battle b = {0};
+Battle b = {0};
 
 // Update initialize_pokemon to use a local variable for pokemon_base[id - 1]
-pokemon initialize_pokemon(POKEDEX id) {
-    pokemon p;
+Pokemon initialize_pokemon(POKEDEX_IDS id) {
+    Pokemon p;
     p.id = id;
 
     if (id < LAST_POKEMON) {
@@ -39,6 +41,7 @@ pokemon initialize_pokemon(POKEDEX id) {
         }
 
         p.hp = p.stats.base_stats[STAT_HP];
+        p.poke_moves[0] = moves[TACKLE];
         for (int i = 0; i < 4; i++) {
             p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
         }
@@ -51,11 +54,11 @@ pokemon initialize_pokemon(POKEDEX id) {
 //Then, add checks for status effects, misses, etc. etc. Follow OU rules, and implement switching mechanics.
 int main() {
     // Initialize battle
-    battle b = {0};
+    Battle b = {0};
 
     // Initialize two Pokémon dynamically
-    pokemon bulbasaur1 = initialize_pokemon(BULBASAUR);
-    pokemon bulbasaur2 = initialize_pokemon(BULBASAUR);
+    Pokemon bulbasaur1 = initialize_pokemon(BULBASAUR);
+    Pokemon bulbasaur2 = initialize_pokemon(BULBASAUR);
 
     // Assign Pokémon to players
     b.p1.team[0] = bulbasaur1;
@@ -84,7 +87,7 @@ int main() {
 }
 void print_state(player active) {
   for (int i = 0; i < 6; i++) {
-    pokemon p = active.team[i];
+    Pokemon p = active.team[i];
     if (active.active_pokemon == i) {
       printf("Active Pokemon: \t");
     }
@@ -102,7 +105,7 @@ void print_state(player active) {
 }
 
 // Input value if valid, negative if selection failed
-int make_move(battle* b, int active_player, player* p) {
+int make_move(Battle* b, int active_player, player* p) {
   unsigned char input; 
   printf(
       "player %u move: "
@@ -140,7 +143,7 @@ int make_move(battle* b, int active_player, player* p) {
 }
 
 // Takes in a move from both players. then, resolves
-void step(battle* b, int choice) {
+void step(Battle* b, int choice) {
   print_state(b->p1);
   printf("\n\n");
   print_state(b->p2);

@@ -24,7 +24,7 @@
 // HP Percentage Mod: HP is shown in percentages
 
 struct STR_PLAYER {
-  pokemon team[6];
+  Pokemon team[6];
   char active_pokemon;
 } typedef player;
 
@@ -41,13 +41,13 @@ struct STR_BATTLE {
   int turn_num;
 
   // Metadata for stuff like counter
-  move* lastMove;
+  Move* lastMove;
   int lastDamage;
   // Effects, events, and active pokemon go here
   // Unsure how this should be structured:
   // It seems the architecture relies on these being set, and then handles
   // poison/toxic and other callback loops Leaving them out for now, but may
   // need them in the near future
-} typedef battle;
+} typedef Battle;
 
 #endif
