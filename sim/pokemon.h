@@ -16,7 +16,7 @@ typedef enum {
 
 // Convert poke_stats to an array-based structure
 struct STR_STATS {
-    int stats[STAT_COUNT]; // Array to hold all stats
+    int base_stats[STAT_COUNT]; // Array to hold all base_stats
     // Future relevance
     //  bool gender;
     //  int item_id;
@@ -31,20 +31,19 @@ struct STR_STATS {
     // int teratype;
 } typedef poke_stats;
 
+//As per your idea: sleep turns and length is set here
 struct STR_STAT_FLAGS{
   int paralyzed: 1;
   int burn: 1;
   int freeze: 1;
-  int poision: 1;
-  int sleep: 1;
+  int poison: 1;
+  int sleep: 3;
 };
 
 struct STR_MODS {
-  // Move/ability effects that modify stats temporarily: applies on base stats
-  // Percentage stat debuff.
-  int stat_mods[6];
+  // Move/ability effects that modify base_stats temporarily: applies on base base_stats
+  int stat_mods[STAT_COUNT];
   struct STR_STAT_FLAGS status;
-  // Bitfield set by above
 } typedef modifiers;
 
 // Comparable to the showdown PokemonSet object, but also storing battle data.
@@ -52,53 +51,17 @@ struct STR_POKE {
   // Corresponds to pokedex entry
   unsigned char id;
   move poke_moves[4];
-  // EVs and IVs combined with base stats for compression
-  poke_stats stat;
+  // EVs and IVs are combined with base_stats for compression
+  poke_stats stats;
 
   // Relevant to battle state
   modifiers mods;
   int hp;
-
+  //Read for move damage
+  int level;
   // Add type1 and type2 fields to STR_POKE for Pokémon typing
   TYPE type1; // Primary type
   TYPE type2; // Secondary type
 } typedef pokemon;
-
-// Update initialize_pokemon to use a local variable for pokemon_base[id - 1]
-pokemon initialize_pokemon(POKEDEX id) {
-    pokemon p;
-    p.id = id;
-
-    if (id < LAST_POKEMON) {
-        const poke_ref *base = &pokemon_base[id - 1]; // Store reference to pokemon_base[id - 1]
-
-        // Initialize stats from pokemon_base
-        for (int i = 0; i < STAT_COUNT; i++) {
-            p.stat.stats[i] = base->base_stats[i];
-        }
-
-        // Set Pokémon types
-        p.type1 = base->primary_type;
-        p.type2 = base->secondary_type;
-
-        // Apply EVs/IVs logic for Gen1
-        int iv = 15; // Max IV for Gen1 (0-15 scale)
-        int ev = 65535; // Max EV for Gen1 (0-65535 scale)
-
-        // Calculate HP stat separately
-        p.stat.stats[STAT_HP] += (iv * 2 + ev / 4) / 100 + 10;
-
-        // Calculate other stats
-        for (int i = 1; i < STAT_COUNT; i++) {
-            p.stat.stats[i] += (iv * 2 + ev / 4) / 100 + 5;
-        }
-
-        p.hp = p.stat.stats[STAT_HP];
-        for (int i = 0; i < 4; i++) {
-            p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
-        }
-    }
-    return p;
-}
 
 #endif

@@ -9,10 +9,46 @@
 
 battle b = {0};
 
+// Update initialize_pokemon to use a local variable for pokemon_base[id - 1]
+pokemon initialize_pokemon(POKEDEX id) {
+    pokemon p;
+    p.id = id;
 
-//ToDo: Build randomizer for damage, implement init_battle(), evaluate the queue, build calculate_damage()
+    if (id < LAST_POKEMON) {
+        const poke_ref *base = &pokemon_base[id - 1]; // Store reference to pokemon_base[id - 1]
+
+        // Initialize stats from pokemon_base
+        for (int i = 0; i < STAT_COUNT; i++) {
+            p.stats.base_stats[i] = base->base_stats[i];
+        }
+
+        // Set Pokémon types
+        p.type1 = base->primary_type;
+        p.type2 = base->secondary_type;
+
+        // Apply EVs/IVs logic for Gen1
+        int iv = 15; // Max IV for Gen1 (0-15 scale)
+        int ev = 65535; // Max EV for Gen1 (0-65535 scale)
+
+        // Calculate HP stat separately
+        p.stats.base_stats[STAT_HP] += (iv * 2 + ev / 4) / 100 + 10;
+
+        // Calculate other stats
+        for (int i = 1; i < STAT_COUNT; i++) {
+            p.stats.base_stats[i] += (iv * 2 + ev / 4) / 100 + 5;
+        }
+
+        p.hp = p.stats.base_stats[STAT_HP];
+        for (int i = 0; i < 4; i++) {
+            p.poke_moves[i] = (i == 0) ? moves[TACKLE] : (move){0}; // Assign Tackle as the first move, others empty
+        }
+    }
+    return p;
+}
+
+
+//ToDo: implement init_battle(), evaluate the queue
 //Then, add checks for status effects, misses, etc. etc. Follow OU rules, and implement switching mechanics.
-
 int main() {
     // Initialize battle
     battle b = {0};
