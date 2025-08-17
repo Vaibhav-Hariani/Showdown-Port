@@ -50,7 +50,7 @@ def parse_pokemon_attacks(pokedex_number: int, cache_dir: Path) -> list[str]:
 if __name__ == "__main__":
     # The Pokédex number for Bulbasaur is 1.
     cache_dir = Path("cache")
-    moves_csv = Path("data/pokemon_moves.csv")
+    moves_csv = Path("data/learnsets.csv")
     cache_dir.mkdir(exist_ok=True)
     with open(moves_csv, "w", encoding="utf-8") as csvfile:
         fieldnames = ["pokedex_number", "attacks"]
