@@ -5,6 +5,7 @@
 #define BATTLE_H
 #include "pokemon.h"
 #include "move.h"
+#include "battle_queue.h"
 // Their battle object contains a loooot of metadata.
 // I'm combining battleOptions and battle into one "big" system
 
@@ -26,13 +27,13 @@
 struct STR_PLAYER {
   Pokemon team[6];
   char active_pokemon;
-} typedef player;
+} typedef Player;
 
 
 struct STR_BATTLE {
   int seed;
-  player p1;
-  player p2;
+  Player p1;
+  Player p2;
   char cur_player;
   // No field, as weather effects weren't a thing in gen1
   battlequeue action_queue;

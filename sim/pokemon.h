@@ -39,17 +39,17 @@ struct STR_STATUS_FLAGS {
   int freeze : 1;
   int poison : 1;
   int sleep : 3;
-  int flinch: 1;
+  int flinch : 1;
 };
 //+-7
 struct STR_DEBUFF_STATS {
   int attack : 4;
   int defense : 4;
-  int speed: 4;
-  int specA: 4;
-  int specD: 4;
-  int accuracy: 4;
-  int evasion: 4;
+  int speed : 4;
+  int specA : 4;
+  int specD : 4;
+  int accuracy : 4;
+  int evasion : 4;
 };
 
 // Comparable to the showdown PokemonSet object, but also storing battle data.
@@ -62,7 +62,7 @@ struct STR_POKE {
   // Relevant to battle state
   struct STR_STATUS_FLAGS status;
   int hp;
-  //Needed for healing moves & caps
+  // Needed for healing moves & caps
   int max_hp;
   TYPE type1;  // Primary type
   TYPE type2;  // Secondary type
@@ -70,19 +70,19 @@ struct STR_POKE {
 
 struct STR_BATTLE_POKE {
   Pokemon* pokemon;
-  //These are wiped whenever the active pokemon is switched in or out
+  // These are wiped whenever the active pokemon is switched in or out
   struct STR_DEBUFF_STATS stat_mods;
   TYPE type1;
   TYPE type2;
 
   bool flinch;
-  //Ticks for how long the pokemon has been badly poisoned for.
+  // Ticks for how long the pokemon has been badly poisoned for.
   int badly_poisoned_ctr;
-  //Used for all multi moves:
+  // Used for all multi moves:
   int recharge_counter;
   int recharge_src;
   int recharge_len;
-  //Used for bide
+  // Used for bide
   int dmg_counter;
 
 } typedef BattlePokemon;

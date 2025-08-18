@@ -3,6 +3,7 @@
 
 // Trying to re-implement the battle queue from showdown
 #include "stdlib.h"
+#include "battle.h"
 /**
 
 Basic idea: player swings, moves collide (based on priority/speed), and then
@@ -34,7 +35,7 @@ enum ENUM_ACTIONS {
 } typedef action_types;
 
 union UN_ACTIONS {
-  move m;
+  Move m;
   int switch_target;
   // struct STR_SWITCH_ACTION s;
 
@@ -51,7 +52,7 @@ struct STR_ACTION {
   action_types action_type;
   // which player is making the move
   int player_num;
-  player* p;
+  Player* p;
 
   int order;
   int priority;

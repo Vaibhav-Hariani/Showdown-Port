@@ -8,7 +8,6 @@
 #include "generated_move_enum.h"
 #include "log.h"
 #include "move.h"
-#include "move_labels.h"
 #include "pokemon.h"
 #include "typing.h"
 // TODO: Bind, Counter, Dig, Fly, Disable, Gust, etc.
@@ -26,6 +25,7 @@ void apply_acid(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
                 BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->pokemon->status.poison = 1;
+    DLOG("%s's poison status was raised!", get_pokemon_name(defender->pokemon->id));
   }
 }
 
@@ -106,23 +106,27 @@ void apply_fire_blast(Battle *battle, BattlePokemon *attacker,
                       Move *attacker_move, BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 30.1) {
     defender->pokemon->status.burn = 1;
+    DLOG("%s's burn status was raised!", get_pokemon_name(defender->pokemon->id));
   }
 }
 
 void apply_glare(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
                  Pokemon *defender) {
   defender->status.paralyzed = 1;
+  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->id));
 }
 
 void apply_toxic(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
                  BattlePokemon *defender) {
   defender->pokemon->status.poison = 1;
   defender->badly_poisoned_ctr = 1;
+  DLOG("%s's poison status was raised!", get_pokemon_name(defender->pokemon->id));
 }
 
 void apply_thunder_wave(Battle *battle, BattlePokemon *attacker,
                         Move *attacker_move, BattlePokemon *defender) {
   defender->pokemon->status.paralyzed = 1;
+  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->pokemon->id));
 }
 
 void apply_tail_whip(Battle *battle, BattlePokemon *attacker,

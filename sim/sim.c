@@ -1,8 +1,5 @@
 #include "battle.h"
 #include "battle_queue.h"
-#include "move_labels.h"
-#include "pokedex_labels.h"
-
 #include "poke_enum.h"
 #include "pokedex.h"
 #include "pokemon.h"
