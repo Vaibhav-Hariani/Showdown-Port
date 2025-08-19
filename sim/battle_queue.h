@@ -4,6 +4,10 @@
 // Trying to re-implement the battle queue from showdown
 #include "stdlib.h"
 #include "battle.h"
+#include "pokemon.h"
+#include "move.h"
+#include "move_labels.h"
+#include "pokedex_labels.h"
 /**
 
 Basic idea: player swings, moves collide (based on priority/speed), and then
@@ -131,50 +135,49 @@ void sort_queue(battlequeue* bqueue) {
 }
 
 void eval_queue(Battle *b) {
-    for (int i = 0; i < b->action_queue.q_size; i++) {
-        action *current_action = &b->action_queue.queue[i];
+  for (int i = 0; i < b->action_queue.q_size; i++) {
+    action *current_action = &b->action_queue.queue[i];
 
-        // Validate action
-        if (current_action->action_type == move_action) {
-            Pokemon *attacker = &current_action->p->team[current_action->origLoc];
-            if (attacker->hp <= 0) {
-                printf("Invalid move: %s has fainted.\n", PokemonNames[attacker->id]);
-                continue;
-            }
+    if (current_action->action_type == move_action) {
+      Move* move = &current_action->action_d.m;
+      BattlePokemon attacker_bp, defender_bp;
+      
+      // attacker_bp.pokemon = &current_action->p->team[current_action->origLoc];
+      // defender_bp.pokemon = (current_action->player_num == 1) ? &b->p2.team[b->p2.active_pokemon] : &b->p1.team[b->p1.active_pokemon];
+      Move *used_move = &current_action->action_d.m;
+      attack(b, &attacker_bp, &defender_bp, used_move);
+      if(b->p1.active_pokemon.pokemon.hp <= 0)
+        DLOG("Player 1's active Pokémon fainted.");
+        // Handle p1's active pokemon fainting
+      }
 
-            Pokemon *defender = (current_action->player_num == 1) ? &b->p2.team[b->p2.active_pokemon] : &b->p1.team[b->p1.active_pokemon];
-            move *used_move = &current_action->action_d.m;
-
-            // Calculate and apply damage
-            int damage = calculate_damage(attacker, defender, used_move);
-            defender->hp -= damage;
-
-            printf("%s used %s! It dealt %d damage.\n", PokemonNames[attacker->id], MoveLabels[used_move->id], damage);
-
-            // Check if the defender fainted
-            if (defender->hp <= 0) {
-                printf("%s fainted!\n", PokemonNames[defender->id]);
-
-                // Invalidate and shift the queue
-                int fainted_pokemon_loc = defender - current_action->p->team;
-                invalidate_queue(&b->action_queue, fainted_pokemon_loc);
-
-                // Prompt for a switch
-                printf("Player %d must switch in a new Pokémon.\n", current_action->player_num);
-                // Add logic to handle forced switch here
-            }
-        } else if (current_action->action_type == switch_action) {
-            // Validate switch
-            if (current_action->p->team[current_action->action_d.switch_target].hp <= 0) {
-                printf("Invalid switch: Target Pokémon has fainted.\n");
-                continue;
-            }
-
-            // Perform switch
-            current_action->p->active_pokemon = current_action->action_d.switch_target;
-            printf("Player %d switched to %s!\n", current_action->player_num, PokemonNames[current_action->p->team[current_action->action_d.switch_target].id]);
-        }
+      if (defender_bp.pokemon->hp <= 0) {
+        printf("%s fainted!\n", PokemonNames[defender_bp.pokemon->id]);
+        int fainted_pokemon_loc = defender_bp.pokemon - current_action->p->team;
+        invalidate_queue(&b->action_queue, fainted_pokemon_loc);
+        printf("Player %d must switch in a new Pokémon.\n", current_action->player_num);
+      }
+    } else if (current_action->action_type == switch_action) {
+      perform_switch(current_action, &b->action_queue);
     }
+  }
+}
+
+// Refactored switch logic for readability
+void perform_switch(action *current_action, battlequeue *queue) {
+  int target = current_action->action_d.switch_target;
+  if (current_action->p->team[target].hp <= 0) {
+    printf("Invalid switch: Target Pokémon has fainted.\n");
+    return;
+  }
+  if (current_action->p->active_pokemon == target) {
+    printf("Switch ignored: Pokémon already active.\n");
+    return;
+  }
+  int old_active = current_action->p->active_pokemon;
+  current_action->p->active_pokemon = target;
+  printf("Player %d switched to %s!\n", current_action->player_num, PokemonNames[current_action->p->team[target].id]);
+  invalidate_queue(queue, old_active);
 }
 
 // Add a function to invalidate and shift the queue

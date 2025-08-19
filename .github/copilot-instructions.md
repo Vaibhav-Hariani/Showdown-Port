@@ -1,62 +1,46 @@
 # Copilot Instructions for Showdown-Port
 
-Welcome to the `Showdown-Port` project! This document provides guidance for AI coding agents to be productive in this codebase. The project is a performance-focused port of the Pokémon Showdown simulator to C, targeting applications in reinforcement learning. The current focus is on Gen1OU, with potential scaling for additional generations.
+This guide enables AI coding agents to be productive in the Showdown-Port codebase, a C port of the Pokémon Showdown simulator focused on performance and reinforcement learning applications.
 
-## Project Overview
-
-### Key Components
-- **`data_readable/`**: Contains header files with readable labels for moves and Pokémon data.
-  - Example: `move_labels.h`, `pokedex_labels.h`
-- **`data_sim/`**: Includes core simulation data structures and enums.
-  - Example: `move_enum.h`, `pokedex.h`, `pokemon_base.h`
-- **`sim/`**: Implements the simulation logic.
-  - Example: `sim.c`, `battle.h`, `pokemon.h`
-
-### Data Flow
-1. **Input**: Data is read from `data_readable/` and `data_sim/`.
-2. **Processing**: Simulation logic in `sim/` processes the data.
-3. **Output**: Results are generated for reinforcement learning applications.
+## Big Picture Architecture
+- **C Simulator (`Showdown-Port/`)**: Core battle logic, data structures, and simulation engine in C. Targeting Gen1OU, with plans for more generations.
+- **Data Files**: Pokémon, moves, and type data are in `data_sim/` and `data_labels/`. These are generated or scraped from external sources (see `generators/`).
+- **Python Generators**: Scripts in `generators/` automate creation of C header files from raw CSVs in `raw_data/`.
+- **Node.js Reference (`sim/` in pokemon-showdown)**: TypeScript implementation for reference and cross-validation. Protocols and data formats are documented in `SIMULATOR.md` and `SIM-PROTOCOL.md`.
 
 ## Developer Workflows
-
-### Building the Project
-- Use a C compiler (e.g., `gcc`) to build the project.
-- Example command:
+- **Build**: Use standard C build tools (e.g., `gcc`). No custom build scripts detected; check for Makefiles if present.
+- **Data Generation**: Run Python scripts in `generators/` to update C headers when raw data changes. Example:
   ```bash
-  gcc -o sim sim/sim.c
+  python3 generators/scrape_serebii.py
+  python3 generators/write_learnsets.py
+  python3 generators/write_move_array.py
   ```
-
-### Testing
-- No explicit test framework is set up. Add test cases manually in `sim.c` or other files.
-
-### Debugging
-- Use `gdb` for debugging.
-- Example command:
-  ```bash
-  gdb ./sim
-  ```
+- **Testing**: No explicit test suite found. Validate by running the simulator and comparing outputs to the Node.js reference implementation.
+- **Debugging**: Use standard C debugging tools (e.g., `gdb`). For protocol debugging, compare against logs and documentation in `SIMULATOR.md` and `SIM-PROTOCOL.md`.
 
 ## Project-Specific Conventions
-
-- **Header Files**: Organized by purpose (`data_readable/` for labels, `data_sim/` for enums and base data).
-- **Simulation Logic**: Centralized in `sim/`.
-- **Performance Focus**: Avoid unnecessary abstractions to maintain high performance.
+- **Data Flow**: Raw CSVs → Python generators → C header files → Simulator logic.
+- **Battle Protocol**: Follows Pokémon Showdown's text-based protocol. See `SIMULATOR.md` and `SIM-PROTOCOL.md` for message formats and examples.
+- **File Naming**: Generated files are prefixed with `generated_` in `data_sim/`. Labels and enums are separated for clarity.
+- **Comments**: Use C-style comments in C files. Python scripts use standard docstrings and inline comments.
 
 ## Integration Points
+- **External Data**: Pokémon/move data scraped from Serebii and other sources via Python scripts.
+- **Cross-Component Communication**: Simulator logic in C mirrors the Node.js reference, enabling validation and protocol compatibility.
+- **Reinforcement Learning**: Performance optimizations are prioritized for RL use cases; see comments in core C files for details.
 
-- **Reinforcement Learning**: Outputs are designed to integrate with RL frameworks.
-- **Pokémon Showdown**: Data and logic are inspired by the original simulator.
+## Key Files & Directories
+- `sim/` (C): Core simulator logic (`battle.h`, `pokemon.h`, `sim.c`, etc.)
+- `data_sim/`: Generated C headers for moves, Pokémon, types
+- `generators/`: Python scripts for data generation
+- `raw_data/`: Source CSVs for moves and learnsets
+- `sim/` (Node.js): Reference implementation and protocol docs (`SIMULATOR.md`, `SIM-PROTOCOL.md`)
 
-## Examples
-
-### Adding a New Move
-1. Update `move_enum.h` in `data_sim/`.
-2. Add logic in `sim.c` to handle the move.
-
-### Modifying Pokémon Data
-1. Update `pokedex.h` in `data_sim/`.
-2. Ensure changes are reflected in `pokemon_base.h`.
+## Example Patterns
+- **Adding a New Generation**: Update raw CSVs, run generators, update C logic to handle new data.
+- **Validating Protocol**: Compare C simulator output to Node.js reference using documented message formats.
 
 ---
 
-Feel free to iterate on this document as the project evolves. Feedback is welcome!
+If any section is unclear or missing details, please provide feedback or specify which workflows, conventions, or integration points need further documentation.
