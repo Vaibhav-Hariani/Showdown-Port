@@ -2,12 +2,11 @@
 #define BATTLE_QUEUE_H
 
 // Trying to re-implement the battle queue from showdown
-#include "stdlib.h"
 #include "battle.h"
-#include "pokemon.h"
 #include "move.h"
-#include "move_labels.h"
-#include "pokedex_labels.h"
+#include "pokemon.h"
+#include "stdlib.h"
+#include "switch.h"
 /**
 
 Basic idea: player swings, moves collide (based on priority/speed), and then
@@ -21,7 +20,8 @@ follow up triggers hit the stack. Less important for Gen1.
 //   //  bool mega;
 //   //  bool zmove;
 //   //  bool maxmove;
-//   //  Action source_Action: this is included in showdown but unsure about usage
+//   //  Action source_Action: this is included in showdown but unsure about
+//   usage
 // };
 
 // Important: switches need to be verified by checking target HP.
@@ -55,8 +55,9 @@ struct STR_ACTION {
   action_union action_d;
   action_types action_type;
   // which player is making the move
-  int player_num;
-  Player* p;
+
+  Player* User;
+  Player* Target;
 
   int order;
   int priority;
@@ -70,22 +71,22 @@ struct STR_ACTION {
   // int targetLoc; // (index of the pokemon being targeted): used for doubles
   // pokemon initiator;
   // pokemon OriginalTarget;
-} typedef action;
+} typedef Action;
 
 // The current battle state: according to showdown docs,
 // sorted by priority (not midturn) for gen 1-7.
 // not a 'true' priority queue
 // Setting to 15 so there's no dynamic allocation
 struct STR_BQUEUE {
-  action queue[15];
+  Action queue[15];
   int q_size;
 } typedef battlequeue;
 
 // Sourced from sort
 // negative means a2 should be first, positive means a1 first.
 int cmp_priority_qsort(const void* a, const void* b) {
-  action a1 = *(const action*)a;
-  action a2 = *(const action*)b;
+  Action a1 = *(const Action*)a;
+  Action a2 = *(const Action*)b;
   int diff = (a1.order) - (a2.order);
   if (!diff) {
     diff = (a1.priority) - (a2.priority);
@@ -99,13 +100,13 @@ int cmp_priority_qsort(const void* a, const void* b) {
 }
 
 // Both of these funcitons are used once: inlined
-inline int check_tie(action* a1, action* a2) {
+inline int check_tie(Action* a1, Action* a2) {
   return a1->order - a2->order || a1->priority - a2->priority ||
          a1->speed - a2->speed;
 }
 
-inline void fischer_yates(action* arr, int end) {
-  action buff;
+inline void fischer_yates(Action* arr, int end) {
+  Action buff;
   for (int i = end - 1; i > 0; i--) {
     int j = rand() % (i + 1);
     buff = arr[i];
@@ -120,7 +121,7 @@ void sort_queue(battlequeue* bqueue) {
   // There is definitely a faster implementation somewhere
   // Sort is also unstable (though we're randomizing ties so maybe that's not an
   // issue?)
-  qsort(bqueue->queue, bqueue->q_size, sizeof(action), cmp_priority_qsort);
+  qsort(bqueue->queue, bqueue->q_size, sizeof(Action), cmp_priority_qsort);
 
   int j = 0;
   while (j < bqueue->q_size - 1) {
@@ -134,64 +135,58 @@ void sort_queue(battlequeue* bqueue) {
   }
 }
 
-void eval_queue(Battle *b) {
+void eval_queue(Battle* b) {
   for (int i = 0; i < b->action_queue.q_size; i++) {
-    action *current_action = &b->action_queue.queue[i];
+    Action* current_action = &b->action_queue.queue[i];
 
     if (current_action->action_type == move_action) {
       Move* move = &current_action->action_d.m;
-      BattlePokemon attacker_bp, defender_bp;
-      
-      // attacker_bp.pokemon = &current_action->p->team[current_action->origLoc];
-      // defender_bp.pokemon = (current_action->player_num == 1) ? &b->p2.team[b->p2.active_pokemon] : &b->p1.team[b->p1.active_pokemon];
-      Move *used_move = &current_action->action_d.m;
-      attack(b, &attacker_bp, &defender_bp, used_move);
-      if(b->p1.active_pokemon.pokemon.hp <= 0)
-        DLOG("Player 1's active Pokémon fainted.");
-        // Handle p1's active pokemon fainting
-      }
+      attack(b, current_action->User, current_action->Target, move);
 
-      if (defender_bp.pokemon->hp <= 0) {
-        printf("%s fainted!\n", PokemonNames[defender_bp.pokemon->id]);
-        int fainted_pokemon_loc = defender_bp.pokemon - current_action->p->team;
-        invalidate_queue(&b->action_queue, fainted_pokemon_loc);
-        printf("Player %d must switch in a new Pokémon.\n", current_action->player_num);
-      }
-    } else if (current_action->action_type == switch_action) {
-      perform_switch(current_action, &b->action_queue);
+      if (current_action->Target->active_pokemon.pokemon->hp <= 0)
+        DLOG("%s Fainted!", get_pokemon_name(b->p1.active_pokemon.pokemon->id));
+      // Clear the currently active pokemon
+      b->p1.active_pokemon = (BattlePokemon){0};
+      b->p1.active_pokemon_index = -1;
+      // Handle p1's active pokemon fainting
+      if (current_action->User->active_pokemon.pokemon->hp <= 0)
+        DLOG("The Opposing %s Fainted!", get_pokemon_name(b->p2.active_pokemon.pokemon->id));
+      // Clear the currently active pokemon
+      b->p2.active_pokemon = (BattlePokemon){0};
+      b->p2.active_pokemon_index = -1;
+    } else {
+      perform_switch_action(current_action);
+    }
+    if (b->p1.active_pokemon_index < 0 || b->p2.active_pokemon_index < 0) {
+      invalidate_queue(&b->action_queue);
     }
   }
 }
-
-// Refactored switch logic for readability
-void perform_switch(action *current_action, battlequeue *queue) {
-  int target = current_action->action_d.switch_target;
-  if (current_action->p->team[target].hp <= 0) {
-    printf("Invalid switch: Target Pokémon has fainted.\n");
-    return;
-  }
-  if (current_action->p->active_pokemon == target) {
-    printf("Switch ignored: Pokémon already active.\n");
-    return;
-  }
-  int old_active = current_action->p->active_pokemon;
-  current_action->p->active_pokemon = target;
-  printf("Player %d switched to %s!\n", current_action->player_num, PokemonNames[current_action->p->team[target].id]);
-  invalidate_queue(queue, old_active);
-}
+// Countdown sleep events,
+void end_step() {}
 
 // Add a function to invalidate and shift the queue
-void invalidate_queue(battlequeue *queue, int fainted_pokemon_loc) {
-    for (int i = 0; i < queue->q_size; i++) {
-        if (queue->queue[i].origLoc == fainted_pokemon_loc) {
-            printf("Removing invalid action for fainted Pokémon.\n");
-            // Shift remaining actions up
-            for (int j = i; j < queue->q_size - 1; j++) {
-                queue->queue[j] = queue->queue[j + 1];
-            }
-            queue->q_size--;
-            i--; // Recheck the current index
-        }
+void invalidate_queue(battlequeue* queue) {
+  // First pass: mark invalid actions
+  for (int i = 0; i < queue->q_size; i++) {
+    Action* a = &queue->queue[i];
+    if (a->User->active_pokemon_index != a->origLoc) {
+      DLOG("Marking %d for pruning", i);
+       a->origLoc = -1;
     }
+  }
+  // Second pass: compact valid actions
+  int j = 0;
+  for (int i = 0; i < queue->q_size; i++) {
+    if (queue->queue[i].origLoc != -1) {
+      if (i != j) {
+        queue->queue[j] = queue->queue[i];
+      }
+      j++;
+    }
+  }
+  // Beware: Queue will have invalid elements beyond q_size. This should not be
+  // a problem though.
+  queue->q_size = j;
 }
 #endif

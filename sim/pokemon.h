@@ -33,6 +33,8 @@ struct STR_STATS {
 } typedef poke_stats;
 
 // As per Davids idea: sleep turns and length is set here
+//Todo: add in confusion
+//I have no clue how substitute is going to work but we'll figure it out eventually
 struct STR_STATUS_FLAGS {
   int paralyzed : 1;
   int burn : 1;
@@ -68,19 +70,22 @@ struct STR_POKE {
   TYPE type2;  // Secondary type
 } typedef Pokemon;
 
+
+//Ditto (and it's messy messy requirements) could mean that we need a separate active move_array for ditto and ditto alone. 
+//However, ditto is also unique in that it copies EVERY aspect of the other pokemon: we could just modify ditto directly and then, when ditto switches out, reset him(?)
 struct STR_BATTLE_POKE {
-  Pokemon* pokemon;
   // These are wiped whenever the active pokemon is switched in or out
+  Pokemon* pokemon;
   struct STR_DEBUFF_STATS stat_mods;
   TYPE type1;
   TYPE type2;
-
-  bool flinch;
   // Ticks for how long the pokemon has been badly poisoned for.
   int badly_poisoned_ctr;
   // Used for all multi moves:
   int recharge_counter;
+  //ident for recharge source
   int recharge_src;
+  //how long recharging should last 
   int recharge_len;
   // Used for bide
   int dmg_counter;

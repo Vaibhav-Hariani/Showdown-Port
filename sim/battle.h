@@ -26,7 +26,8 @@
 
 struct STR_PLAYER {
   Pokemon team[6];
-  char active_pokemon;
+  BattlePokemon active_pokemon;
+  char active_pokemon_index;
 } typedef Player;
 
 

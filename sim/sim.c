@@ -53,7 +53,7 @@ int make_move(Battle* b, int active_player, Player* p) {
   if (input > 9) {
     return -1;
   }
-  action* cur = (b->action_queue.queue) + b->action_queue.q_size;
+  Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
   b->action_queue.q_size++;
   if (input < 4) {
     Move m = p->team[p->active_pokemon].poke_moves[input];

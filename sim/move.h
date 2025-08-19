@@ -34,10 +34,6 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
   // Base power of the move
   int power = used_move->power;
 
-  // These never cause damage: error state reached
-  //  if(used_move->category == STATUS_MOVE_CATEGORY) {
-  //  }
-
   // Attack and Defense stats
   // Only if SPECIAL attack
 
@@ -74,7 +70,9 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
     // Damage at this point should be 0,1, or greater than 1. Only if greater
     // than one should anything happen.
     if (damage <= 1) {
-      // Log a miss if this doesn't happen
+      if(damage == 0) {
+        DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon));
+      }
       return damage;
     }
     // Random factor (Exactly as specified by bulbapedia)
@@ -89,11 +87,11 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
 inline void attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender,
                    Move* used_move) {
   if (used_move->power != 0) {
-    // Log the attack
-    DLOG("%s used %s", get_pokemon_name(attacker->pokemon), MOVE_LABELS[used_move->id]);
+    DLOG("%s used %s!", get_pokemon_name(attacker->pokemon), MOVE_LABELS[used_move->id]);
 
     // Calculate damage
     int damage = calculate_damage(attacker, defender, used_move);
+    //Not this simple with substitutes and whatnot: might need an apply_damage function.
     defender->pokemon->hp -= damage;
     defender->pokemon->hp =
         max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
@@ -104,6 +102,58 @@ inline void attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender,
     used_move->movePtr(b, attacker, defender, used_move);
   }
   used_move->pp--;
+}
+
+// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1 if added.
+inline int add_move_to_queue(Battle* battle, Player* user, Player* target, BattlePokemon* battle_poke, int move_index) {
+  // Check move index bounds
+  if (move_index < 0 || move_index >= 4) return 0;
+  Move* move = &battle_poke->pokemon->poke_moves[move_index];
+    
+  if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
+    DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
+    return 0;
+  }
+  // Add to queue by modifying the action at q_size
+  if (battle->action_queue.q_size < 15) {
+    Action* action_ptr = &battle->action_queue.queue[battle->action_queue.q_size];
+    memset(action_ptr, 0, sizeof(Action)); // Clear any previous data
+    action_ptr->action_type = move_action;
+    action_ptr->action_d.m = *move;
+    action_ptr->User = user;
+    action_ptr->Target = target;
+    action_ptr->order = 200; // Use 200 as the order for moves
+    action_ptr->priority = move->priority;
+    // TODO: Speed should be impacted by the pokemon's stat modifiers
+    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    action_ptr->origLoc = user->active_pokemon_index;
+    battle->action_queue.q_size++;
+    DLOG("Added move %s to queue for %s.", MOVE_LABELS[move->id], get_pokemon_name(battle_poke->pokemon->id));
+    return 1;
+  } else {
+    DLOG("Battle queue is full!");
+    return 0;
+  }
+  // Add to queue by modifying the action at q_size
+  if (battle->action_queue.q_size < 15) {
+    Action* action_ptr = &battle->action_queue.queue[battle->action_queue.q_size];
+    memset(action_ptr, 0, sizeof(Action)); // Clear any previous data
+    action_ptr->action_type = move_action;
+    action_ptr->action_d.m = *move;
+    action_ptr->User = user;
+    action_ptr->Target = target;
+    action_ptr->order = 200; // Use 200 as the order for moves
+    action_ptr->priority = move->priority;
+    // TODO: Speed should be impacted by the pokemon's stat modifiers
+    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    action_ptr->origLoc = user->active_pokemon_index;
+    battle->action_queue.q_size++;
+    DLOG("Added move %s to queue for %s.", MOVE_LABELS[move->id], get_pokemon_name(battle_poke->pokemon->id));
+    return 1;
+  } else {
+    DLOG("Battle queue is full!");
+    return 0;
+  }
 }
 
 #endif
