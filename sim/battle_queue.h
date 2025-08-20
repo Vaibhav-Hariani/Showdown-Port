@@ -162,8 +162,6 @@ void eval_queue(Battle* b) {
     }
   }
 }
-// Countdown sleep events,
-void end_step() {}
 
 // Add a function to invalidate and shift the queue
 void invalidate_queue(battlequeue* queue) {

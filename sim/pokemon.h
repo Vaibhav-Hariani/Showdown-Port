@@ -41,8 +41,7 @@ struct STR_STATUS_FLAGS {
   int freeze : 1;
   int poison : 1;
   int sleep : 3;
-  int flinch : 1;
-};
+ };
 //+-7
 struct STR_DEBUFF_STATS {
   int attack : 4;
@@ -89,6 +88,10 @@ struct STR_BATTLE_POKE {
   int recharge_len;
   // Used for bide
   int dmg_counter;
+  //flinch and confusion are temporary.
+  int flinch: 1;
+  //Confusion can last 3 turns, tops
+  int confusion_counter: 3;
 
 } typedef BattlePokemon;
 

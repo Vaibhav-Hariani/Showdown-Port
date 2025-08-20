@@ -20,17 +20,23 @@
 // It is expected that move is a pointer to the move within
 
 inline int max(int a, int b) { return (a > b) ? a : b; }
+inline int min(int a, int b) { return (a < b) ? a : b; }
 
-void apply_acid(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_acid(Battle *battle,
+                BattlePokemon *attacker,
+                Move *attacker_move,
                 BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->pokemon->status.poison = 1;
-    DLOG("%s's poison status was raised!", get_pokemon_name(defender->pokemon->id));
+    DLOG("%s's poison status was raised!",
+         get_pokemon_name(defender->pokemon->id));
   }
 }
 
-void apply_aurora_beam(Battle *battle, BattlePokemon *attacker,
-                       Move *attacker_move, BattlePokemon *defender) {
+void apply_aurora_beam(Battle *battle,
+                       BattlePokemon *attacker,
+                       Move *attacker_move,
+                       BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->stat_mods.attack = max(defender->stat_mods.attack - 1, -6);
   }
@@ -38,35 +44,45 @@ void apply_aurora_beam(Battle *battle, BattlePokemon *attacker,
 
 // technically, bubble, bubble beam, and constrict all have the same effect
 
-void bubble_beam_base(Battle *battle, BattlePokemon *attacker,
-                      Move *attacker_move, BattlePokemon *defender) {
+void bubble_beam_base(Battle *battle,
+                      BattlePokemon *attacker,
+                      Move *attacker_move,
+                      BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
   }
 }
 
-void apply_bubble(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_bubble(Battle *battle,
+                  BattlePokemon *attacker,
+                  Move *attacker_move,
                   BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
   }
 }
 
-void apply_bubble_beam(Battle *battle, BattlePokemon *attacker,
-                       Move *attacker_move, BattlePokemon *defender) {
+void apply_bubble_beam(Battle *battle,
+                       BattlePokemon *attacker,
+                       Move *attacker_move,
+                       BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
   }
 }
 
-void apply_constrict(Battle *battle, BattlePokemon *attacker,
-                     Move *attacker_move, BattlePokemon *defender) {
+void apply_constrict(Battle *battle,
+                     BattlePokemon *attacker,
+                     Move *attacker_move,
+                     BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 33.2) {
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
   }
 }
 
-void apply_bide(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_bide(Battle *battle,
+                BattlePokemon *attacker,
+                Move *attacker_move,
                 BattlePokemon *defender) {
   // First turn bide is used
   if (attacker->recharge_counter == 0) {
@@ -77,8 +93,8 @@ void apply_bide(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
   if (attacker->recharge_counter == attacker->recharge_len) {
     // Bide is fully charged
 
-    // This means that there should be a post attack phase where fainted pokemon are swapped,
-    // And the queue is cleaned up.
+    // This means that there should be a post attack phase where fainted pokemon
+    // are swapped, And the queue is cleaned up.
     defender->pokemon->hp -= attacker->dmg_counter * 2;
     DLOG("Bide triggered!");
     attacker->recharge_counter = 0;
@@ -89,53 +105,72 @@ void apply_bide(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
   attacker->recharge_counter++;
 }
 
-void apply_bite(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_bite(Battle *battle,
+                BattlePokemon *attacker,
+                Move *attacker_move,
                 BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 10.0) {
     defender->flinch = 1;
   }
 }
 
-void apply_conversion(Battle *battle, BattlePokemon *attacker,
-                      Move *attacker_move, BattlePokemon *defender) {
+void apply_conversion(Battle *battle,
+                      BattlePokemon *attacker,
+                      Move *attacker_move,
+                      BattlePokemon *defender) {
   attacker->type1 = defender->type1;
   attacker->type2 = defender->type2;
 }
 
-void apply_fire_blast(Battle *battle, BattlePokemon *attacker,
-                      Move *attacker_move, BattlePokemon *defender) {
+void apply_fire_blast(Battle *battle,
+                      BattlePokemon *attacker,
+                      Move *attacker_move,
+                      BattlePokemon *defender) {
   if (((float)rand()) / 100.0 < 30.1) {
     defender->pokemon->status.burn = 1;
-    DLOG("%s's burn status was raised!", get_pokemon_name(defender->pokemon->id));
+    DLOG("%s's burn status was raised!",
+         get_pokemon_name(defender->pokemon->id));
   }
 }
 
-void apply_glare(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_glare(Battle *battle,
+                 BattlePokemon *attacker,
+                 Move *attacker_move,
                  Pokemon *defender) {
   defender->status.paralyzed = 1;
   DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->id));
 }
 
-void apply_toxic(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_toxic(Battle *battle,
+                 BattlePokemon *attacker,
+                 Move *attacker_move,
                  BattlePokemon *defender) {
   defender->pokemon->status.poison = 1;
   defender->badly_poisoned_ctr = 1;
-  DLOG("%s's poison status was raised!", get_pokemon_name(defender->pokemon->id));
+  DLOG("%s's poison status was raised!",
+       get_pokemon_name(defender->pokemon->id));
 }
 
-void apply_thunder_wave(Battle *battle, BattlePokemon *attacker,
-                        Move *attacker_move, BattlePokemon *defender) {
+void apply_thunder_wave(Battle *battle,
+                        BattlePokemon *attacker,
+                        Move *attacker_move,
+                        BattlePokemon *defender) {
   defender->pokemon->status.paralyzed = 1;
-  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->pokemon->id));
+  DLOG("%s's paralyzed status was raised!",
+       get_pokemon_name(defender->pokemon->id));
 }
 
-void apply_tail_whip(Battle *battle, BattlePokemon *attacker,
-                     Move *attacker_move, BattlePokemon *defender) {
+void apply_tail_whip(Battle *battle,
+                     BattlePokemon *attacker,
+                     Move *attacker_move,
+                     BattlePokemon *defender) {
   DLOG("Applying Tail Whip");
   defender->stat_mods.defense = max(defender->stat_mods.defense - 1, -6);
 }
 
-void apply_growl(Battle *battle, BattlePokemon *attacker, Move *attacker_move,
+void apply_growl(Battle *battle,
+                 BattlePokemon *attacker,
+                 Move *attacker_move,
                  BattlePokemon *defender) {
   DLOG("Applying Growl");
   defender->stat_mods.attack = max(defender->stat_mods.attack - 1, -6);
