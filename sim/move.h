@@ -6,10 +6,10 @@
 
 #include "battle.h"
 #include "generated_move_enum.h"
+#include "log.h"
 #include "move_labels.h"
 #include "pokemon.h"
 #include "typing.h"
-#include "log.h"
 inline int max(int a, int b) { return (a > b) ? a : b; }
 
 struct STR_MOVES {
@@ -29,7 +29,8 @@ struct STR_MOVES {
 } typedef Move;
 
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
-inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
+inline int calculate_damage(BattlePokemon* attacker,
+                            BattlePokemon* defender,
                             Move* used_move) {
   // Base power of the move
   int power = used_move->power;
@@ -42,10 +43,10 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
   int attack_stat;
   int defense_stat;
 
-  //Critical hits ignore the stat modifiers. 
-  //How this is handled should be decided separately
+  // Critical hits ignore the stat modifiers.
+  // How this is handled should be decided separately
 
-  //TODO: Not handling stat modifiers quite yet
+  // TODO: Not handling stat modifiers quite yet
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
@@ -70,7 +71,7 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
     // Damage at this point should be 0,1, or greater than 1. Only if greater
     // than one should anything happen.
     if (damage <= 1) {
-      if(damage == 0) {
+      if (damage == 0) {
         DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon));
       }
       return damage;
@@ -81,17 +82,88 @@ inline int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender,
   }
 }
 
-//Todo: 
-//Add status checks for flinching and other statuses
-// Check for critical moves and other effects.  
-inline void attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender,
+// Todo:
+// Add status checks for flinching and other statuses
+//  Check for critical moves and other effects.
+// Pre-move checker: applies status effects, checks recharge/flinch, and handles
+// PP Returns 1 if move can proceed, 0 if blocked (status/recharge/flinch/PP)
+inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
+    // Check for confusion
+    if (attacker->confusion_counter > 0) {
+      attacker->confusion_counter--;
+      DLOG("%s is confused!", get_pokemon_name(attacker->pokemon->id));
+      // 50% chance to hurt itself
+      if (rand() % 2 == 0) {
+        // Gen 1 confusion self-damage: 40 base power typeless physical attack
+        int level = attacker->pokemon->stats.level;
+        int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
+        int def = attacker->pokemon->stats.base_stats[STAT_DEFENSE];
+        int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
+        float random_factor = (rand() % 38 + 217) / 255.0;
+        damage = (int)(damage * random_factor);
+        attacker->pokemon->hp -= damage;
+        attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
+        DLOG("%s hurt itself in its confusion! (%d HP)", get_pokemon_name(attacker->pokemon->id), damage);
+        return 0;
+      }
+    }
+  // Check for recharge (e.g., Hyper Beam)
+  if (attacker->recharge_counter > 0) {
+    DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
+    attacker->recharge_counter--;
+    return 0;
+  }
+  // Check for flinch
+  if (attacker->flinch) {
+    DLOG("%s flinched and couldn't move!",
+         get_pokemon_name(attacker->pokemon->id));
+    attacker->flinch = 0;  // Flinch is cleared after blocking move
+    return 0;
+  }
+  // Check for sleep (Gen 1: can't act if asleep)
+  if (attacker->pokemon->status.sleep > 0) {
+    attacker->pokemon->status.sleep--;
+    if (attacker->pokemon->status.sleep == 0) {
+      DLOG("%s woke up!", get_pokemon_name(attacker->pokemon->id));
+    } else {
+      DLOG("%s is asleep and can't move!",
+           get_pokemon_name(attacker->pokemon->id));
+    }
+    return 0;
+  }
+  if (attacker->pokemon->status.freeze) {
+    DLOG("%s is frozen solid and can't move!",
+         get_pokemon_name(attacker->pokemon->id));
+    return 0;
+  }
+  // Check for PP (except Struggle)
+  if (used_move->pp <= 0 && used_move->id != STRUGGLE_MOVE_ID) {
+    DLOG("Move %s has no PP left!", MOVE_LABELS[used_move->id]);
+    return 0;
+  }
+  // If move is valid, deduct PP (except Struggle)
+  if (used_move->id != STRUGGLE_MOVE_ID) {
+    used_move->pp--;
+  }
+  return 1;
+}
+inline void attack(Battle* b,
+                   BattlePokemon* attacker,
+                   BattlePokemon* defender,
                    Move* used_move) {
+  // Pre-move check: status, recharge, flinch, PP
+  if (!pre_move_check(attacker, used_move)) {
+    return;
+  }
   if (used_move->power != 0) {
-    DLOG("%s used %s!", get_pokemon_name(attacker->pokemon), MOVE_LABELS[used_move->id]);
+    DLOG("%s used %s!",
+         get_pokemon_name(attacker->pokemon->id),
+         MOVE_LABELS[used_move->id]);
 
     // Calculate damage
     int damage = calculate_damage(attacker, defender, used_move);
-    //Not this simple with substitutes and whatnot: might need an apply_damage function.
+    // Not this simple with substitutes and whatnot: might need an apply_damage
+    // function.
     defender->pokemon->hp -= damage;
     defender->pokemon->hp =
         max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
@@ -101,54 +173,41 @@ inline void attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender,
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender, used_move);
   }
-  used_move->pp--;
 }
 
-// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1 if added.
-inline int add_move_to_queue(Battle* battle, Player* user, Player* target, BattlePokemon* battle_poke, int move_index) {
+// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
+// if added.
+inline int add_move_to_queue(Battle* battle,
+                             Player* user,
+                             Player* target,
+                             BattlePokemon* battle_poke,
+                             int move_index) {
   // Check move index bounds
   if (move_index < 0 || move_index >= 4) return 0;
   Move* move = &battle_poke->pokemon->poke_moves[move_index];
-    
+
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
     return 0;
   }
   // Add to queue by modifying the action at q_size
   if (battle->action_queue.q_size < 15) {
-    Action* action_ptr = &battle->action_queue.queue[battle->action_queue.q_size];
-    memset(action_ptr, 0, sizeof(Action)); // Clear any previous data
+    Action* action_ptr =
+        &battle->action_queue.queue[battle->action_queue.q_size];
+    memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
     action_ptr->action_type = move_action;
     action_ptr->action_d.m = *move;
     action_ptr->User = user;
     action_ptr->Target = target;
-    action_ptr->order = 200; // Use 200 as the order for moves
+    action_ptr->order = 200;  // Use 200 as the order for moves
     action_ptr->priority = move->priority;
     // TODO: Speed should be impacted by the pokemon's stat modifiers
     action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
     action_ptr->origLoc = user->active_pokemon_index;
     battle->action_queue.q_size++;
-    DLOG("Added move %s to queue for %s.", MOVE_LABELS[move->id], get_pokemon_name(battle_poke->pokemon->id));
-    return 1;
-  } else {
-    DLOG("Battle queue is full!");
-    return 0;
-  }
-  // Add to queue by modifying the action at q_size
-  if (battle->action_queue.q_size < 15) {
-    Action* action_ptr = &battle->action_queue.queue[battle->action_queue.q_size];
-    memset(action_ptr, 0, sizeof(Action)); // Clear any previous data
-    action_ptr->action_type = move_action;
-    action_ptr->action_d.m = *move;
-    action_ptr->User = user;
-    action_ptr->Target = target;
-    action_ptr->order = 200; // Use 200 as the order for moves
-    action_ptr->priority = move->priority;
-    // TODO: Speed should be impacted by the pokemon's stat modifiers
-    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
-    action_ptr->origLoc = user->active_pokemon_index;
-    battle->action_queue.q_size++;
-    DLOG("Added move %s to queue for %s.", MOVE_LABELS[move->id], get_pokemon_name(battle_poke->pokemon->id));
+    DLOG("Added move %s to queue for %s.",
+         MOVE_LABELS[move->id],
+         get_pokemon_name(battle_poke->pokemon->id));
     return 1;
   } else {
     DLOG("Battle queue is full!");

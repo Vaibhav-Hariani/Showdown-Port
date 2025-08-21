@@ -77,7 +77,7 @@ void end_step(Battle* b) {
     // Badly poisoned damage
     if (bp->badly_poisoned_ctr > 0) {
       int dmg = (bp->badly_poisoned_ctr * poke->max_hp) / 16;
-      dmg = min(dmg, 15 * poke->max_hp / 16); // Minimum of 1/16th
+      dmg = min(dmg, 15 * poke->max_hp / 16); // Maximum of 15/16ths
       poke->hp -= dmg;
       bp->badly_poisoned_ctr++;
       DLOG("%s took badly poisoned damage (%d HP)", get_pokemon_name(poke->id), dmg);
@@ -97,7 +97,8 @@ void end_step(Battle* b) {
     }
   // Clear volatile effects (example: flinch, partial trapping)
   bp->recharge_counter = 0;
-  bp->recharge_len = 0; 
+  bp->recharge_len = 0;
+  bp->flinch = 0; // Clear flinch status at end of turn
   // Add more volatile clears as needed
   }
   // Reset the action queue

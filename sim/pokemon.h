@@ -90,8 +90,8 @@ struct STR_BATTLE_POKE {
   int dmg_counter;
   //flinch and confusion are temporary.
   int flinch: 1;
-  //Confusion can last 3 turns, tops
-  int confusion_counter: 3;
+  //Confusion can last 3 turns, tops (0-3)
+  int confusion_counter: 2;
 
 } typedef BattlePokemon;
 
