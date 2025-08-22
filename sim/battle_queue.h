@@ -13,17 +13,6 @@ Basic idea: player swings, moves collide (based on priority/speed), and then
 follow up triggers hit the stack. Less important for Gen1.
  **/
 
-// Currently unnecessary
-// struct STR_MOVE_ACTION {
-//   void* (*move_funct)(battle, pokemon*, pokemon*);
-//   // Enums should be used for mega/zmove/maxmoves
-//   //  bool mega;
-//   //  bool zmove;
-//   //  bool maxmove;
-//   //  Action source_Action: this is included in showdown but unsure about
-//   usage
-// };
-
 // Important: switches need to be verified by checking target HP.
 struct STR_SWITCH_ACTION {
   int targetLoc;
@@ -33,7 +22,7 @@ struct STR_SWITCH_ACTION {
 
 //Either a regular action mode (for inputs), 
 // or a fainted action (higher priority switch)
-enum ACTION_MODES {REGULAR, FAINTED };
+enum ACTION_MODES {REGULAR, FAINTED};
 
 enum ENUM_ACTIONS {
   move_action,
@@ -45,14 +34,6 @@ enum ENUM_ACTIONS {
 union UN_ACTIONS {
   Move m;
   int switch_target;
-  // struct STR_SWITCH_ACTION s;
-
-  // This may be necessary: It's used for switch-in effects (unsure if any exist
-  // in gen1),
-  //  as well as more generic event triggers that need to happen dynamically.
-  //  struct POKEMON_ACTION p; // Used for dynamaxxing/mega evo
-  // struct STR_TEAM_ACTION t;
-  // struct STR_FIELD_ACTION m;
 } typedef action_union;
 
 struct STR_ACTION {
@@ -121,7 +102,7 @@ inline void fischer_yates(Action* arr, int end) {
 
 // Smallish array: just using builtin sort
 // fischer yates shuffler for ties.
-void sort_queue(battlequeue* bqueue) {
+inline void sort_queue(battlequeue* bqueue) {
   // There is definitely a faster implementation somewhere
   // Sort is also unstable (though we're randomizing ties so maybe that's not an
   // issue?)
@@ -138,8 +119,11 @@ void sort_queue(battlequeue* bqueue) {
     j += buf;
   }
 }
-
-void eval_queue(Battle* b) {
+//Core queue function: self explanatory. Returns REGULAR if no pokemon have fainted.
+// Returns 1 if p1's pokemon have fainted
+//Returns 2 if p2's pokemon have fainted
+// returns 3 if both pokemon have fained
+inline int eval_queue(Battle* b) {
   for (int i = 0; i < b->action_queue.q_size; i++) {
     Action* current_action = &b->action_queue.queue[i];
 
@@ -162,15 +146,30 @@ void eval_queue(Battle* b) {
       perform_switch_action(current_action);
     }
     if (b->p1.active_pokemon_index < 0 || b->p2.active_pokemon_index < 0) {
-      invalidate_queue(&b->action_queue);
+      invalidate_queue(i, &b->action_queue);
+      //Fun little trick, I guess? Might need some explaining.
+      return -1 * min(b->p1.active_pokemon_index, 0) + -2 * min(b->p2.active_pokemon_index, 0);
+      //Early exit for next queue inputs.
     }
   }
+  return REGULAR;
 }
 
-// Add a function to invalidate and shift the queue
-void invalidate_queue(battlequeue* queue) {
+// Remove everything already completed, and then everything that isn't necessary.
+inline void invalidate_queue(int completed, battlequeue* queue) {
+  //shouldn't be too uncommon and would save quite a bit of time
+  //no need to iterate over anything if everything is already completed!
+  if(completed + 1 == queue->q_size) {
+    queue->q_size = 0;
+    return;
+  }
   // First pass: mark invalid actions
-  for (int i = 0; i < queue->q_size; i++) {
+  for(int i = 0; i <= completed; i++){
+  DLOG("Action has already been completed: removing.", i);
+   Action* a = &queue->queue[i];
+   a->origLoc = -1; 
+  }
+  for (int i = completed+1; i < queue->q_size; i++) {
     Action* a = &queue->queue[i];
     if (a->User->active_pokemon_index != a->origLoc) {
       DLOG("Marking %d for pruning", i);

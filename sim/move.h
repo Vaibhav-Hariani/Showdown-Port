@@ -2,6 +2,7 @@
 #define MOVE_H
 
 #include <stddef.h>  // For NULL definition
+#include "string.h" // for MEMSET
 #include <stdio.h>
 
 #include "battle.h"
@@ -180,6 +181,15 @@ inline int attack(Battle* b,
   return 1;
 }
 
+inline int valid_move(Player user, int move_index) {
+    BattlePokemon battle_poke = user.active_pokemon;
+    Move m = battle_poke.pokemon->poke_moves[move_index];
+  if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
+    DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
+    return 0;
+  }
+}
+
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
 // if added.
 inline int add_move_to_queue(Battle* battle,
@@ -189,10 +199,6 @@ inline int add_move_to_queue(Battle* battle,
   // Assumes input is screened beforehand.
   BattlePokemon* battle_poke = &user->active_pokemon;
   Move* move = (battle_poke->pokemon->poke_moves) + move_index;
-  if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
-    DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
-    return 0;
-  }
   // Add to queue by modifying the action at q_size
   if (battle->action_queue.q_size < 15) {
     Action* action_ptr =
