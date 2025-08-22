@@ -7,22 +7,23 @@
 #include "pokemon.h"
 #include "stdio.h"
 
-enum SWITCH_TYPES { REGULAR, FAINTED };
+enum ACTION_TYPES {REGULAR, FAINTED };
 
 inline int check_validity(Player* cur, int target_loc) {
   if (cur->team[target_loc].hp <= 0) {
     DLOG("Invalid switch: Target Pokémon has fainted.");
-    return;
+    return 0;
   }
   if (cur->active_pokemon_index == target_loc) {
     DLOG("Switch ignored: Pokémon already active.");
-    return;
+    return 0;
   }
+  return 1;
 }
 
-inline void add_switch(Battle* b, Player* user, int target_loc, int type) {
-  if (check_validity(user, target_loc) < 0) {
-    return;
+inline int add_switch(Battle* b, Player* user, int target_loc, int type) {
+  if (!check_validity(user, target_loc)) {
+    return 0;
   }
   Action* cur_action = (b->action_queue.queue) + b->action_queue.q_size;
   memset(cur_action, 0, sizeof(Action));
@@ -39,6 +40,7 @@ inline void add_switch(Battle* b, Player* user, int target_loc, int type) {
   } else {
     cur_action->order = 6;
   }
+  return 1;
 }
 
 // Main switch handler

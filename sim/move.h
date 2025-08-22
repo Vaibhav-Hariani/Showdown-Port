@@ -22,7 +22,7 @@ struct STR_MOVES {
   TYPE type;
   MOVE_CATEGORY category;  // Add category for physical or special moves
   int pp;
-  int (*movePtr)(Battle*, Pokemon*, Pokemon*, int);
+  void (*movePtr)(Battle*, BattlePokemon*, BattlePokemon*);
 
   int priority;
 
@@ -74,51 +74,54 @@ inline int calculate_damage(BattlePokemon* attacker,
       if (damage == 0) {
         DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon));
       }
-      return damage;
+      return damage;  // return 0 for failure
     }
     // Random factor (Exactly as specified by bulbapedia)
     float random_factor = (rand() % 38 + 217) / 255.0;
     return damage * random_factor;
   }
 }
-
 // Todo:
 // Add status checks for flinching and other statuses
 //  Check for critical moves and other effects.
 // Pre-move checker: applies status effects, checks recharge/flinch, and handles
 // PP Returns 1 if move can proceed, 0 if blocked (status/recharge/flinch/PP)
 inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
-    // Check for confusion
-    if (attacker->confusion_counter > 0) {
-      attacker->confusion_counter--;
-      DLOG("%s is confused!", get_pokemon_name(attacker->pokemon->id));
-      // 50% chance to hurt itself
-      if (rand() % 2 == 0) {
-        // Gen 1 confusion self-damage: 40 base power typeless physical attack
-        int level = attacker->pokemon->stats.level;
-        int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
-        int def = attacker->pokemon->stats.base_stats[STAT_DEFENSE];
-        int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
-        float random_factor = (rand() % 38 + 217) / 255.0;
-        damage = (int)(damage * random_factor);
-        attacker->pokemon->hp -= damage;
-        attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
-        DLOG("%s hurt itself in its confusion! (%d HP)", get_pokemon_name(attacker->pokemon->id), damage);
-        return 0;
-      }
+  // Check for confusion
+  int early_ret = 1;
+  if (attacker->confusion_counter > 0) {
+    attacker->confusion_counter--;
+    DLOG("%s is confused!", get_pokemon_name(attacker->pokemon->id));
+    // 50% chance to hurt itself
+    if (rand() % 2 == 0) {
+      // Gen 1 confusion self-damage: 40 base power typeless physical attack
+      int level = attacker->pokemon->stats.level;
+      int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
+      int def = attacker->pokemon->stats.base_stats[STAT_DEFENSE];
+      int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
+      float random_factor = (rand() % 38 + 217) / 255.0;
+      damage = (int)(damage * random_factor);
+      attacker->pokemon->hp -= damage;
+      attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
+      DLOG("%s hurt itself in its confusion! (%d HP)",
+           get_pokemon_name(attacker->pokemon->id),
+           damage);
+      early_ret = 0;
     }
+  }
   // Check for recharge (e.g., Hyper Beam)
   if (attacker->recharge_counter > 0) {
     DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
     attacker->recharge_counter--;
-    return 0;
+    // Call the function at recharge_id. Don't call the input move..
+    early_ret = 10;
   }
   // Check for flinch
   if (attacker->flinch) {
     DLOG("%s flinched and couldn't move!",
          get_pokemon_name(attacker->pokemon->id));
     attacker->flinch = 0;  // Flinch is cleared after blocking move
-    return 0;
+    early_ret = 0;
   }
   // Check for sleep (Gen 1: can't act if asleep)
   if (attacker->pokemon->status.sleep > 0) {
@@ -129,31 +132,33 @@ inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       DLOG("%s is asleep and can't move!",
            get_pokemon_name(attacker->pokemon->id));
     }
-    return 0;
+    early_ret = 0;
   }
   if (attacker->pokemon->status.freeze) {
     DLOG("%s is frozen solid and can't move!",
          get_pokemon_name(attacker->pokemon->id));
-    return 0;
+    early_ret = 0;
   }
   // Check for PP (except Struggle)
-  if (used_move->pp <= 0 && used_move->id != STRUGGLE_MOVE_ID) {
-    DLOG("Move %s has no PP left!", MOVE_LABELS[used_move->id]);
-    return 0;
-  }
-  // If move is valid, deduct PP (except Struggle)
-  if (used_move->id != STRUGGLE_MOVE_ID) {
+  if (early_ret && used_move->id != STRUGGLE_MOVE_ID) {
     used_move->pp--;
   }
-  return 1;
+  // If move is valid, deduct PP (except Struggle)
+  return early_ret ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
-inline void attack(Battle* b,
+inline int attack(Battle* b,
                    BattlePokemon* attacker,
                    BattlePokemon* defender,
                    Move* used_move) {
   // Pre-move check: status, recharge, flinch, PP
-  if (!pre_move_check(attacker, used_move)) {
-    return;
+  int pre = pre_move_check(attacker, used_move);
+  if (!pre) {
+    return 0;
+  }
+  // Recharging
+  if (pre == 10) {
+    Move m = attacker->recharge_src;
+    m.movePtr(b, attacker, defender);
   }
   if (used_move->power != 0) {
     DLOG("%s used %s!",
@@ -168,11 +173,11 @@ inline void attack(Battle* b,
     defender->pokemon->hp =
         max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
   }
-
   // Handle move-specific logic
   if (used_move->movePtr != NULL) {
-    used_move->movePtr(b, attacker, defender, used_move);
+    used_move->movePtr(b, attacker, defender);
   }
+  return 1;
 }
 
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
@@ -180,12 +185,10 @@ inline void attack(Battle* b,
 inline int add_move_to_queue(Battle* battle,
                              Player* user,
                              Player* target,
-                             BattlePokemon* battle_poke,
                              int move_index) {
-  // Check move index bounds
-  if (move_index < 0 || move_index >= 4) return 0;
-  Move* move = &battle_poke->pokemon->poke_moves[move_index];
-
+  // Assumes input is screened beforehand.
+  BattlePokemon* battle_poke = &user->active_pokemon;
+  Move* move = (battle_poke->pokemon->poke_moves) + move_index;
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
     return 0;
@@ -210,8 +213,10 @@ inline int add_move_to_queue(Battle* battle,
          get_pokemon_name(battle_poke->pokemon->id));
     return 1;
   } else {
-    DLOG("Battle queue is full!");
-    return 0;
+    // Need to crash
+    DLOG("Battle queue is full!\n");
+    exit(1);
+    return -2;
   }
 }
 

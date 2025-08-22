@@ -43,7 +43,7 @@ struct STR_STATUS_FLAGS {
   int sleep : 3;
  };
 //+-7
-struct STR_DEBUFF_STATS {
+struct STR_STAT_MODS {
   int attack : 4;
   int defense : 4;
   int speed : 4;
@@ -75,7 +75,7 @@ struct STR_POKE {
 struct STR_BATTLE_POKE {
   // These are wiped whenever the active pokemon is switched in or out
   Pokemon* pokemon;
-  struct STR_DEBUFF_STATS stat_mods;
+  struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
   // Ticks for how long the pokemon has been badly poisoned for.
@@ -83,7 +83,7 @@ struct STR_BATTLE_POKE {
   // Used for all multi moves:
   int recharge_counter;
   //ident for recharge source
-  int recharge_src;
+  Move recharge_src;
   //how long recharging should last 
   int recharge_len;
   // Used for bide

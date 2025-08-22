@@ -31,6 +31,10 @@ struct STR_SWITCH_ACTION {
   // sourceEffect: Effect | null;
 };
 
+//Either a regular action mode (for inputs), 
+// or a fainted action (higher priority switch)
+enum ACTION_MODES {REGULAR, FAINTED };
+
 enum ENUM_ACTIONS {
   move_action,
   switch_action,
