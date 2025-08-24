@@ -1,36 +1,49 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include <stddef.h>  // For NULL definition
-#include "string.h" // for MEMSET
+#include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include "string.h"
 
-#include "battle.h"
 #include "generated_move_enum.h"
 #include "log.h"
-#include "move_labels.h"
-#include "pokemon.h"
 #include "typing.h"
-inline int max(int a, int b) { return (a > b) ? a : b; }
 
+// Forward declarations to break circular dependencies
+struct STR_BATTLE;
+struct STR_BATTLE_POKEMON;
+struct STR_PLAYER;
+typedef struct STR_BATTLE Battle;
+typedef struct STR_BATTLE_POKEMON BattlePokemon;
+typedef struct STR_PLAYER Player;
+
+// Move struct definition
 struct STR_MOVES {
   MOVE_IDS id;
-  // Moves are currently being defined as functions.
-  // each move obj contains a pointer to it'
-  //  is a pointer to said function.
   int power;
   float accuracy;
   TYPE type;
-  MOVE_CATEGORY category;  // Add category for physical or special moves
+  MOVE_CATEGORY category;
   int pp;
   void (*movePtr)(Battle*, BattlePokemon*, BattlePokemon*);
-
   int priority;
-
 } typedef Move;
 
+// Function declarations only - implementations are in basic_types.h after struct definitions
+int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender, Move* used_move);
+int pre_move_check(BattlePokemon* attacker, Move* used_move);
+int attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender, Move* used_move);
+int valid_move(Player user, int move_index);
+int add_move_to_queue(Battle* battle, Player* user, Player* target, int move_index);
+
+// Utility functions
+static inline int max(int a, int b) { return (a > b) ? a : b; }
+static inline int min(int a, int b) { return (a < b) ? a : b; }
+static inline const char* get_player_name(Player* p) { return "Player"; }
+
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
-inline int calculate_damage(BattlePokemon* attacker,
+static inline int calculate_damage(BattlePokemon* attacker,
                             BattlePokemon* defender,
                             Move* used_move) {
   // Base power of the move
@@ -51,43 +64,44 @@ inline int calculate_damage(BattlePokemon* attacker,
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
-    if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
-      attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
-      defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
-    }
-    int level = base_attacker->stats.level;
-    // Type effectiveness
-    float type_effectiveness = damage_chart[used_move->type][defender->type1] *
-                               damage_chart[used_move->type][defender->type2];
-
-    // STAB (Same-Type Attack Bonus)
-    float stab = (attacker->type1 == used_move->type ||
-                  attacker->type2 == used_move->type)
-                     ? 1.5
-                     : 1.0;
-    // Damage formula
-    int damage =
-        (((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2) *
-        stab * type_effectiveness;
-    // Damage at this point should be 0,1, or greater than 1. Only if greater
-    // than one should anything happen.
-    if (damage <= 1) {
-      if (damage == 0) {
-        DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon));
-      }
-      return damage;  // return 0 for failure
-    }
-    // Random factor (Exactly as specified by bulbapedia)
-    float random_factor = (rand() % 38 + 217) / 255.0;
-    return damage * random_factor;
+  } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
+    attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
+    defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
   }
+  
+  int level = base_attacker->stats.level;
+  // Type effectiveness
+  float type_effectiveness = damage_chart[used_move->type][defender->type1] *
+                             damage_chart[used_move->type][defender->type2];
+
+  // STAB (Same-Type Attack Bonus)
+  float stab = (attacker->type1 == used_move->type ||
+                attacker->type2 == used_move->type)
+                   ? 1.5
+                   : 1.0;
+  // Damage formula
+  int damage =
+      (((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2) *
+      stab * type_effectiveness;
+  // Damage at this point should be 0,1, or greater than 1. Only if greater
+  // than one should anything happen.
+  if (damage <= 1) {
+    if (damage == 0) {
+      DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon->id));
+    }
+    return damage;  // return 0 for failure
+  }
+  // Random factor (Exactly as specified by bulbapedia)
+  float random_factor = (rand() % 38 + 217) / 255.0;
+  return damage * random_factor;
 }
+
 // Todo:
 // Add status checks for flinching and other statuses
 //  Check for critical moves and other effects.
 // Pre-move checker: applies status effects, checks recharge/flinch, and handles
 // PP Returns 1 if move can proceed, 0 if blocked (status/recharge/flinch/PP)
-inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
+static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   // Check for confusion
   int early_ret = 1;
   if (attacker->confusion_counter > 0) {
@@ -147,7 +161,8 @@ inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   // If move is valid, deduct PP (except Struggle)
   return early_ret ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
-inline int attack(Battle* b,
+
+static inline int attack(Battle* b,
                    BattlePokemon* attacker,
                    BattlePokemon* defender,
                    Move* used_move) {
@@ -164,7 +179,7 @@ inline int attack(Battle* b,
   if (used_move->power != 0) {
     DLOG("%s used %s!",
          get_pokemon_name(attacker->pokemon->id),
-         MOVE_LABELS[used_move->id]);
+         get_move_name(used_move->id));
 
     // Calculate damage
     int damage = calculate_damage(attacker, defender, used_move);
@@ -181,18 +196,19 @@ inline int attack(Battle* b,
   return 1;
 }
 
-inline int valid_move(Player user, int move_index) {
+static inline int valid_move(Player user, int move_index) {
     BattlePokemon battle_poke = user.active_pokemon;
     Move m = battle_poke.pokemon->poke_moves[move_index];
   if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
-    DLOG("Move %s has no PP left!", MOVE_LABELS[move->id]);
+    DLOG("Move %s has no PP left!", get_move_name(m.id));
     return 0;
   }
+  return 1;
 }
 
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
 // if added.
-inline int add_move_to_queue(Battle* battle,
+static inline int add_move_to_queue(Battle* battle,
                              Player* user,
                              Player* target,
                              int move_index) {
@@ -215,14 +231,14 @@ inline int add_move_to_queue(Battle* battle,
     action_ptr->origLoc = user->active_pokemon_index;
     battle->action_queue.q_size++;
     DLOG("Added move %s to queue for %s.",
-         MOVE_LABELS[move->id],
+         get_move_name(move->id),
          get_pokemon_name(battle_poke->pokemon->id));
     return 1;
   } else {
     // Need to crash
     DLOG("Battle queue is full!\n");
     exit(1);
-    return -2;
+    return 0; // Changed from -2 to 0 for standardized return values
   }
 }
 

@@ -1,8 +1,9 @@
 #ifndef POKEMON_BASE_H
 #define POKEMON_BASE_H
 
-#include "pokedex.h"
+#include "poke_enum.h"
 #include "typing.h"
+
 //Used to define base pokemon data, pre-IVS/EVs/DVs/Modifiers
 
 typedef struct {

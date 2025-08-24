@@ -7,10 +7,10 @@
   #include "pokedex_labels.h"
 
   inline char* get_move_name(int move_id) {
-      return MOVE_LABELS[move_id];
+      return MoveLabels[move_id];
     }
     inline char* get_pokemon_name(int pokemon_id) {
-      return POKEDEX_LABELS[pokemon_id];
+      return PokemonNames[pokemon_id];
     }
   #define DLOG(fmt, ...)                                                       \
     do {                                                                       \

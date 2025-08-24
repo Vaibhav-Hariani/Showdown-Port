@@ -1,3 +1,6 @@
+#ifndef TYPING_H
+#define TYPING_H
+
 typedef enum {
     NORMAL,
     FIRE,
@@ -38,3 +41,5 @@ static const float damage_chart[NONETYPE + 1][NONETYPE + 1] = {
     /* DRAGON */  {1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   2.0,   1.0},
     /* NONETYPE */{1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0}
 };
+
+#endif

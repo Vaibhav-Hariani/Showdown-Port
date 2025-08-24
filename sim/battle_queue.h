@@ -2,70 +2,20 @@
 #define BATTLE_QUEUE_H
 
 // Trying to re-implement the battle queue from showdown
-#include "battle.h"
+#include "basic_types.h"
 #include "move.h"
 #include "pokemon.h"
 #include "stdlib.h"
 #include "switch.h"
-/**
 
+/**
 Basic idea: player swings, moves collide (based on priority/speed), and then
 follow up triggers hit the stack. Less important for Gen1.
- **/
+**/
 
-// Important: switches need to be verified by checking target HP.
-struct STR_SWITCH_ACTION {
-  int targetLoc;
-  // effect that called the switch: not relevant for gen1
-  // sourceEffect: Effect | null;
-};
-
-//Either a regular action mode (for inputs), 
-// or a fainted action (higher priority switch)
-enum ACTION_MODES {REGULAR, FAINTED};
-
-enum ENUM_ACTIONS {
-  move_action,
-  switch_action,
-  team_action,
-  field_action
-} typedef action_types;
-
-union UN_ACTIONS {
-  Move m;
-  int switch_target;
-} typedef action_union;
-
-struct STR_ACTION {
-  action_union action_d;
-  action_types action_type;
-  // which player is making the move
-
-  Player* User;
-  Player* Target;
-
-  int order;
-  int priority;
-  // Can probably be pulled from the origin pokemon
-  int speed;
-  // (index of the pokemon making the move)
-  // if not active pokemon, move is cancelled
-  int origLoc;
-
-  // This is only used for more complex effects, not determining the end target
-  // int targetLoc; // (index of the pokemon being targeted): used for doubles
-  // pokemon initiator;
-  // pokemon OriginalTarget;
-} typedef Action;
-
-// The current battle state: according to showdown docs,
-// sorted by priority (not midturn) for gen 1-7.
-// not a 'true' priority queue
-// Setting to 15 so there's no dynamic allocation
-struct STR_BQUEUE {
-  Action queue[15];
-  int q_size;
-} typedef battlequeue;
+// Forward declarations
+void invalidate_queue(int completed, battlequeue* queue);
+int attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender, Move* used_move);
 
 // Sourced from sort
 // negative means a2 should be first, positive means a1 first.
@@ -84,7 +34,7 @@ int cmp_priority_qsort(const void* a, const void* b) {
   return diff;
 }
 
-// Both of these funcitons are used once: inlined
+// Both of these functions are used once: inlined
 inline int check_tie(Action* a1, Action* a2) {
   return a1->order - a2->order || a1->priority - a2->priority ||
          a1->speed - a2->speed;
@@ -129,7 +79,7 @@ inline int eval_queue(Battle* b) {
 
     if (current_action->action_type == move_action) {
       Move* move = &current_action->action_d.m;
-      attack(b, current_action->User, current_action->Target, move);
+      attack(b, &current_action->User->active_pokemon, &current_action->Target->active_pokemon, move);
 
       if (current_action->Target->active_pokemon.pokemon->hp <= 0)
         DLOG("%s Fainted!", get_pokemon_name(b->p1.active_pokemon.pokemon->id));
@@ -152,7 +102,7 @@ inline int eval_queue(Battle* b) {
       //Early exit for next queue inputs.
     }
   }
-  return REGULAR;
+  return 0;
 }
 
 // Remove everything already completed, and then everything that isn't necessary.
@@ -190,4 +140,5 @@ inline void invalidate_queue(int completed, battlequeue* queue) {
   // a problem though.
   queue->q_size = j;
 }
+
 #endif

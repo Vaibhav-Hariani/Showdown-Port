@@ -7,9 +7,12 @@
 #include "pokemon.h"
 #include "stdio.h"
 
-enum ACTION_TYPES {REGULAR, FAINTED };
+// Forward declarations
+typedef struct STR_PLAYER Player;
+typedef struct STR_BATTLE Battle;
+typedef struct STR_ACTION Action;
 
-inline int valid_switch(Player cur, int target_loc) {
+static inline int valid_switch(Player cur, int target_loc) {
   if (cur.team[target_loc].hp <= 0) {
     DLOG("Invalid switch: Target Pokémon has fainted.");
     return 0;

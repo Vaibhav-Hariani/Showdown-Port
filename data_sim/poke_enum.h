@@ -1,6 +1,8 @@
 // src:
 // https://github.com/smogon/pokemon-showdown/blob/master/data/mods/gen1/pokedex.ts
-#ifndef POKEDEX_H
+#ifndef POKE_ENUM_H
+#define POKE_ENUM_H
+
 typedef enum {
   // MISSINGNO=0,
   BULBASAUR = 1,
@@ -169,4 +171,4 @@ typedef enum {
     STAT_COUNT // Total number of stats
 } STAT_LABELS;
 
-#endif POKEDEX_H
+#endif /* POKE_ENUM_H */

@@ -1,2 +1,5 @@
 .vscode/
 *.code-workspace
+*.gch
+*.o
+*.out
