@@ -8,7 +8,6 @@
 #include "generated_move_enum.h"
 #include "log.h"
 #include "move.h"
-#include "pokemon.h"
 #include "typing.h"
 // TODO: Bind, Counter, Dig, Fly, Disable, Gust, etc.
 

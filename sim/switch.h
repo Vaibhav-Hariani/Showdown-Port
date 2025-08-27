@@ -4,7 +4,6 @@
 #include "string.h"
 #include "battle_queue.h"
 #include "log.h"
-#include "pokemon.h"
 #include "stdio.h"
 
 // Forward declarations
@@ -12,7 +11,7 @@ typedef struct STR_PLAYER Player;
 typedef struct STR_BATTLE Battle;
 typedef struct STR_ACTION Action;
 
-static inline int valid_switch(Player cur, int target_loc) {
+int valid_switch(Player cur, int target_loc) {
   if (cur.team[target_loc].hp <= 0) {
     DLOG("Invalid switch: Target Pokémon has fainted.");
     return 0;
@@ -24,7 +23,7 @@ static inline int valid_switch(Player cur, int target_loc) {
   return 1;
 }
 
-inline void add_switch(Battle* b, Player* user, int target_loc, int type) {
+void add_switch(Battle* b, Player* user, int target_loc, int type) {
   Action* cur_action = (b->action_queue.queue) + b->action_queue.q_size;
   memset(cur_action, 0, sizeof(Action));
 
@@ -44,7 +43,7 @@ inline void add_switch(Battle* b, Player* user, int target_loc, int type) {
 }
 
 // Main switch handler
-inline void perform_switch_action(Action* current_action) {
+void perform_switch_action(Action* current_action) {
   int target = current_action->action_d.switch_target;
 
   Player* user = current_action->User;

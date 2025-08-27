@@ -2,7 +2,6 @@
 #include "battle_queue.h"
 #include "move.h"
 #include "pokedex.h"
-#include "pokemon.h"
 #include "stdio.h"
 Battle b = {0};
 
@@ -46,7 +45,7 @@ void print_state(Player* player) {
   }
 }
 
-inline int valid_choice(int player_num,
+int valid_choice(int player_num,
                         Player p,
                         unsigned int input,
                         int mode) {
@@ -59,7 +58,7 @@ inline int valid_choice(int player_num,
     return 1;
   }
 
-  if (mode == 0 && input <= 10 && valid_move(p, input - 7)) {
+  if (mode == 0 && input <= 10 && valid_move(&p, input - 7)) {
     return 1;
   }
 

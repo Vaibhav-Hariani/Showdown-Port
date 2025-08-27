@@ -1,10 +1,7 @@
 #ifndef BATTLE_QUEUE_H
 #define BATTLE_QUEUE_H
 
-// Trying to re-implement the battle queue from showdown
-#include "basic_types.h"
-#include "move.h"
-#include "pokemon.h"
+//Structs in these files should all be pointers and can be forward declared
 #include "stdlib.h"
 #include "switch.h"
 
@@ -73,7 +70,7 @@ inline void sort_queue(battlequeue* bqueue) {
 // Returns 1 if p1's pokemon have fainted
 //Returns 2 if p2's pokemon have fainted
 // returns 3 if both pokemon have fained
-inline int eval_queue(Battle* b) {
+int eval_queue(Battle* b) {
   for (int i = 0; i < b->action_queue.q_size; i++) {
     Action* current_action = &b->action_queue.queue[i];
 

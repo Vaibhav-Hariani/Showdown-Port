@@ -6,10 +6,10 @@
   #include "move_labels.h"
   #include "pokedex_labels.h"
 
-  inline char* get_move_name(int move_id) {
+  char* get_move_name(int move_id) {
       return MoveLabels[move_id];
     }
-    inline char* get_pokemon_name(int pokemon_id) {
+    char* get_pokemon_name(int pokemon_id) {
       return PokemonNames[pokemon_id];
     }
   #define DLOG(fmt, ...)                                                       \
@@ -19,11 +19,11 @@
 
     #else
 
-inline char* get_move_name(int move_id) {
+char* get_move_name(int move_id) {
   return 0;
 }
 
-inline char* get_pokemon_name(int pokemon_id) {
+char* get_pokemon_name(int pokemon_id) {
   return 0;
 }
 

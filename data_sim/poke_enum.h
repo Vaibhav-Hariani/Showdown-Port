@@ -161,14 +161,4 @@ typedef enum {
 //     MEWTWO,
 //     MEW=151
 
-typedef enum {
-    STAT_HP,
-    STAT_ATTACK,
-    STAT_DEFENSE,
-    STAT_SPECIAL_ATTACK,
-    STAT_SPECIAL_DEFENSE,
-    STAT_SPEED,
-    STAT_COUNT // Total number of stats
-} STAT_LABELS;
-
 #endif /* POKE_ENUM_H */

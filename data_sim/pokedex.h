@@ -13,7 +13,7 @@ typedef struct {
     TYPE secondary_type;
 } poke_ref;
 
-static const poke_ref pokemon_base[] = {
+const poke_ref pokemon_base[] = {
     {BULBASAUR, {45, 49, 49, 65, 65, 45}, GRASS, POISON},
     {IVYSAUR, {60, 62, 63, 80, 80, 60}, GRASS, POISON},
     {VENUSAUR, {80, 82, 83, 100, 100, 80}, GRASS, POISON},

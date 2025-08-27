@@ -4,49 +4,19 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "string.h"
 
-#include "generated_move_enum.h"
-#include "log.h"
-#include "typing.h"
+#include "move_structs.h"
+#include "poke_structs.h"
+#include "queue_structs.h"
+#include "battle_structs.h"
 
-// Forward declarations to break circular dependencies
-struct STR_BATTLE;
-struct STR_BATTLE_POKEMON;
-struct STR_PLAYER;
-typedef struct STR_BATTLE Battle;
-typedef struct STR_BATTLE_POKEMON BattlePokemon;
-typedef struct STR_PLAYER Player;
-
-// Move struct definition
-struct STR_MOVES {
-  MOVE_IDS id;
-  int power;
-  float accuracy;
-  TYPE type;
-  MOVE_CATEGORY category;
-  int pp;
-  void (*movePtr)(Battle*, BattlePokemon*, BattlePokemon*);
-  int priority;
-} typedef Move;
-
-// Function declarations only - implementations are in basic_types.h after struct definitions
-int calculate_damage(BattlePokemon* attacker, BattlePokemon* defender, Move* used_move);
-int pre_move_check(BattlePokemon* attacker, Move* used_move);
-int attack(Battle* b, BattlePokemon* attacker, BattlePokemon* defender, Move* used_move);
-int valid_move(Player user, int move_index);
-int add_move_to_queue(Battle* battle, Player* user, Player* target, int move_index);
-
-// Utility functions
-static inline int max(int a, int b) { return (a > b) ? a : b; }
-static inline int min(int a, int b) { return (a < b) ? a : b; }
-static inline const char* get_player_name(Player* p) { return "Player"; }
-
+#include "utils.h"
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
-                            BattlePokemon* defender,
-                            Move* used_move) {
+                                   BattlePokemon* defender,
+                                   Move* used_move) {
   // Base power of the move
+  used_move->power;
   int power = used_move->power;
 
   // Attack and Defense stats
@@ -68,17 +38,17 @@ static inline int calculate_damage(BattlePokemon* attacker,
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
   }
-  
+
   int level = base_attacker->stats.level;
   // Type effectiveness
   float type_effectiveness = damage_chart[used_move->type][defender->type1] *
                              damage_chart[used_move->type][defender->type2];
 
   // STAB (Same-Type Attack Bonus)
-  float stab = (attacker->type1 == used_move->type ||
-                attacker->type2 == used_move->type)
-                   ? 1.5
-                   : 1.0;
+  float stab =
+      (attacker->type1 == used_move->type || attacker->type2 == used_move->type)
+          ? 1.5
+          : 1.0;
   // Damage formula
   int damage =
       (((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2) *
@@ -162,10 +132,10 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   return early_ret ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
-static inline int attack(Battle* b,
-                   BattlePokemon* attacker,
-                   BattlePokemon* defender,
-                   Move* used_move) {
+inline int attack(Battle* b,
+                         BattlePokemon* attacker,
+                         BattlePokemon* defender,
+                         Move* used_move) {
   // Pre-move check: status, recharge, flinch, PP
   int pre = pre_move_check(attacker, used_move);
   if (!pre) {
@@ -196,9 +166,8 @@ static inline int attack(Battle* b,
   return 1;
 }
 
-static inline int valid_move(Player user, int move_index) {
-    BattlePokemon battle_poke = user.active_pokemon;
-    Move m = battle_poke.pokemon->poke_moves[move_index];
+int valid_move(Player* user, int move_index) {
+  Move m = user->active_pokemon.pokemon->poke_moves[move_index];
   if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(m.id));
     return 0;
@@ -208,10 +177,10 @@ static inline int valid_move(Player user, int move_index) {
 
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
 // if added.
-static inline int add_move_to_queue(Battle* battle,
-                             Player* user,
-                             Player* target,
-                             int move_index) {
+int add_move_to_queue(Battle* battle,
+                                    Player* user,
+                                    Player* target,
+                                    int move_index) {
   // Assumes input is screened beforehand.
   BattlePokemon* battle_poke = &user->active_pokemon;
   Move* move = (battle_poke->pokemon->poke_moves) + move_index;
@@ -238,7 +207,7 @@ static inline int add_move_to_queue(Battle* battle,
     // Need to crash
     DLOG("Battle queue is full!\n");
     exit(1);
-    return 0; // Changed from -2 to 0 for standardized return values
+    return 0;  // Changed from -2 to 0 for standardized return values
   }
 }
 

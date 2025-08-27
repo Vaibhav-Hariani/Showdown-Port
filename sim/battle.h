@@ -1,32 +1,29 @@
 #ifndef BATTLE_H
 #define BATTLE_H
 
-#include "basic_types.h"
-#include "pokemon.h"
-#include "battle_queue.h"
 #include "log.h"
-#include "move.h"
-#include "pokedex_labels.h"
-#include "move_labels.h"
+#include "battle_structs.h"
+#include "utils.h"
+#include <stddef.h>
 
+Player* get_player(Battle* b, int i) {
+  return (i == 1) ? &b->p1 : &b->p2;
+}
 // Forward declarations for functions defined elsewhere
 void force_switch(Player* p);
 
-inline Player* get_player(Battle* b, int i) {
-  return (i == 1) ? &b->p1 : &b->p2;
-}
-
 // Any triggers that need to be resolved for inactive pokemon resolve here,
 // and the queue is reset to zero.
+
+//This is not currently being used: There are some gen1 quirks that need to be addressed.
 void end_step(Battle* b) {
   // Gen 1 end step: resolve for both active pokemon
   for (int i = 1; i <= 2; i++) {
     Player* p = get_player(b, i);
-    DLOG("%s's Resolution", get_player_name(p));
+    DLOG("%s's Resolution", i);
     BattlePokemon* bp = &p->active_pokemon;
     Pokemon* poke = bp->pokemon;
-    if (poke == NULL) continue;
-
+    if (poke == NULL || p->active_pokemon_index < 0) continue;
     // Poison damage
     if (poke->status.poison) {
       int dmg = poke->max_hp / 16;
@@ -47,12 +44,12 @@ void end_step(Battle* b) {
       poke->hp -= dmg;
       DLOG("%s took burn damage (%d HP)", get_pokemon_name(poke->id), dmg);
     }
-    // Check for faint
+    // Fainting here only happens when a pokemon dies due to status.
     if (poke->hp <= 0) {
       poke->hp = 0;
       DLOG("%s fainted!", get_pokemon_name(poke->id));
       // You may want to trigger forced switch logic here
-      force_switch(p);
+      // force_switch(p);
     }
     // Clear volatile effects (example: flinch, partial trapping)
     bp->recharge_counter = 0;
