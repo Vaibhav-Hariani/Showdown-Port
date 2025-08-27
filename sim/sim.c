@@ -15,6 +15,7 @@
 void print_state(Player* player) {
   for (int i = 0; i < 6; i++) {
     Pokemon* p = player->team[i];
+    if (p == NULL) continue;
     if (player->active_pokemon_index == i) {
       printf("Active Pokemon: #%d: %s \n", i, get_pokemon_name(p->id));
       printf(
