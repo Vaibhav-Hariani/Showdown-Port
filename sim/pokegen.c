@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "data_labels/move_labels.h"
-#include "data_labels/pokedex_labels.h"
-#include "data_sim/generated_learnsets.h"
+#include "generated_learnsets.h"
+#include "move_labels.h"
+#include "pokedex_labels.h"
 
 const int NUM_POKEMON = 151;
 

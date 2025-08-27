@@ -22,7 +22,7 @@ typedef enum {
 
 //RBY damage modifier chart: courtesy of gemini
 //Format: Attack type -> Defending Pokemon Type
-static const float damage_chart[NONETYPE + 1][NONETYPE + 1] = {
+static const float DAMAGE_CHART[NONETYPE + 1][NONETYPE + 1] = {
     // DEFENSE ->  NOR    FIR    WAT    ELE    GRA    ICE    FIG    POI    GRO    FLY    PSY    BUG    ROC    GHO    DRA    NONETYPE
     /* NORMAL */  {1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   1.0,   0.5,   0.0,   1.0,   1.0},
     /* FIRE */    {1.0,   0.5,   0.5,   1.0,   2.0,   2.0,   1.0,   1.0,   1.0,   1.0,   1.0,   2.0,   0.5,   1.0,   0.5,   1.0},
