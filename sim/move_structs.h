@@ -1,8 +1,8 @@
 #ifndef MOVE_STRUCTS_H
 #define MOVE_STRUCTS_H
 
-#include "typing.h"
 #include "generated_move_enum.h"
+#include "typing.h"
 
 // Typedefs for convenience
 typedef struct STR_BATTLE Battle;

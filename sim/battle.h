@@ -1,21 +1,21 @@
 #ifndef BATTLE_H
 #define BATTLE_H
 
-#include "log.h"
-#include "battle_structs.h"
-#include "utils.h"
 #include <stddef.h>
 
-Player* get_player(Battle* b, int i) {
-  return (i == 1) ? &b->p1 : &b->p2;
-}
+#include "battle_structs.h"
+#include "log.h"
+#include "utils.h"
+
+Player* get_player(Battle* b, int i) { return (i == 1) ? &b->p1 : &b->p2; }
 // Forward declarations for functions defined elsewhere
 void force_switch(Player* p);
 
 // Any triggers that need to be resolved for inactive pokemon resolve here,
 // and the queue is reset to zero.
 
-//This is not currently being used: There are some gen1 quirks that need to be addressed.
+// This is not currently being used: There are some gen1 quirks that need to be
+// addressed.
 void end_step(Battle* b) {
   // Gen 1 end step: resolve for both active pokemon
   for (int i = 1; i <= 2; i++) {
@@ -33,10 +33,12 @@ void end_step(Battle* b) {
     // Badly poisoned damage
     if (bp->badly_poisoned_ctr > 0) {
       int dmg = (bp->badly_poisoned_ctr * poke->max_hp) / 16;
-      dmg = min(dmg, 15 * poke->max_hp / 16); // Maximum of 15/16ths
+      dmg = min(dmg, 15 * poke->max_hp / 16);  // Maximum of 15/16ths
       poke->hp -= dmg;
       bp->badly_poisoned_ctr++;
-      DLOG("%s took badly poisoned damage (%d HP)", get_pokemon_name(poke->id), dmg);
+      DLOG("%s took badly poisoned damage (%d HP)",
+           get_pokemon_name(poke->id),
+           dmg);
     }
     // Burn damage
     if (poke->status.burn) {
@@ -54,7 +56,7 @@ void end_step(Battle* b) {
     // Clear volatile effects (example: flinch, partial trapping)
     bp->recharge_counter = 0;
     bp->recharge_len = 0;
-    bp->flinch = 0; // Clear flinch status at end of turn
+    bp->flinch = 0;  // Clear flinch status at end of turn
     // Add more volatile clears as needed
   }
   // Reset the action queue

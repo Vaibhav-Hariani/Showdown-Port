@@ -4,7 +4,7 @@
 #include "move_structs.h"
 
 // Battle queue related enums and structs
-enum ACTION_MODES {REGULAR, FAINTED};
+enum ACTION_MODES { REGULAR, FAINTED };
 
 typedef union UN_ACTIONS action_union;
 

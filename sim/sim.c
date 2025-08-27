@@ -45,10 +45,7 @@ void print_state(Player* player) {
   }
 }
 
-int valid_choice(int player_num,
-                        Player p,
-                        unsigned int input,
-                        int mode) {
+int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
   if (mode != player_num && mode != 3 && mode != 0) {
     return 1;
@@ -58,7 +55,7 @@ int valid_choice(int player_num,
     return 1;
   }
 
-  if (mode == 0 && input <= 10 && valid_move(&p, input - 7)) {
+  if (mode == 0 && input <= 9 && valid_move(&p, input - 6)) {
     return 1;
   }
 
@@ -128,13 +125,16 @@ int losers(Battle* b) {
   return losers;
 }
 
-int get_player_choice(Player* p, int p_num, int mode){
+int get_player_choice(Player* p, int p_num, int mode) {
   // Get the player's choice of action
   int choice;
-  printf("Player %d, enter your choice (1-6 to switch, 7-10 to use move): ", p_num);
+  printf("Player %d, enter your choice (0-5 to switch, 6-10 to use move): ",
+         p_num);
   scanf("%d", &choice);
-  while(!valid_choice(p_num, *p, choice, mode)){
-    printf("Invalid choice. Please enter a valid choice (1-6 to switch, 7-10 to use move): ");
+  while (!valid_choice(p_num, *p, choice, mode)) {
+    printf(
+        "Invalid choice. Please enter a valid choice (0-5 to switch, 6-9 to "
+        "use move): ");
     scanf("%d", &choice);
   }
   return choice;
@@ -147,16 +147,16 @@ int main() {
   Player p2 = {0};
   b.p1 = p1;
   b.p2 = p2;
-  //Used to check what kind of moves are valid
+  // Used to check what kind of moves are valid
   int mode = 0;
   int loser_nums = 0;
-  while(!loser_nums) {
+  while (!loser_nums) {
     printf("Player 1 Info \n");
     print_state(&b.p1);
     printf("\n Player 2 Info \n");
     print_state(&b.p2);
     // Simulate a turn
-    int p1_choice = get_player_choice(&b.p1, 1,  mode);
+    int p1_choice = get_player_choice(&b.p1, 1, mode);
     int p2_choice = get_player_choice(&b.p2, 2, mode);
     mode = step(&b, p1_choice, p2_choice, mode);
     loser_nums = losers(&b);
@@ -167,11 +167,11 @@ int main() {
   printf("\n Player 2 Info \n");
   print_state(&b.p2);
 
-  if(loser_nums == 1){
+  if (loser_nums == 1) {
     printf("Player 1 has lost! \n");
-  } else if(loser_nums == 2){
+  } else if (loser_nums == 2) {
     printf("Player 2 has lost! \n");
-  } else if(loser_nums == 3){
+  } else if (loser_nums == 3) {
     printf("It's a tie! Both players have lost! \n");
   }
   return 0;

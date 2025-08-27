@@ -1,10 +1,10 @@
 // switch.h: Handles switching logic and multiple switch types
 #ifndef SWITCH_H
 #define SWITCH_H
-#include "string.h"
 #include "battle_queue.h"
 #include "log.h"
 #include "stdio.h"
+#include "string.h"
 
 // Forward declarations
 typedef struct STR_PLAYER Player;
@@ -55,7 +55,7 @@ void perform_switch_action(Action* current_action) {
   user->active_pokemon_index = target;
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
-  //add in array setting over here for move arr if necessary.
+  // add in array setting over here for move arr if necessary.
 
   DLOG("Come back %s! \n Go %s!",
        get_pokemon_name(user->team[old_active]),

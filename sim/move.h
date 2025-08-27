@@ -5,11 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "battle_structs.h"
 #include "move_structs.h"
 #include "poke_structs.h"
 #include "queue_structs.h"
-#include "battle_structs.h"
-
 #include "utils.h"
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
@@ -133,9 +132,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
 }
 
 inline int attack(Battle* b,
-                         BattlePokemon* attacker,
-                         BattlePokemon* defender,
-                         Move* used_move) {
+                  BattlePokemon* attacker,
+                  BattlePokemon* defender,
+                  Move* used_move) {
   // Pre-move check: status, recharge, flinch, PP
   int pre = pre_move_check(attacker, used_move);
   if (!pre) {
@@ -178,9 +177,9 @@ int valid_move(Player* user, int move_index) {
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
 // if added.
 int add_move_to_queue(Battle* battle,
-                                    Player* user,
-                                    Player* target,
-                                    int move_index) {
+                      Player* user,
+                      Player* target,
+                      int move_index) {
   // Assumes input is screened beforehand.
   BattlePokemon* battle_poke = &user->active_pokemon;
   Move* move = (battle_poke->pokemon->poke_moves) + move_index;
