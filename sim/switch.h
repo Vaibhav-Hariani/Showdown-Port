@@ -48,7 +48,6 @@ void perform_switch_action(Action* current_action) {
 
   Player* user = current_action->User;
 
-  int old_active = user->active_pokemon_index;
   // Clear the current active pokemon getup
   memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
   user->active_pokemon.pokemon = &user->team[target];
@@ -56,10 +55,10 @@ void perform_switch_action(Action* current_action) {
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
   // add in array setting over here for move arr if necessary.
-
+  int old_active = user->active_pokemon_index;
   DLOG("Come back %s! \n Go %s!",
-       get_pokemon_name(user->team[old_active]),
-       get_pokemon_name(user->team[target]));
+       get_pokemon_name(user->team[old_active].id),
+       get_pokemon_name(user->team[target].id));
 }
 
 #endif

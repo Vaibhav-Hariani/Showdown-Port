@@ -64,7 +64,7 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
 
 // guaranteed to be correct from valid_choice
 void action(Battle* b, Player* user, Player* target, int input, int type) {
-  Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
+  // Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
   b->action_queue.q_size++;
   if (input >= 7) {
     input -= 7;

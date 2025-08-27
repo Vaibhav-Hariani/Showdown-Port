@@ -15,7 +15,6 @@ static inline int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
                                    Move* used_move) {
   // Base power of the move
-  used_move->power;
   int power = used_move->power;
 
   // Attack and Defense stats
