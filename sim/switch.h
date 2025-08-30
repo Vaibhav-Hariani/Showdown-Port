@@ -26,7 +26,6 @@ int valid_switch(Player cur, int target_loc) {
 void add_switch(Battle* b, Player* user, int target_loc, int type) {
   Action* cur_action = (b->action_queue.queue) + b->action_queue.q_size;
   memset(cur_action, 0, sizeof(Action));
-
   cur_action->action_type = switch_action;
   cur_action->User = user;
   cur_action->action_d.switch_target = target_loc;

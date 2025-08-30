@@ -80,23 +80,28 @@ int eval_queue(Battle* b) {
 
     if (current_action->action_type == move_action) {
       Move* move = &current_action->action_d.m;
-      attack(b,
-             &current_action->User->active_pokemon,
-             &current_action->Target->active_pokemon,
-             move);
+      Player* User = current_action->User;
+      Player* Target = current_action->Target;
 
-      if (current_action->Target->active_pokemon.pokemon->hp <= 0)
+      attack(b, &User->active_pokemon, &Target->active_pokemon, move);
+
+      //Cleanup
+      if (User->active_pokemon.pokemon->hp <= 0) {
         DLOG("%s Fainted!", get_pokemon_name(b->p1.active_pokemon.pokemon->id));
-      // Clear the currently active pokemon
-      b->p1.active_pokemon = (BattlePokemon){0};
-      b->p1.active_pokemon_index = -1;
-      // Handle p1's active pokemon fainting
-      if (current_action->User->active_pokemon.pokemon->hp <= 0)
+        // Clear the currently active pokemon
+        User->active_pokemon = (BattlePokemon){0};
+        User->active_pokemon_index = -1;
+      }
+
+      // Handle active pokemon fainting
+      if (Target->active_pokemon.pokemon->hp <= 0) {
         DLOG("The Opposing %s Fainted!",
              get_pokemon_name(b->p2.active_pokemon.pokemon->id));
-      // Clear the currently active pokemon
-      b->p2.active_pokemon = (BattlePokemon){0};
-      b->p2.active_pokemon_index = -1;
+        // Clear the currently active pokemon
+        Target->active_pokemon = (BattlePokemon){0};
+        Target->active_pokemon_index = -1;
+      }
+
     } else {
       perform_switch_action(current_action);
     }

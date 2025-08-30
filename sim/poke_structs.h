@@ -14,7 +14,7 @@ typedef enum {
 } STAT_LABELS;
 
 struct STR_STATS {
-  int base_stats[STAT_COUNT];  // Array to hold all base_stats
+  int base_stats[STAT_COUNT];  // Array to hold all base_stats, post IVs/EVs
   int level;
   // Future relevance
   //  bool gender;

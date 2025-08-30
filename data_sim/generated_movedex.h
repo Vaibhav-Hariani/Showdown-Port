@@ -5,8 +5,6 @@
 #include "typing.h"
 #include "generated_move_enum.h"
 #include "movedex.h"
-#include "pokemon.h"
-
 const Move MOVES[] = {
     {.id = NO_MOVE,
      .type = NONETYPE,
