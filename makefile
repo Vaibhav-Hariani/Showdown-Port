@@ -7,5 +7,6 @@ sim.out:
 clean:
 	rm -f sim.out
 
-debug_sim: CFLAGS += -g -DDEBUG
-debug_sim: sim.out
+debug_sim: 
+	$(CC) $(CFLAGS) $(INCLUDES) -g -DDEBUG sim/sim.c -o sim_debug.out
+ 
