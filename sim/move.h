@@ -196,7 +196,6 @@ int add_move_to_queue(Battle* battle,
     // TODO: Speed should be impacted by the pokemon's stat modifiers
     action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
     action_ptr->origLoc = user->active_pokemon_index;
-    battle->action_queue.q_size++;
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
          get_pokemon_name(battle_poke->pokemon->id));

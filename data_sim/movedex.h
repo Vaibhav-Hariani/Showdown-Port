@@ -18,8 +18,8 @@
 // https://bulbapedia.bulbagarden.net/wiki/Damage
 // It is expected that move is a pointer to the move within
 
-inline int max(int a, int b) { return (a > b) ? a : b; }
-inline int min(int a, int b) { return (a < b) ? a : b; }
+// static inline int max(int a, int b) { return (a > b) ? a : b; }
+// static inline int min(int a, int b) { return (a < b) ? a : b; }
 
 void apply_acid(Battle *battle,
                 BattlePokemon *attacker,
@@ -124,9 +124,9 @@ void apply_fire_blast(Battle *battle,
 
 void apply_glare(Battle *battle,
                  BattlePokemon *attacker,
-                 Pokemon *defender) {
-  defender->status.paralyzed = 1;
-  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->id));
+                 BattlePokemon *defender) {
+  defender->pokemon->status.paralyzed = 1;
+  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->pokemon->id));
 }
 
 void apply_toxic(Battle *battle,

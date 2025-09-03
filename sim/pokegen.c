@@ -2,11 +2,16 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "data_labels/move_labels.h"
-#include "data_labels/pokedex_labels.h"
-#include "data_sim/generated_learnsets.h"
+#include "generated_learnsets.h"
+#include "log.h"
+// Needed for poke_ref and pokemon_base
+#include "generated_movedex.h"
+#include "move_structs.h"
+#include "poke_enum.h"
+#include "poke_structs.h"
+#include "pokedex.h"
 
-const int NUM_POKEMON = 151;
+#define NUM_POKEMON ((int)LAST_POKEMON)
 
 void generate_moveset(MOVE_IDS out_moves[4],
                       const MOVE_IDS* learnset,
@@ -35,6 +40,8 @@ void generate_moveset(MOVE_IDS out_moves[4],
     out_moves[i] = selected[i];
   }
 }
+// take an input pokemon object, and load it with moves, DV's/EV's (optionally)
+// Can expand to take in more data
 
 int main() {
   // create a random pokemon
@@ -44,26 +51,25 @@ int main() {
   // get the learnset for that pokemon
   const MOVE_IDS* learnset = LEARNSETS[random_pokemon];
   int learnset_len = LEARNSET_LENGTHS[random_pokemon];
-
-  printf("Selected Pokemon: %d %s\n",
+  DLOG("Selected Pokemon: %d %s\n",
          random_pokemon,
-         PokemonNames[random_pokemon]);
+         get_pokemon_name(random_pokemon));
   // print learnset
-  printf("Learnset: ");
+  DLOG("Learnset: ");
   for (int i = 0; i < learnset_len; i++) {
-    printf("%d %s, ", learnset[i], MoveLabels[learnset[i]]);
+    DLOG("%d %s, ", learnset[i], get_move_name(learnset[i]));
   }
-  printf("\n");
+  DLOG("\n");
 
   // grab 4 unique moves from the learnset
   MOVE_IDS selected_moves[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   generate_moveset(selected_moves, learnset, learnset_len);
 
   // print the pokemon and its moves
-  printf("Generated Pokemon: %d %s\n",
+  DLOG("Generated Pokemon: %d %s\n",
          random_pokemon,
-         PokemonNames[random_pokemon]);
+         get_pokemon_name(random_pokemon));
   for (int i = 0; i < 4; i++) {
-    printf("Move %d: %s\n", i + 1, MoveLabels[selected_moves[i]]);
+    DLOG("Move %d: %s\n", i + 1, get_move_name(selected_moves[i]));
   }
 }

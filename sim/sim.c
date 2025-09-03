@@ -1,10 +1,10 @@
 #include "battle.h"
 #include "battle_queue.h"
 #include "move.h"
-#include "pokedex.h"
+#include "pokegen.h"
 #include "stdio.h"
-Battle b = {0};
 
+Battle b = {0};
 // ToDo: implement init_battle(), evaluate the queue
 // Then, add checks for status effects, misses, etc. etc. Follow OU rules, and
 // implement switching mechanics.
@@ -50,28 +50,25 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   if (mode != player_num && mode != 3 && mode != 0) {
     return 1;
   }
-
-  if (input <= 6 && valid_switch(p, input)) {
-    return 1;
+  if (input <= 6) {
+    return valid_switch(p, input);
   }
-
-  if (mode == 0 && input <= 9 && valid_move(&p, input - 6)) {
-    return 1;
+  if (mode == 0 && input <= 9) {
+    return valid_move(&p, input - 6);
   }
-
   return 0;
 }
 
 // guaranteed to be correct from valid_choice
 void action(Battle* b, Player* user, Player* target, int input, int type) {
   // Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
-  b->action_queue.q_size++;
   if (input >= 7) {
     input -= 7;
     add_move_to_queue(b, user, target, input);
   } else {
     add_switch(b, user, input, type);
   }
+  b->action_queue.q_size++;
   return;
 }
 
@@ -140,13 +137,26 @@ int get_player_choice(Player* p, int p_num, int mode) {
   return choice;
 }
 
+void team_generator(Player* p) {
+  for(int i = 0; i < 6; i++){
+    Pokemon* cur = &p->team[i];
+    load_pokemon(cur, NULL, NULL, NULL, NULL, NULL);
+  }
+  p->active_pokemon.pokemon = &p->team[0];\
+  p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
+  p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
+   
+}
 int main() {
+  //seeding for testing
+  srand(42);
   // Initialize battle and step through until a player has won
-  Battle b = {0};
   Player p1 = {0};
   Player p2 = {0};
   b.p1 = p1;
   b.p2 = p2;
+  team_generator(&b.p1);
+  team_generator(&b.p2);
   // Used to check what kind of moves are valid
   int mode = 0;
   int loser_nums = 0;
