@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "battle.h"
+#include "../sim_setup/battle.h"
 #include "generated_move_enum.h"
-#include "log.h"
-#include "move.h"
+#include "../sim_setup/log.h"
+#include "../sim_setup/move.h"
 #include "typing.h"
 // TODO: Bind, Counter, Dig, Fly, Disable, Gust, etc.
 

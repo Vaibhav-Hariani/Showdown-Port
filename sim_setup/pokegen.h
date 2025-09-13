@@ -3,7 +3,7 @@
 
 #include "generated_learnsets.h"
 // Needed for poke_ref and pokemon_base
-#include "generated_movedex.h"
+#include "../data_sim/generated_movedex.h"
 #include "move_structs.h"
 #include "poke_enum.h"
 #include "poke_structs.h"

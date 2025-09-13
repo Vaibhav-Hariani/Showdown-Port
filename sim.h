@@ -1,10 +1,10 @@
 #ifndef SIM_H
 #define SIM_H
 
-#include "battle.h"
-#include "battle_queue.h"
-#include "move.h"
-#include "pokegen.h"
+#include "sim_setup/battle.h"
+#include "sim_setup/battle_queue.h"
+#include "sim_setup/move.h"
+#include "sim_setup/pokegen.h"
 #include "stdint.h"
 #include "stdio.h"
 

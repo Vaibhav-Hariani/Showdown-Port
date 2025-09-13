@@ -4,8 +4,8 @@
 #if DEBUG
 #include <stdio.h>
 
-#include "move_labels.h"
-#include "pokedex_labels.h"
+#include "../data_sim/move_labels.h"
+#include "../data_sim/pokedex_labels.h"
 
 char* get_move_name(int move_id) { return MoveLabels[move_id]; }
 char* get_pokemon_name(int pokemon_id) { return PokemonNames[pokemon_id]; }
