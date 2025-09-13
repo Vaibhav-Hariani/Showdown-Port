@@ -4,7 +4,7 @@
 // Structs in these files should all be pointers and can be forward declared
 #include "stdlib.h"
 #include "switch.h"
-
+#include "battle_structs.h"
 /**
 Basic idea: player swings, moves collide (based on priority/speed), and then
 follow up triggers hit the stack. Less important for Gen1.
