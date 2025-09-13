@@ -2,6 +2,7 @@
 #define POKE_STRUCTS_H
 
 #include "move_structs.h"
+#include "stdint.h"
 // Forward declarations
 typedef enum {
   STAT_HP,
@@ -34,6 +35,7 @@ struct STR_STATS {
 // Todo: add in confusion
 // I have no clue how substitute is going to work but we'll figure it out
 // eventually
+//Size is 8 bits: 1 int
 struct STR_STATUS_FLAGS {
   int paralyzed : 1;
   int burn : 1;
@@ -42,6 +44,8 @@ struct STR_STATUS_FLAGS {
   int sleep : 3;
 };
 //+-7
+
+//Can combine these into 2 16 bit ints (attack/defense/specA/specD, speed/acc/eva)
 typedef struct STR_STAT_MODS {
   int attack : 4;
   int defense : 4;
@@ -57,8 +61,9 @@ typedef struct STR_POKE {
   Move poke_moves[4];
   poke_stats stats;
   struct STR_STATUS_FLAGS status;
-  int hp;
-  int max_hp;
+  //Both of these are of length 16
+  uint16_t hp;
+  uint16_t max_hp;
   TYPE type1;
   TYPE type2;
 } Pokemon;
