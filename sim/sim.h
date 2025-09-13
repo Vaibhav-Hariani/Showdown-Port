@@ -74,7 +74,7 @@ void print_state(Player* player) {
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
-  if (! (mode == player_num || mode == 3 || mode == 0)) {
+  if (!(mode == player_num || mode == 3 || mode == 0)) {
     return 1;
   }
   if (input <= 6) {
@@ -160,17 +160,17 @@ int step(Sim* sim) {
   }
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
+  b->mode = mode;
   int a = losers(b);
-  if(a){
+  if (a) {
+    b->mode = 10 + a;
     return 10 + a;
   }
   return mode;
-  // If this is greater than 0, that means a player has lost a pokemon. If it is 10, the game is
+  // If this is greater than 0, that means a player has lost a pokemon. If it is
+  // 10, the game is
 }
 
-
-
-void c_close(Sim* s) { return; }
 // For generating the observation space.
 //  Helper: Packs 6 stat mods (each 4 bits) into a single int (24 bits used)
 //  Order: Atk (0-3), Def (4-7), Spd (8-11), SpecA (12-15), Acc (16-19), Eva
@@ -231,5 +231,7 @@ void pack_battle(Battle* b, uint16_t** out) {
 }
 
 void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
+void c_close(Sim* s) { return; }
+void c_step(Sim* sim) { step(sim);}
 
 #endif

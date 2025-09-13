@@ -16,5 +16,7 @@ typedef struct STR_BATTLE {
   int turn_num;
   Move* lastMove;
   int lastDamage;
+  //Used to determine if a pokemon needs switching
+  int mode;
 } Battle;
 #endif
