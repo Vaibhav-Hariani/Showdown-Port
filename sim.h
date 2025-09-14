@@ -185,7 +185,7 @@ void pack_battle(Battle* b, uint16_t* out) {
       Pokemon* cur = &p->team[j];
       int pokemon_index = i * 6 + j;        // Pokemon index (0-11)
       int base_offset = pokemon_index * 5;  // Each pokemon takes 5 slots
-      int* row = out + base_offset;
+      uint16_t* row = out + base_offset;
       // Pack basic pokemon info
       row[0] = cur->id;
       row[1] = cur->hp;
