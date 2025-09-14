@@ -11,7 +11,7 @@ class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
         ##Dims for observations = 6 (Pokemon) * 2(Players) * 5 (Entries per pokemon)
         self.single_observation_space = gymnasium.spaces.Box(low=0, high=1,
-            shape=(6*2,5), dtype=np.uint8)
+            shape=(60,), dtype=np.uint8)
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
         self.num_agents = num_envs
@@ -44,9 +44,8 @@ class Sim(pufferlib.PufferEnv):
         binding.vec_close(self.c_envs)
 
 if __name__ == '__main__':
-    N = 4096
-
-    env = Sim(num_envs=N)
+    N = 1
+    env = Sim(num_envs=1)
     env.reset()
     steps = 0
     CACHE = 1024

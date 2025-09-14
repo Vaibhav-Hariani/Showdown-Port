@@ -187,6 +187,8 @@ void pack_battle(Battle* b, uint16_t* out) {
       int base_offset = pokemon_index * 5;  // Each pokemon takes 5 slots
       uint16_t* row = out + base_offset;
       // Pack basic pokemon info
+      printf("Packing Pokemon %d for Player %d\n", cur->id, i + 1);
+      printf("Offset is %d\n", base_offset);
       row[0] = cur->id;
       row[1] = cur->hp;
       row[2] = pack_status(cur);
@@ -245,6 +247,9 @@ void c_reset(Sim* sim) {
 
 void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
 void c_close(Sim* s) { return; }
-void c_step(Sim* sim) { step(sim); }
+void c_step(Sim* sim) { 
+  int a = step(sim);
+  return; 
+}
 
 #endif

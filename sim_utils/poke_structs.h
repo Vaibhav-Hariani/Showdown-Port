@@ -3,6 +3,7 @@
 
 #include "move_structs.h"
 #include "stdint.h"
+#include "../data_sim/poke_enum.h"
 // Forward declarations
 typedef enum {
   STAT_HP,
@@ -57,7 +58,7 @@ typedef struct STR_STAT_MODS {
 } stat_mods;
 
 typedef struct STR_POKE {
-  unsigned char id;
+  POKEDEX_IDS id;
   Move* poke_moves;  // Changed to pointer to allow assignment from global array
   poke_stats stats;
   struct STR_STATUS_FLAGS status;
