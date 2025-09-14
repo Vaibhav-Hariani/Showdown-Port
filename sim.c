@@ -1,5 +1,44 @@
 #include "sim.h"
 
+
+// Convert to obs of ints. We can do player1 followed by p2, array of length 2*6
+// * (4 (moves), every status effect, hp,
+void print_state(Player* player) {
+  for (int i = 0; i < 6; i++) {
+    Pokemon p = player->team[i];
+    if (player->active_pokemon_index == i) {
+      printf("Active Pokemon: #%d: %s \n", i, get_pokemon_name(p.id));
+      printf(
+          "Stat Modifiers: Atk=%d, Def=%d, Spd=%d, Spec=%d, Acc=%d, "
+          "Eva=%d \n",
+          player->active_pokemon.stat_mods.attack,
+          player->active_pokemon.stat_mods.defense,
+          player->active_pokemon.stat_mods.speed,
+          player->active_pokemon.stat_mods.specA,
+          player->active_pokemon.stat_mods.accuracy,
+          player->active_pokemon.stat_mods.evasion);
+    } else {
+      printf("Pokemon #%d: %s \n", i, get_pokemon_name(p.id));
+    }
+    printf("HP: %d \t", p.hp);
+    printf("Level: %d \t", p.stats.level);
+    printf("Types: %d, %d \t", p.type1, p.type2);
+    printf("Available Moves: \n");
+    for (int j = 0; j < 4; j++) {
+      Move m = p.poke_moves[j];
+      printf(
+          "\t Label: %s; PP Remaining: %d; Power: %d; Accuracy: %.2f; Type: "
+          "%d; Category: %d \n",
+          get_move_name(m.id),
+          m.pp,
+          m.power,
+          m.accuracy,
+          m.type,
+          m.category);
+    }
+  }
+}
+
 int get_player_choice(Player* p, int p_num, int mode) {
   // Get the player's choice of action
   int choice;

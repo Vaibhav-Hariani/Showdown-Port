@@ -32,10 +32,9 @@ struct STR_STATS {
 } typedef poke_stats;
 
 // As per Davids idea: sleep turns and length is set here
-// Todo: add in confusion
 // I have no clue how substitute is going to work but we'll figure it out
 // eventually
-//Size is 8 bits: 1 int
+// Size is 8 bits: 1 int
 struct STR_STATUS_FLAGS {
   int paralyzed : 1;
   int burn : 1;
@@ -45,7 +44,8 @@ struct STR_STATUS_FLAGS {
 };
 //+-7
 
-//Can combine these into 2 16 bit ints (attack/defense/specA/specD, speed/acc/eva)
+// Can combine these into 2 16 bit ints (attack/defense/specA/specD,
+// speed/acc/eva)
 typedef struct STR_STAT_MODS {
   int attack : 4;
   int defense : 4;
@@ -58,10 +58,10 @@ typedef struct STR_STAT_MODS {
 
 typedef struct STR_POKE {
   unsigned char id;
-  Move poke_moves[4];
+  Move* poke_moves;  // Changed to pointer to allow assignment from global array
   poke_stats stats;
   struct STR_STATUS_FLAGS status;
-  //Both of these are of length 16
+  // Both of these are of length 16
   uint16_t hp;
   uint16_t max_hp;
   TYPE type1;
@@ -79,6 +79,7 @@ typedef struct STR_BATTLE_POKEMON {
   int recharge_len;
   int dmg_counter;
   int flinch : 1;
+  //Todo: Add in confusion return as
   int confusion_counter : 2;
 } BattlePokemon;
 

@@ -8,9 +8,12 @@
 #include "stdint.h"
 #include "stdio.h"
 
+// Globals so that there's no dynamic allocation
 Battle b = {0};
-Player p1 = {0};
-Player p2 = {0};
+Pokemon teams[12] = {0};
+Move moves[48] = {0};  // Max 4 moves per pokemon, 12 pokemon total
+int init = 0;
+
 // Not modifying or using for right now: leaving for future use
 typedef struct {
   float perf;   // Recommended 0-1 normalized single real number perf metric
@@ -24,56 +27,19 @@ typedef struct {
 
 typedef struct {
   Log log;  // Required field. Env binding code uses this to aggregate logs
-  uint16_t** observations;  // Required. You can use any obs type, but make sure
-                            // it matches in Python!
+  uint16_t* observations;  // Required. You can use any obs type, but make sure
+                           // it matches in Python!
   int* actions;    // Required. int* for discrete/multidiscrete, float* for box
   float* rewards;  // Required
   unsigned char*
       terminals;  // Required. We don't yet have truncations as standard yet
   Battle* battle;
   int mode;  // input mode switcher
-  //Not strictly necessary, 
-  // figure this might make life a bit easier with de-rewarding long running games.
+  // Not strictly necessary,
+  //  figure this might make life a bit easier with de-rewarding long running
+  //  games.
   int tick;
 } Sim;
-
-// Convert to obs of ints. We can do player1 followed by p2, array of length 2*6
-// * (4 (moves), every status effect, hp,
-void print_state(Player* player) {
-  for (int i = 0; i < 6; i++) {
-    Pokemon p = player->team[i];
-    if (player->active_pokemon_index == i) {
-      printf("Active Pokemon: #%d: %s \n", i, get_pokemon_name(p.id));
-      printf(
-          "Stat Modifiers: Atk=%d, Def=%d, Spd=%d, Spec=%d, Acc=%d, "
-          "Eva=%d \n",
-          player->active_pokemon.stat_mods.attack,
-          player->active_pokemon.stat_mods.defense,
-          player->active_pokemon.stat_mods.speed,
-          player->active_pokemon.stat_mods.specA,
-          player->active_pokemon.stat_mods.accuracy,
-          player->active_pokemon.stat_mods.evasion);
-    } else {
-      printf("Pokemon #%d: %s \n", i, get_pokemon_name(p.id));
-    }
-    printf("HP: %d \t", p.hp);
-    printf("Level: %d \t", p.stats.level);
-    printf("Types: %d, %d \t", p.type1, p.type2);
-    printf("Available Moves: \n");
-    for (int j = 0; j < 4; j++) {
-      Move m = p.poke_moves[j];
-      printf(
-          "\t Label: %s; PP Remaining: %d; Power: %d; Accuracy: %.2f; Type: "
-          "%d; Category: %d \n",
-          get_move_name(m.id),
-          m.pp,
-          m.power,
-          m.accuracy,
-          m.type,
-          m.category);
-    }
-  }
-}
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
@@ -204,37 +170,43 @@ int pack_status(Pokemon* p) {
   packed |= (p->status.burn & 0x1) << 1;
   packed |= (p->status.freeze & 0x1) << 2;
   packed |= (p->status.poison & 0x1) << 3;
-  packed |= ((p->status.sleep > 0) & 0x1) << 4;  // 3 bits for sleep counter
+  packed |= ((p->status.sleep > 0) & 0x1) << 4;  // 3 bits for sleep counter, just checking if it's greater than zero
   return packed;
 }
 
-void pack_gen_poke(uint16_t* out, Pokemon* p) {
-  out[0] = p->id;
-  out[1] = p->hp;
-  out[2] = pack_status(p);
-}
-
-void pack_battle(Battle* b, uint16_t** out) {
+void pack_battle(Battle* b, uint16_t* out) {
   // Each pokemon: [id, hp, status_flags, (stat_mods if active)]
   // 6 pokemon per player, 2 players
   // Active pokemon have 2 extra ints for stat mods
+  // Flattened array: 12 rows * 5 columns = 60 elements total
   for (int i = 0; i < 2; i++) {
     Player* p = get_player(b, i + 1);
     for (int j = 0; j < 6; j++) {
       Pokemon* cur = &p->team[j];
-      uint16_t* row = out[i * 6 + j];
-      pack_gen_poke(row, cur);
+      int pokemon_index = i * 6 + j;        // Pokemon index (0-11)
+      int base_offset = pokemon_index * 5;  // Each pokemon takes 5 slots
+      int* row = out + base_offset;
+      // Pack basic pokemon info
+      row[0] = cur->id;
+      row[1] = cur->hp;
+      row[2] = pack_status(cur);
       if (j == p->active_pokemon_index) {
         row[0] *= -1;  // Mark active pokemon with negative id
         stat_mods* mods = &p->active_pokemon.stat_mods;
+        row[2] |= ((p->active_pokemon.confusion_counter > 0) & 0x1) << 5;  // Add confusion bit for active pokemon
         row[3] = pack_attack_def_specA_specD(mods);
         row[4] = pack_stat_acc_eva(mods);
+      } else {
+        // Non-active pokemon don't have stat mods
+        row[3] = 0;
+        row[4] = 0;
       }
     }
   }
 }
+
 void clear_battle(Battle* b) {
-  //Dealing with players is already handled by the team generator
+  // Dealing with players is already handled by the team generator
   b->action_queue.q_size = 0;
   b->turn_num = 0;
   b->lastMove = NULL;
@@ -246,7 +218,25 @@ void clear_battle(Battle* b) {
 void c_reset(Sim* sim) {
   sim->tick = 0;
   sim->mode = 0;
-  sim->battle = &b;
+  // Do this once, only if the moves and teams haven't been initialized
+  if (!init) {
+    init = 1;
+    sim->battle = &b;
+
+    // Assign team pointers to the global arrays
+    sim->battle->p1.team =
+        &teams[0];  // Player 1 gets teams[0] through teams[5]
+    sim->battle->p2.team =
+        &teams[6];  // Player 2 gets teams[6] through teams[11]
+
+    // Assign move pointers for each Pokemon
+    // Each Pokemon gets 4 moves from the moves[48] array
+    for (int i = 0; i < 12; i++) {
+      teams[i].poke_moves =
+          &moves[i * 4];  // Pokemon i gets moves[i*4] through moves[i*4+3]
+    }
+  }
+
   clear_battle(sim->battle);
   team_generator(&sim->battle->p1);
   team_generator(&sim->battle->p2);
@@ -255,6 +245,6 @@ void c_reset(Sim* sim) {
 
 void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
 void c_close(Sim* s) { return; }
-void c_step(Sim* sim) { step(sim);}
+void c_step(Sim* sim) { step(sim); }
 
 #endif

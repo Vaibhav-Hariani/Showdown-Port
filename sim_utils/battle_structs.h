@@ -3,7 +3,7 @@
 #include "poke_structs.h"
 #include "queue_structs.h"
 typedef struct STR_PLAYER {
-  Pokemon team[6];
+  Pokemon* team;  // Changed to pointer to allow assignment from global array
   BattlePokemon active_pokemon;
   char active_pokemon_index;
 } Player;

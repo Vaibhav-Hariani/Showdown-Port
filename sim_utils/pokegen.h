@@ -6,11 +6,11 @@
 #include "../data_sim/generated_movedex.h"
 #include "../data_sim/poke_enum.h"
 #include "../data_sim/pokedex.h"
-
+#include "string.h"
 #include "move_structs.h"
 #include "poke_structs.h"
 
-#define NUM_POKEMON ((int)LAST_POKEMON)
+#define NUM_POKEMON ((int)DRAGONITE)
 
 void generate_moveset(MOVE_IDS out_moves[4],
                       const MOVE_IDS* learnset,
@@ -45,10 +45,10 @@ void load_pokemon(Pokemon* ret,
                   int* opt_id,
                   int* evs,
                   int* ivs,
-                  int* move_ids,
+                  MOVE_IDS* move_ids,
                   int* opt_level) {
   // 1. Lookup base stats/types
-  int pokedex_id = opt_id ? *opt_id : (rand() % NUM_POKEMON);
+  int pokedex_id = opt_id ? *opt_id : 1 + (rand() % NUM_POKEMON);
   const poke_ref* base = &pokemon_base[pokedex_id];
   ret->id = pokedex_id;
   ret->type1 = base->primary_type;
