@@ -4,7 +4,7 @@ import gymnasium
 import numpy as np
 
 import pufferlib
-from pufferlib.ocean.squared import binding
+from pufferlib.ocean.Showdown import binding
 
 class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
