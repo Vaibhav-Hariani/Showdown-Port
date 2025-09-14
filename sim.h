@@ -1,10 +1,10 @@
 #ifndef SIM_H
 #define SIM_H
 
-#include "sim_setup/battle.h"
-#include "sim_setup/battle_queue.h"
-#include "sim_setup/move.h"
-#include "sim_setup/pokegen.h"
+#include "sim_utils/battle.h"
+#include "sim_utils/battle_queue.h"
+#include "sim_utils/move.h"
+#include "sim_utils/pokegen.h"
 #include "stdint.h"
 #include "stdio.h"
 
@@ -29,9 +29,11 @@ typedef struct {
   float* rewards;  // Required
   unsigned char*
       terminals;  // Required. We don't yet have truncations as standard yet
-  int size;
   Battle* battle;
   int mode;  // input mode switcher
+  //Not strictly necessary, 
+  // figure this might make life a bit easier with de-rewarding long running games.
+  int tick;
 } Sim;
 
 // Convert to obs of ints. We can do player1 followed by p2, array of length 2*6
