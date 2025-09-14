@@ -9,7 +9,6 @@ typedef struct STR_PLAYER {
 } Player;
 
 typedef struct STR_BATTLE {
-  int seed;
   Player p1;
   Player p2;
   battlequeue action_queue;

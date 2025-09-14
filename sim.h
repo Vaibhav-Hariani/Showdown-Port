@@ -9,7 +9,8 @@
 #include "stdio.h"
 
 Battle b = {0};
-
+Player p1 = {0};
+Player p2 = {0};
 // Not modifying or using for right now: leaving for future use
 typedef struct {
   float perf;   // Recommended 0-1 normalized single real number perf metric
@@ -124,6 +125,7 @@ void team_generator(Player* p) {
     load_pokemon(cur, NULL, NULL, NULL, NULL, NULL);
   }
   p->active_pokemon.pokemon = &p->team[0];
+  p->active_pokemon_index = 0;
   p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
 }
@@ -230,6 +232,25 @@ void pack_battle(Battle* b, uint16_t** out) {
       }
     }
   }
+}
+void clear_battle(Battle* b) {
+  //Dealing with players is already handled by the team generator
+  b->action_queue.q_size = 0;
+  b->turn_num = 0;
+  b->lastMove = NULL;
+  b->lastDamage = 0;
+  b->mode = 0;
+  return;
+}
+
+void c_reset(Sim* sim) {
+  sim->tick = 0;
+  sim->mode = 0;
+  sim->battle = &b;
+  clear_battle(sim->battle);
+  team_generator(&sim->battle->p1);
+  team_generator(&sim->battle->p2);
+  pack_battle(sim->battle, sim->observations);
 }
 
 void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }

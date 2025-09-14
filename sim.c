@@ -26,6 +26,7 @@ int main() {
   s.battle = &b;
   s.battle->p1 = p1;
   s.battle->p2 = p2;
+  sim_reset(&s);
   team_generator(&s.battle->p1);
   team_generator(&s.battle->p2);
   // Used to check what kind of moves are valid
