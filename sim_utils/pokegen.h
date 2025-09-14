@@ -49,7 +49,7 @@ void load_pokemon(Pokemon* ret,
                   int* opt_level) {
   // 1. Lookup base stats/types
   int pokedex_id = opt_id ? *opt_id : 1 + (rand() % NUM_POKEMON);
-  const poke_ref* base = &pokemon_base[pokedex_id];
+  const poke_ref* base = &POKEMON_BASE[pokedex_id];
   ret->id = pokedex_id;
   ret->type1 = base->primary_type;
   ret->type2 = base->secondary_type;

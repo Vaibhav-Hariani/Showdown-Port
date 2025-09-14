@@ -1,6 +1,6 @@
 #ifndef MOVE_LABELS_H
 #define MOVE_LABELS_H
-const char* MoveLabels[] = {
+const char* MOVE_LABELS[] = {
     "No Move",      "Pound",        "Karate Chop",  "Doubleslap",
     "Comet Punch",  "Mega Punch",   "Pay Day",      "Fire Punch",
     "Ice Punch",    "Thunderpunch", "Scratch",      "Vicegrip",

@@ -5,7 +5,8 @@ import numpy as np
 
 import pufferlib
 from pufferlib.ocean.Showdown import binding
-
+import os
+print ("pid: ", os.getpid())
 class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
         ##Dims for observations = 6 (Pokemon) * 2(Players) * 5 (Entries per pokemon)
@@ -37,6 +38,7 @@ class Sim(pufferlib.PufferEnv):
 
     def render(self):
         binding.vec_render(self.c_envs, 0)
+        print(self.observations)
 
     def close(self):
         binding.vec_close(self.c_envs)
