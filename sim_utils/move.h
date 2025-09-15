@@ -165,6 +165,11 @@ inline int attack(Battle* b,
 }
 
 int valid_move(Player* user, int move_index) {
+  if(user->active_pokemon_index < 0) {
+    //This is a bugged state: Should never arrive here.
+    // The pokemon should have been forced to switch out by now
+    return 0;
+  }
   Move m = user->active_pokemon.pokemon->poke_moves[move_index];
   if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(m.id));

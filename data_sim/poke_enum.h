@@ -5,7 +5,7 @@
 
 typedef enum {
   // MISSINGNO=0,
-  BULBASAUR = 1,
+  BULBASAUR = 0,
   IVYSAUR,
   VENUSAUR,
   CHARMANDER,
@@ -153,8 +153,8 @@ typedef enum {
   MOLTRES,
   DRATINI,
   DRAGONAIR,
-  DRAGONITE = 149,
-  LAST_POKEMON
+  DRAGONITE = 148,
+  LAST_POKEMON=149,
 } POKEDEX_IDS;
 //     //These two are illegal in OU.
 //     Just ending the pokedex early.

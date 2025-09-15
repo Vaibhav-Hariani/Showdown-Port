@@ -59,7 +59,7 @@ typedef struct STR_STAT_MODS {
 
 typedef struct STR_POKE {
   POKEDEX_IDS id;
-  Move* poke_moves;  // Changed to pointer to allow assignment from global array
+  Move poke_moves[4];
   poke_stats stats;
   struct STR_STATUS_FLAGS status;
   // Both of these are of length 16

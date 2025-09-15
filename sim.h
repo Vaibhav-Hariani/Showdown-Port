@@ -7,12 +7,9 @@
 #include "sim_utils/pokegen.h"
 #include "stdint.h"
 #include "stdio.h"
+#include "stdlib.h"
 
-// Globals so that there's no dynamic allocation
-Battle b = {0};
-Pokemon teams[12] = {0};
-Move moves[48] = {0};  // Max 4 moves per pokemon, 12 pokemon total
-int init = 0;
+// Removed globals; memory is now owned per-env inside Sim and allocated on reset
 
 // Not modifying or using for right now: leaving for future use
 typedef struct {
@@ -34,7 +31,6 @@ typedef struct {
   unsigned char*
       terminals;  // Required. We don't yet have truncations as standard yet
   Battle* battle;
-  int mode;  // input mode switcher
   // Not strictly necessary,
   //  figure this might make life a bit easier with de-rewarding long running
   //  games.
@@ -96,12 +92,11 @@ void team_generator(Player* p) {
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
 }
 
-int step(Sim* sim) {
-  int mode = sim->mode;
+int internal_step(Sim* sim) {
   int p1_choice = sim->actions[0];
   int p2_choice = rand() % 10;
   Battle* b = sim->battle;
-
+  int mode = b->mode;
   while (!valid_choice(2, b->p2, p2_choice, mode)) {
     p2_choice = rand() % 10;
   }
@@ -130,13 +125,8 @@ int step(Sim* sim) {
   }
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
-  b->mode = mode;
   int a = losers(b);
-  if (a) {
-    b->mode = 10 + a;
-    return 10 + a;
-  }
-  return mode;
+  return a ? 10 + a : mode; 
   // If this is greater than 0, that means a player has lost a pokemon. If it is
   // 10, the game is
 }
@@ -217,24 +207,9 @@ void clear_battle(Battle* b) {
 
 void c_reset(Sim* sim) {
   sim->tick = 0;
-  sim->mode = 0;
-  // Do this once, only if the moves and teams haven't been initialized
-  if (!init) {
-    init = 1;
-    sim->battle = &b;
-
-    // Assign team pointers to the global arrays
-    sim->battle->p1.team =
-        &teams[0];  // Player 1 gets teams[0] through teams[5]
-    sim->battle->p2.team =
-        &teams[6];  // Player 2 gets teams[6] through teams[11]
-
-    // Assign move pointers for each Pokemon
-    // Each Pokemon gets 4 moves from the moves[48] array
-    for (int i = 0; i < 12; i++) {
-      teams[i].poke_moves =
-          &moves[i * 4];  // Pokemon i gets moves[i*4] through moves[i*4+3]
-    }
+  // Allocate Battle on first use; Player.team and Pokemon.poke_moves are inline
+  if (sim->battle == NULL) {
+    sim->battle = (Battle*)calloc(1, sizeof(Battle));
   }
 
   clear_battle(sim->battle);
@@ -244,12 +219,24 @@ void c_reset(Sim* sim) {
 }
 
 void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
-void c_close(Sim* s) { return; }
-void c_step(Sim* sim) { 
-  int a = step(sim);
-  end_step(sim->battle); 
+void c_close(Sim* s) {
+  if (!s) return;
+  if (s->battle) {
+    free(s->battle); // Frees the entire slab (Battle + Teams + Moves)
+    s->battle = NULL;
+  }
+  return;
+}
+void c_step(Sim* sim) {
+  int a = internal_step(sim);
+  sim->battle->mode = a;
+  if (a == 0) {
+    sim->battle->mode = end_step(sim->battle);
+  }
+  //No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue and move on
+  sim->battle->action_queue.q_size = 0; // Clear the queue before accepting switches
   sim->tick++;
-  return; 
+  return;
 }
 
 #endif

@@ -10,7 +10,7 @@
 #include "move_structs.h"
 #include "poke_structs.h"
 
-#define NUM_POKEMON ((int)DRAGONITE)
+#define NUM_POKEMON ((int)LAST_POKEMON)
 
 void generate_moveset(MOVE_IDS out_moves[4],
                       const MOVE_IDS* learnset,
@@ -48,7 +48,7 @@ void load_pokemon(Pokemon* ret,
                   MOVE_IDS* move_ids,
                   int* opt_level) {
   // 1. Lookup base stats/types
-  int pokedex_id = opt_id ? *opt_id : 1 + (rand() % NUM_POKEMON);
+  int pokedex_id = opt_id ? *opt_id : (rand() % NUM_POKEMON);
   const poke_ref* base = &POKEMON_BASE[pokedex_id];
   ret->id = pokedex_id;
   ret->type1 = base->primary_type;

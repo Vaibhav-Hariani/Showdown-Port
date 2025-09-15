@@ -43,8 +43,8 @@ class Sim(pufferlib.PufferEnv):
         binding.vec_close(self.c_envs)
 
 if __name__ == '__main__':
-    N = 1
-    env = Sim(num_envs=1)
+    N = 10
+    env = Sim(num_envs=N)
     env.reset()
     steps = 0
     CACHE = 1024
@@ -56,5 +56,5 @@ if __name__ == '__main__':
         env.step(actions[i % CACHE])
         steps += N
         i += 1
-
+        print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
     print('Squared SPS:', int(steps / (time.time() - start)))

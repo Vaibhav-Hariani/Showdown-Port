@@ -14,13 +14,13 @@ void force_switch(Player* p);
 // Any triggers that need to be resolved for inactive pokemon resolve here,
 // and the queue is reset to zero.
 
-// This is not currently being used: There are some gen1 quirks that need to be
-// addressed.
-void end_step(Battle* b) {
+// This is super
+int end_step(Battle* b) {
   // Gen 1 end step: resolve for both active pokemon
+  int ret = 0;
   for (int i = 1; i <= 2; i++) {
     Player* p = get_player(b, i);
-    DLOG("%s's Resolution", i);
+    DLOG("Player %d's Resolution", i);
     BattlePokemon* bp = &p->active_pokemon;
     Pokemon* poke = bp->pokemon;
     if (poke == NULL || p->active_pokemon_index < 0) continue;
@@ -50,8 +50,7 @@ void end_step(Battle* b) {
     if (poke->hp <= 0) {
       poke->hp = 0;
       DLOG("%s fainted!", get_pokemon_name(poke->id));
-      // You may want to trigger forced switch logic here
-      // force_switch(p);
+      ret += i;
     }
     // Clear volatile effects (example: flinch, partial trapping)
     bp->recharge_counter = 0;
@@ -59,9 +58,7 @@ void end_step(Battle* b) {
     bp->flinch = 0;  // Clear flinch status at end of turn
     // Add more volatile clears as needed
   }
-  // Reset the action queue
-  b->action_queue.q_size = 0;
-  DLOG("Action queue reset for next turn.");
+  return ret;
 }
 
 #endif
