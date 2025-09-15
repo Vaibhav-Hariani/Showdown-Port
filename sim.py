@@ -5,13 +5,12 @@ import numpy as np
 
 import pufferlib
 from pufferlib.ocean.Showdown import binding
-import os
-print ("pid: ", os.getpid())
+
 class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
         ##Dims for observations = 6 (Pokemon) * 2(Players) * 5 (Entries per pokemon)
-        self.single_observation_space = gymnasium.spaces.Box(low=0, high=1,
-            shape=(60,), dtype=np.uint8)
+        self.single_observation_space = gymnasium.spaces.Box(low=-32768, high=32767,
+            shape=(60,), dtype=np.int16)
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
         self.num_agents = num_envs

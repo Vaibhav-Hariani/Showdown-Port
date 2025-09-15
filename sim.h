@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
   Log log;  // Required field. Env binding code uses this to aggregate logs
-  uint16_t* observations;  // Required. You can use any obs type, but make sure
+  int16_t* observations;  // Required. You can use any obs type, but make sure
                            // it matches in Python!
   int* actions;    // Required. int* for discrete/multidiscrete, float* for box
   float* rewards;  // Required
@@ -46,7 +46,7 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   if (!(mode == player_num || mode == 3 || mode == 0)) {
     return 1;
   }
-  if (input <= 6) {
+  if (input < 6) {
     return valid_switch(p, input);
   }
   if (mode == 0 && input <= 9) {
@@ -56,8 +56,8 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
 }
 void action(Battle* b, Player* user, Player* target, int input, int type) {
   // Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
-  if (input >= 7) {
-    input -= 7;
+  if (input >= 6) {
+    input -= 6;
     add_move_to_queue(b, user, target, input);
   } else {
     add_switch(b, user, input, type);
@@ -174,7 +174,7 @@ int pack_status(Pokemon* p) {
   return packed;
 }
 
-void pack_battle(Battle* b, uint16_t* out) {
+void pack_battle(Battle* b, int16_t* out) {
   // Each pokemon: [id, hp, status_flags, (stat_mods if active)]
   // 6 pokemon per player, 2 players
   // Active pokemon have 2 extra ints for stat mods
@@ -185,10 +185,8 @@ void pack_battle(Battle* b, uint16_t* out) {
       Pokemon* cur = &p->team[j];
       int pokemon_index = i * 6 + j;        // Pokemon index (0-11)
       int base_offset = pokemon_index * 5;  // Each pokemon takes 5 slots
-      uint16_t* row = out + base_offset;
+      int16_t* row = out + base_offset;
       // Pack basic pokemon info
-      printf("Packing Pokemon %d for Player %d\n", cur->id, i + 1);
-      printf("Offset is %d\n", base_offset);
       row[0] = cur->id;
       row[1] = cur->hp;
       row[2] = pack_status(cur);
