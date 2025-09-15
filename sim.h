@@ -35,6 +35,7 @@ typedef struct {
   //  figure this might make life a bit easier with de-rewarding long running
   //  games.
   int tick;
+  int loser;
 } Sim;
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
@@ -135,8 +136,8 @@ int internal_step(Sim* sim) {
 //  Helper: Packs 6 stat mods (each 4 bits) into a single int (24 bits used)
 //  Order: Atk (0-3), Def (4-7), Spd (8-11), SpecA (12-15), Acc (16-19), Eva
 //  (20-23)
-int pack_attack_def_specA_specD(stat_mods* mods) {
-  int packed = 0;
+int16_t pack_attack_def_specA_specD(stat_mods* mods) {
+  int16_t packed = 0;
   packed |= (mods->attack & 0xF) << 0;
   packed |= (mods->defense & 0xF) << 4;
   packed |= (mods->specA & 0xF) << 8;
@@ -144,18 +145,27 @@ int pack_attack_def_specA_specD(stat_mods* mods) {
   return packed;
 }
 
-int pack_stat_acc_eva(stat_mods* mods) {
-  int packed = 0;
+int16_t pack_stat_acc_eva(stat_mods* mods) {
+  int16_t packed = 0;
   packed |= (mods->speed & 0xF) << 0;
   packed |= (mods->accuracy & 0xF) << 4;
   packed |= (mods->evasion & 0xF) << 8;
   return packed;
 }
+// Packs move data for a single move into an int16_t
+// Format: [move_id(8 bits), pp(6 bits)] - 2 bits unused
+int16_t pack_move(Move* move) {
+  int16_t packed = 0;
+  packed |= (int16_t)(move->id & 0xFF) << 0;    // 8 bits for move ID (0-255)
+  packed |= (int16_t)(move->pp & 0x3F) << 8;    // 6 bits for PP (0-63)
+  return packed;
+}
+
 // Packs all pokemon in the battle into the provided int array.
-// Each pokemon: [id, hp, status_flags, (stat_mods if active)]
+// Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2, move3, move4]
 // Returns the number of ints written.
-int pack_status(Pokemon* p) {
-  int packed = 0;
+int16_t pack_status(Pokemon* p) {
+  int16_t packed = 0;
   packed |= (p->status.paralyzed & 0x1) << 0;
   packed |= (p->status.burn & 0x1) << 1;
   packed |= (p->status.freeze & 0x1) << 2;
@@ -165,16 +175,16 @@ int pack_status(Pokemon* p) {
 }
 
 void pack_battle(Battle* b, int16_t* out) {
-  // Each pokemon: [id, hp, status_flags, (stat_mods if active)]
+  // Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2, move3, move4]
   // 6 pokemon per player, 2 players
   // Active pokemon have 2 extra ints for stat mods
-  // Flattened array: 12 rows * 5 columns = 60 elements total
+  // Flattened array: 12 rows * 9 columns = 108 elements total
   for (int i = 0; i < 2; i++) {
     Player* p = get_player(b, i + 1);
     for (int j = 0; j < 6; j++) {
       Pokemon* cur = &p->team[j];
       int pokemon_index = i * 6 + j;        // Pokemon index (0-11)
-      int base_offset = pokemon_index * 5;  // Each pokemon takes 5 slots
+      int base_offset = pokemon_index * 9;  // Each pokemon takes 9 slots
       int16_t* row = out + base_offset;
       // Pack basic pokemon info
       row[0] = cur->id;
@@ -191,8 +201,13 @@ void pack_battle(Battle* b, int16_t* out) {
         row[3] = 0;
         row[4] = 0;
       }
+      // Pack move data for all 4 moves
+      for (int k = 0; k < 4; k++) {
+        row[5 + k] = pack_move(&cur->poke_moves[k]);
+      }
     }
   }
+
 }
 
 void clear_battle(Battle* b) {
@@ -218,9 +233,14 @@ void c_reset(Sim* sim) {
   pack_battle(sim->battle, sim->observations);
 }
 
-void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
+void c_render(Sim* sim) { 
+  pack_battle(sim->battle, sim->observations);
+  if (sim->battle->mode >= 10) {
+    sim->loser = sim->battle->mode - 10;
+  }
+}
+
 void c_close(Sim* s) {
-  if (!s) return;
   if (s->battle) {
     free(s->battle); // Frees the entire slab (Battle + Teams + Moves)
     s->battle = NULL;

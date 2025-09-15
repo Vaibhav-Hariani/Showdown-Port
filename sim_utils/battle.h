@@ -46,7 +46,7 @@ int end_step(Battle* b) {
       poke->hp -= dmg;
       DLOG("%s took burn damage (%d HP)", get_pokemon_name(poke->id), dmg);
     }
-    // Fainting here only happens when a pokemon dies due to status.
+    // Fainting here only happens when a pokemon dies due to ailments.
     if (poke->hp <= 0) {
       poke->hp = 0;
       DLOG("%s fainted!", get_pokemon_name(poke->id));

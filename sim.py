@@ -6,11 +6,129 @@ import numpy as np
 import pufferlib
 from pufferlib.ocean.Showdown import binding
 
+
+###############################
+# Observation parsing helpers #
+###############################
+
+def _unpack_status(flags: int) -> dict:
+    """Decode status flags packed in sim.h pack_status.
+
+    Bits:
+      0: paralyzed
+      1: burn
+      2: freeze
+      3: poison
+      4: sleep (boolean: any sleep>0)
+      5: confused (set for active only)
+    """
+    f = int(flags) & 0xFFFF
+    return {
+        'paralyzed': bool((f >> 0) & 0x1),
+        'burn': bool((f >> 1) & 0x1),
+        'freeze': bool((f >> 2) & 0x1),
+        'poison': bool((f >> 3) & 0x1),
+        'sleep': bool((f >> 4) & 0x1),
+        'confused': bool((f >> 5) & 0x1),
+    }
+
+
+def _unpack_stat_mods(word1: int, word2: int) -> dict:
+    """Decode active Pokemon stat modifiers packed by:
+    - pack_attack_def_specA_specD (word1)
+    - pack_stat_acc_eva (word2)
+
+    Each modifier is a 4-bit nibble (0..15). Mapping to in-game stages
+    (-6..+6) is left to downstream logic if needed.
+    """
+    w1 = int(word1) & 0xFFFF
+    w2 = int(word2) & 0xFFFF
+    return {
+        'attack': (w1 >> 0) & 0xF,
+        'defense': (w1 >> 4) & 0xF,
+        'special_attack': (w1 >> 8) & 0xF,
+        'special_defense': (w1 >> 12) & 0xF,
+        'speed': (w2 >> 0) & 0xF,
+        'accuracy': (w2 >> 4) & 0xF,
+        'evasion': (w2 >> 8) & 0xF,
+    }
+
+
+def _unpack_move(packed: int) -> dict:
+    """Decode a move packed by sim.h pack_move.
+
+    Layout (int16): bits 0-7 = move_id, bits 8-13 = pp.
+    """
+    x = int(packed) & 0xFFFF
+    move_id = x & 0xFF
+    pp = (x >> 8) & 0x3F
+    return {'id': move_id, 'pp': pp}
+
+
+def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
+    """Parse a single flattened observation vector (shape == (108,)) into a structured dict.
+
+    This mirrors the layout produced by pack_battle in sim.h:
+      For each of 2 players, for each of 6 Pokemon (row size = 9):
+        [id, hp, status_flags, stat_mods_1, stat_mods_2, move1, move2, move3, move4]
+
+    Notes:
+      - Active Pokemon are marked by a negative id. We report absolute id and set is_active.
+      - Non-active Pokemon have stat_mods_1 and stat_mods_2 set to 0.
+      - status_flags bit 5 (confused) is only set for the active Pokemon.
+    """
+    obs = np.asarray(flat_obs)
+    if obs.ndim != 1:
+        raise ValueError(f'Expected 1D observation, got shape {obs.shape}')
+    if obs.size != 2 * team_size * 9:
+        raise ValueError(f'Unexpected observation size {obs.size}; expected {2 * team_size * 9}')
+
+    players = []
+    rows = obs.reshape(2 * team_size, 9)
+    for p_idx in range(2):
+        team = []
+        active_index = None
+        for j in range(team_size):
+            row = rows[p_idx * team_size + j]
+            raw_id = int(row[0])
+            is_active = raw_id < 0
+            poke_id = abs(raw_id)
+            if is_active:
+                active_index = j
+
+            status = _unpack_status(int(row[2]))
+            # Stat mods only meaningful for active mon; zeros otherwise
+            if is_active:
+                stat_mods = _unpack_stat_mods(int(row[3]), int(row[4]))
+            else:
+                stat_mods = None
+
+            moves = [_unpack_move(int(row[5 + k])) for k in range(4)]
+
+            team.append({
+                'id': poke_id,
+                'is_active': is_active,
+                'hp': int(row[1]),
+                'status': status,
+                'stat_mods': stat_mods,
+                'moves': moves,
+            })
+
+        players.append({
+            'active_index': active_index,
+            'team': team,
+        })
+
+    return {'players': players}
+
+
+
 class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
-        ##Dims for observations = 6 (Pokemon) * 2(Players) * 5 (Entries per pokemon)
+        ##Dims for observations = 6 (Pokemon) * 2(Players) * 9 (Entries per pokemon) = 108
+        # Each pokemon is represented by: [id, hp, status_flags, stat_mod1, stat_mod2, move1, move2, move3, move4]
         self.single_observation_space = gymnasium.spaces.Box(low=-32768, high=32767,
-            shape=(60,), dtype=np.int16)
+            shape=(108,), dtype=np.int16)
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
         self.num_agents = num_envs
@@ -37,10 +155,12 @@ class Sim(pufferlib.PufferEnv):
 
     def render(self):
         binding.vec_render(self.c_envs, 0)
-        print(self.observations)
+        return parse_observation(self.observations)
+    
 
     def close(self):
         binding.vec_close(self.c_envs)
+
 
 if __name__ == '__main__':
     N = 10
