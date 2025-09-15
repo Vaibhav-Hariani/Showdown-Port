@@ -247,6 +247,8 @@ void c_render(Sim* sim) { pack_battle(sim->battle, sim->observations); }
 void c_close(Sim* s) { return; }
 void c_step(Sim* sim) { 
   int a = step(sim);
+  end_step(sim->battle); 
+  sim->tick++;
   return; 
 }
 

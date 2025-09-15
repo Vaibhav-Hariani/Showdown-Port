@@ -24,6 +24,10 @@ int valid_switch(Player cur, int target_loc) {
 }
 
 void add_switch(Battle* b, Player* user, int target_loc, int type) {
+  if(b->action_queue.q_size >= 15) {
+    DLOG("Action queue full, cannot add switch action.");
+    return;
+  }
   Action* cur_action = (b->action_queue.queue) + b->action_queue.q_size;
   memset(cur_action, 0, sizeof(Action));
   cur_action->action_type = switch_action;
