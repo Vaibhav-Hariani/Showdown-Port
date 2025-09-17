@@ -10,6 +10,8 @@
 #include "poke_structs.h"
 #include "queue_structs.h"
 #include "utils.h"
+//for memset
+#include "string.h"
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,

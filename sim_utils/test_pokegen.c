@@ -2,28 +2,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "pokedex_labels.h"
-#include "move_labels.h"
+#include "../data_sim/pokedex.h"
+#include "../data_sim/poke_enum.h"
+#include "../data_labels/pokedex_labels.h"
+#include "../data_labels/move_labels.h"
 
-int main() {
-  srand(time(NULL));
-  int random_pokemon = rand() % NUM_POKEMON;
-  const MOVE_IDS* learnset = LEARNSETS[random_pokemon];
-  int learnset_len = LEARNSET_LENGTHS[random_pokemon];
+int stat_test(int poke){
+  const MOVE_IDS* learnset = LEARNSETS[poke];
+  int learnset_len = LEARNSET_LENGTHS[poke];
+  Pokemon p = {0};
+  printf("Selected Pokemon: %d %s\n", poke, POKE_NAMES[poke]);
+  load_pokemon(&p, NULL, &poke);
 
-  printf("Selected Pokemon: %d %s\n", random_pokemon, PokemonNames[random_pokemon]);
   printf("Learnset: ");
   for (int i = 0; i < learnset_len; i++) {
-    printf("%d %s, ", learnset[i], MoveLabels[learnset[i]]);
+    printf("%d %s, ", learnset[i], MOVE_LABELS[learnset[i]]);
   }
   printf("\n");
 
   MOVE_IDS selected_moves[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   generate_moveset(selected_moves, learnset, learnset_len);
 
-  printf("Generated Pokemon: %d %s\n", random_pokemon, PokemonNames[random_pokemon]);
+  printf("Generated Pokemon: %d %s\n", poke, POKE_NAMES[poke]);
+  // Print computed stats (HP shown as current/max)
+  printf("Stats - HP: %d/%d, Atk: %d, Def: %d, SpA: %d, SpD: %d, Spe: %d\n",
+         p.hp, p.max_hp,
+         p.stats.base_stats[STAT_ATTACK],
+         p.stats.base_stats[STAT_DEFENSE],
+         p.stats.base_stats[STAT_SPECIAL_ATTACK],
+         p.stats.base_stats[STAT_SPECIAL_DEFENSE],
+         p.stats.base_stats[STAT_SPEED]);
   for (int i = 0; i < 4; i++) {
-    printf("Move %d: %s\n", i + 1, MoveLabels[selected_moves[i]]);
+    printf("Move %d: %s\n", i + 1, MOVE_LABELS[selected_moves[i]]);
   }
+
   return 0;
+}
+int main() {
+  // srand(time(NULL));
+  int random_pokemon = CHARIZARD + 1;
+  return stat_test(random_pokemon);
 }

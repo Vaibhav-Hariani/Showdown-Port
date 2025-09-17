@@ -6,9 +6,9 @@
 #include "../data_sim/generated_movedex.h"
 #include "../data_sim/poke_enum.h"
 #include "../data_sim/pokedex.h"
-#include "string.h"
 #include "move_structs.h"
 #include "poke_structs.h"
+#include "string.h"
 
 #define NUM_POKEMON ((int)LAST_POKEMON)
 
@@ -42,12 +42,13 @@ void generate_moveset(MOVE_IDS out_moves[4],
 // take an input pokemon object, and load it with moves, DV's/EV's (optionally)
 // Can expand to take in more data
 void load_pokemon(Pokemon* ret,
-                  int* opt_id,
-                  int* evs,
-                  int* ivs,
                   MOVE_IDS* move_ids,
-                  int* opt_level) {
+                  int* opt_id) {
+                  // int* evs,
+                  // int* ivs,
+                  // int* opt_level
   // 1. Lookup base stats/types
+
   int pokedex_id = opt_id ? *opt_id : (rand() % NUM_POKEMON);
   const poke_ref* base = &POKEMON_BASE[pokedex_id];
   ret->id = pokedex_id;
@@ -55,22 +56,15 @@ void load_pokemon(Pokemon* ret,
   ret->type2 = base->secondary_type;
 
   // 2. Stats: base stats + IVs/EVs
-  int max_ev = 65535;  // Gen 1 max
-  int max_iv = 15;     // Gen 1 max
-  int level = opt_level ? *opt_level : 100;
+  int statexp = 63;  // Gen 1 max is 6335, floor(sqrt / 4) is 63
+  int dv = 15;  // Gen 1 max
+  int level = 100;
   ret->stats.level = level;
   for (int i = 0; i < STAT_COUNT; i++) {
-    int base_stat = base->base_stats[i];
-    ret->stats.base_stats[i] = base_stat;
-    // TODO: Figure out how EVs n IVs work in gen1 and implement here
-    //  int ev = evs ? evs[i] : max_ev;
-    //  int iv = ivs ? ivs[i] : max_iv;
-    //  if (i == STAT_HP) {
-    //    ret->stats.base_stats[i] =
-    //        (((base_stat + iv) * 2 + (ev / 4)) * level / 100) + level + 10;
-    //  } else {
-    //    ret->stats.base_stats[i] =
-    //        (((base_stat + iv) * 2 + (ev / 4)) * level / 100) + 5;
+    // maxxing out for gen1
+    // Gen1 had StatExp instead of evs:
+    // https://bulbapedia.bulbagarden.net/wiki/Stat#Formula Can be maxxed right away.
+    ret->stats.base_stats[i] = ((base->base_stats[i] + dv) * 2 + statexp) + 5;
   }
   // 3. Moves
   if (move_ids) {
@@ -90,7 +84,9 @@ void load_pokemon(Pokemon* ret,
     }
   }
   // 4. HP
-  ret->max_hp = ret->stats.base_stats[STAT_HP];
+  //Assuming max level simplifies this transaction dramatically
+  ret->max_hp = (ret->stats.base_stats[STAT_HP] + dv) * 2 + statexp + 110;
+
   ret->hp = ret->max_hp;
   // 5. Status
   // Zero out status flags
