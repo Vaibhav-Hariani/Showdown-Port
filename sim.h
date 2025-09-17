@@ -9,7 +9,8 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-// Removed globals; memory is now owned per-env inside Sim and allocated on reset
+// Removed globals; memory is now owned per-env inside Sim and allocated on
+// reset
 
 // Not modifying or using for right now: leaving for future use
 typedef struct {
@@ -25,7 +26,7 @@ typedef struct {
 typedef struct {
   Log log;  // Required field. Env binding code uses this to aggregate logs
   int16_t* observations;  // Required. You can use any obs type, but make sure
-                           // it matches in Python!
+                          // it matches in Python!
   int* actions;    // Required. int* for discrete/multidiscrete, float* for box
   float* rewards;  // Required
   unsigned char*
@@ -63,23 +64,28 @@ void action(Battle* b, Player* user, Player* target, int input, int type) {
   return;
 }
 
-// return 0 if nobody has won, or player_num(s) if a player has LOST.
-int losers(Battle* b) {
-  int losers = 0;
-  for (int i = 1; i <= 2; i++) {
-    int living = 0;
-    Player* p = get_player(b, i);
-    for (int j = 0; j < 6; j++) {
-      if (p->team[j].hp > 0) {
-        living = 1;
-        break;
-      }
-    }
-    if (living <= 0) {
-      losers += i;
-    }
+// Returns a reward in [-1, 1]:
+// -1 if player 1 has lost all Pokémon
+//  1 if player 2 has lost all Pokémon
+// Otherwise, mean percent HP remaining for both teams, normalized: (mean_p1 -
+// mean_p2)
+float reward(Battle* b) {
+  float p1_percent_sum = 0, p2_percent_sum = 0;
+  for (int j = 0; j < 6; j++) {
+    float max_hp1 = (float)b->p1.team[j].max_hp;
+    p1_percent_sum += max_hp1 > 0 ? ((float)b->p1.team[j].hp / max_hp1) : 0.0f;
+    float max_hp2 = (float)b->p2.team[j].max_hp;
+    p2_percent_sum += max_hp2 > 0 ? ((float)b->p2.team[j].hp / max_hp2) : 0.0f;
   }
-  return losers;
+  float mean_p1 = p1_percent_sum / 6.0f;
+  float mean_p2 = p2_percent_sum / 6.0f;
+  if (mean_p1 == 0.0f) return -1.0f;
+  if (mean_p2 == 0.0f) return 1.0f;
+  float result = mean_p1 - mean_p2;
+  // Clamp to [-1, 1] just in case
+  if (result > 1.0f) result = 1.0f;
+  if (result < -1.0f) result = -1.0f;
+  return result;
 }
 
 void team_generator(Player* p) {
@@ -126,8 +132,9 @@ int internal_step(Sim* sim) {
   }
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
-  int a = losers(b);
-  return a ? 10 + a : mode; 
+  float a = reward(b);
+  sim->rewards[0] = a;
+  return mode;
   // If this is greater than 0, that means a player has lost a pokemon. If it is
   // 10, the game is
 }
@@ -156,58 +163,65 @@ int16_t pack_stat_acc_eva(stat_mods* mods) {
 // Format: [move_id(8 bits), pp(6 bits)] - 2 bits unused
 int16_t pack_move(Move* move) {
   int16_t packed = 0;
-  packed |= (int16_t)(move->id & 0xFF) << 0;    // 8 bits for move ID (0-255)
-  packed |= (int16_t)(move->pp & 0x3F) << 8;    // 6 bits for PP (0-63)
+  packed |= (int16_t)(move->id & 0xFF) << 0;  // 8 bits for move ID (0-255)
+  packed |= (int16_t)(move->pp & 0x3F) << 8;  // 6 bits for PP (0-63)
   return packed;
 }
 
 // Packs all pokemon in the battle into the provided int array.
-// Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2, move3, move4]
-// Returns the number of ints written.
+// Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2,
+// move3, move4] Returns the number of ints written.
 int16_t pack_status(Pokemon* p) {
   int16_t packed = 0;
   packed |= (p->status.paralyzed & 0x1) << 0;
   packed |= (p->status.burn & 0x1) << 1;
   packed |= (p->status.freeze & 0x1) << 2;
   packed |= (p->status.poison & 0x1) << 3;
-  packed |= ((p->status.sleep > 0) & 0x1) << 4;  // 3 bits for sleep counter, just checking if it's greater than zero
+  packed |= ((p->status.sleep > 0) & 0x1)
+            << 4;  // 3 bits for sleep counter, just checking if it's greater
+                   // than zero
   return packed;
 }
 
+void pack_poke(int16_t* row, Player* player, int poke_index) {
+  Pokemon* poke = &player->team[poke_index];
+  row[0] = poke->id + 1; // Currently starting pokedex at zero; this should fix that (?)
+  row[1] = poke->hp;
+  // Also contains confusion if the pokemon is active (and confused)
+  row[2] = pack_status(poke);
+  for (int k = 0; k < 4; k++) {
+    row[3 + k] = pack_move(&poke->poke_moves[k]);
+  }
+  if (poke_index == player->active_pokemon_index) {
+    row[0] *= -1;  // Mark active pokemon with negative id
+    stat_mods* mods = &player->active_pokemon.stat_mods;
+    row[7] = pack_attack_def_specA_specD(mods);
+    row[8] = pack_stat_acc_eva(mods);
+  } else {
+    row[7] = 0;
+    row[8] = 0;
+  }
+}
+
 void pack_battle(Battle* b, int16_t* out) {
-  // Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2, move3, move4]
-  // 6 pokemon per player, 2 players
-  // Active pokemon have 2 extra ints for stat mods
-  // Flattened array: 12 rows * 9 columns = 108 elements total
+  // Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2,
+  // move3, move4] 6 pokemon per player, 2 players Active pokemon have 2 extra
+  // ints for stat mods Flattened array: 12 rows * 9 columns = 108 elements
+  // total
   for (int i = 0; i < 2; i++) {
     Player* p = get_player(b, i + 1);
     for (int j = 0; j < 6; j++) {
-      Pokemon* cur = &p->team[j];
-      int pokemon_index = i * 6 + j;        // Pokemon index (0-11)
-      int base_offset = pokemon_index * 9;  // Each pokemon takes 9 slots
+      int pokemon_index = i * 6 + j;
+      int base_offset = pokemon_index * 9;
       int16_t* row = out + base_offset;
-      // Pack basic pokemon info
-      row[0] = cur->id;
-      row[1] = cur->hp;
-      row[2] = pack_status(cur);
-      if (j == p->active_pokemon_index) {
-        row[0] *= -1;  // Mark active pokemon with negative id
-        stat_mods* mods = &p->active_pokemon.stat_mods;
-        row[2] |= ((p->active_pokemon.confusion_counter > 0) & 0x1) << 5;  // Add confusion bit for active pokemon
-        row[3] = pack_attack_def_specA_specD(mods);
-        row[4] = pack_stat_acc_eva(mods);
-      } else {
-        // Non-active pokemon don't have stat mods
-        row[3] = 0;
-        row[4] = 0;
+      // Forcing the obscuring of unseen opponent pokemon
+      if (i == 1 && !(b->p1.seen_pokemon & (1 << j))) {
+        for (int z = 0; z < 9; z++) row[z] = 0;
+        continue;
       }
-      // Pack move data for all 4 moves
-      for (int k = 0; k < 4; k++) {
-        row[5 + k] = pack_move(&cur->poke_moves[k]);
-      }
+      pack_poke(row, p, j);
     }
   }
-
 }
 
 void clear_battle(Battle* b) {
@@ -233,29 +247,26 @@ void c_reset(Sim* sim) {
   pack_battle(sim->battle, sim->observations);
 }
 
-void c_render(Sim* sim) { 
-  pack_battle(sim->battle, sim->observations);
-  if (sim->battle->mode >= 10) {
-    sim->loser = sim->battle->mode - 10;
+void c_render(Sim* sim) { return; }
+void c_close(Sim* sim) {
+  if (sim->battle) {
+    free(sim->battle);  // Frees the entire slab (Battle + Teams + Moves)
+    sim->battle = NULL;
   }
+  pack_battle(sim->battle, sim->observations);
 }
 
-void c_close(Sim* s) {
-  if (s->battle) {
-    free(s->battle); // Frees the entire slab (Battle + Teams + Moves)
-    s->battle = NULL;
-  }
-  return;
-}
 void c_step(Sim* sim) {
   int a = internal_step(sim);
   sim->battle->mode = a;
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);
   }
-  //No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue and move on
-  sim->battle->action_queue.q_size = 0; // Clear the queue before accepting switches
+  // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
+  // and move on
+  sim->battle->action_queue.q_size = 0; 
   sim->tick++;
+  pack_battle(sim->battle, sim->observations);
   return;
 }
 

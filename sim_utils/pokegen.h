@@ -51,7 +51,12 @@ void load_pokemon(Pokemon* ret,
                   // int* ivs,
                   // int* opt_level
   // 1. Lookup base stats/types
-  POKEDEX_IDS pokedex_id = opt_id > 0 ? opt_id : (rand() % NUM_POKEMON);
+  
+  POKEDEX_IDS pokedex_id = opt_id;
+  //Maybe this is more innefficient but this way everythings offset properly: zero is a null_poke
+  while(pokedex_id == MISSINGNO) {
+    pokedex_id = rand() % NUM_POKEMON;
+  }
   const poke_ref* base = &POKEMON_BASE[pokedex_id];
   ret->id = pokedex_id;
   ret->type1 = base->primary_type;

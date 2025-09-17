@@ -1,11 +1,14 @@
 #ifndef BATTLE_STRUCTS_H
 #define BATTLE_STRUCTS_H
+
 #include "poke_structs.h"
 #include "queue_structs.h"
 typedef struct STR_PLAYER {
   Pokemon team[6];
   BattlePokemon active_pokemon;
   char active_pokemon_index;
+  // Bitfield: 6 bits, tracks which opponent Pokémon have been seen
+  unsigned int seen_pokemon : 6;
 } Player;
 
 typedef struct STR_BATTLE {

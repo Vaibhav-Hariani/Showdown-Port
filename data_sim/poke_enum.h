@@ -4,8 +4,8 @@
 #define POKE_ENUM_H
 
 typedef enum {
-  // MISSINGNO=0,
-  BULBASAUR = 0,
+  MISSINGNO=0,
+  BULBASAUR = 1,
   IVYSAUR,
   VENUSAUR,
   CHARMANDER,

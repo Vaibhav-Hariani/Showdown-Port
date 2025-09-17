@@ -14,6 +14,7 @@ typedef struct {
 } poke_ref;
 
 const poke_ref POKEMON_BASE[] = {
+    {MISSINGNO, {0, 0, 0, 0, 0, 0}, NONETYPE, NONETYPE},
     {BULBASAUR, {45, 49, 49, 65, 65, 45}, GRASS, POISON},
     {IVYSAUR, {60, 62, 63, 80, 80, 60}, GRASS, POISON},
     {VENUSAUR, {80, 82, 83, 100, 100, 80}, GRASS, POISON},
