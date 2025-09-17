@@ -14,12 +14,6 @@ int stat_test(int poke){
   printf("Selected Pokemon: %d %s\n", poke, POKE_NAMES[poke]);
   load_pokemon(&p, NULL, &poke);
 
-  printf("Learnset: ");
-  for (int i = 0; i < learnset_len; i++) {
-    printf("%d %s, ", learnset[i], MOVE_LABELS[learnset[i]]);
-  }
-  printf("\n");
-
   MOVE_IDS selected_moves[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   generate_moveset(selected_moves, learnset, learnset_len);
 
