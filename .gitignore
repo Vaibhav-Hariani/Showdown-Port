@@ -1,8 +1,11 @@
+*
+!.*
 .vscode/
 *.code-workspace
 *.gch
 *.o
 *.out
 *.so
+
 resources
 __pycache__/

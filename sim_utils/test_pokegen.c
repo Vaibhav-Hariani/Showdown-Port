@@ -7,7 +7,7 @@
 #include "../data_labels/pokedex_labels.h"
 #include "../data_labels/move_labels.h"
 
-int stat_test(int poke){
+int stat_test(POKEDEX_IDS poke){
   const MOVE_IDS* learnset = LEARNSETS[poke];
   int learnset_len = LEARNSET_LENGTHS[poke];
   Pokemon p = {0};
@@ -34,6 +34,6 @@ int stat_test(int poke){
 }
 int main() {
   // srand(time(NULL));
-  int random_pokemon = CHARIZARD + 1;
+  POKEDEX_IDS random_pokemon = CHARIZARD;
   return stat_test(random_pokemon);
 }

@@ -12,6 +12,9 @@
 
 #define NUM_POKEMON ((int)LAST_POKEMON)
 
+//DV * 15 + floor(statexp/4)
+#define MAX_CONST_STATBOOST 93
+
 void generate_moveset(MOVE_IDS out_moves[4],
                       const MOVE_IDS* learnset,
                       int learnset_len) {
@@ -43,28 +46,34 @@ void generate_moveset(MOVE_IDS out_moves[4],
 // Can expand to take in more data
 void load_pokemon(Pokemon* ret,
                   MOVE_IDS* move_ids,
-                  int* opt_id) {
+                  int opt_id) {
                   // int* evs,
                   // int* ivs,
                   // int* opt_level
   // 1. Lookup base stats/types
-
-  int pokedex_id = opt_id ? *opt_id : (rand() % NUM_POKEMON);
+  POKEDEX_IDS pokedex_id = opt_id > 0 ? opt_id : (rand() % NUM_POKEMON);
   const poke_ref* base = &POKEMON_BASE[pokedex_id];
   ret->id = pokedex_id;
   ret->type1 = base->primary_type;
   ret->type2 = base->secondary_type;
 
   // 2. Stats: base stats + IVs/EVs
-  int statexp = 63;  // Gen 1 max is 6335, floor(sqrt / 4) is 63
-  int dv = 15;  // Gen 1 max
-  int level = 100;
-  ret->stats.level = level;
-  for (int i = 0; i < STAT_COUNT; i++) {
+  // int statexp = 63;  // Gen 1 max is 65535, floor(sqrt / 4) is 63
+  // int dv = 15;  // Gen 1 max
+  // int level = 100;
+  ret->stats.level = 100;
+
+  // 4. HP
+  //Assuming max level simplifies this transaction dramatically
+  int hp = base->base_stats[STAT_HP] * 2 + MAX_CONST_STATBOOST + 110;
+  ret->stats.base_stats[STAT_HP] = hp;
+  ret->max_hp = hp;
+  ret->hp = hp;
+  for (int i = 1; i < STAT_COUNT; i++) {
     // maxxing out for gen1
     // Gen1 had StatExp instead of evs:
     // https://bulbapedia.bulbagarden.net/wiki/Stat#Formula Can be maxxed right away.
-    ret->stats.base_stats[i] = ((base->base_stats[i] + dv) * 2 + statexp) + 5;
+    ret->stats.base_stats[i] = base->base_stats[i] * 2 + MAX_CONST_STATBOOST + 5;
   }
   // 3. Moves
   if (move_ids) {
@@ -83,11 +92,6 @@ void load_pokemon(Pokemon* ret,
       ret->poke_moves[i] = MOVES[id];
     }
   }
-  // 4. HP
-  //Assuming max level simplifies this transaction dramatically
-  ret->max_hp = (ret->stats.base_stats[STAT_HP] + dv) * 2 + statexp + 110;
-
-  ret->hp = ret->max_hp;
   // 5. Status
   // Zero out status flags
   memset(&ret->status, 0, sizeof(ret->status));

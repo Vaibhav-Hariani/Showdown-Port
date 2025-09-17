@@ -85,7 +85,7 @@ int losers(Battle* b) {
 void team_generator(Player* p) {
   for (int i = 0; i < 6; i++) {
     Pokemon* cur = &p->team[i];
-    load_pokemon(cur, NULL, NULL, NULL, NULL, NULL);
+    load_pokemon(cur, NULL, -1);
   }
   p->active_pokemon.pokemon = &p->team[0];
   p->active_pokemon_index = 0;
