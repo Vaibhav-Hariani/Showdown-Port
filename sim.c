@@ -1,6 +1,5 @@
 #include "sim.h"
 
-
 // Convert to obs of ints. We can do player1 followed by p2, array of length 2*6
 // * (4 (moves), every status effect, hp,
 void print_state(Player* player) {
@@ -58,34 +57,35 @@ int main() {
   // seeding for testing
   srand(42);
   Sim s = {0};
+  s.observations = (int16_t*)calloc(108, sizeof(int16_t));
+  Battle bat = {0};
+  float reward = 0.0f;
+  s.battle = &bat;
+  s.rewards = &reward;
   c_reset(&s);
   team_generator(&s.battle->p1);
   team_generator(&s.battle->p2);
   // Used to check what kind of moves are valid
-  int mode = 0;
   Battle* b = s.battle;
-  while (mode < 10) {
+
+  while (s.rewards[0] * s.rewards[0] != 1.0f) {
     printf("Player 1 Info \n");
     print_state(&b->p1);
     printf("\n Player 2 Info \n");
     print_state(&b->p2);
     // Simulate a turn
-    int p1_choice = get_player_choice(&b->p1, 1, mode);
-    int p2_choice = get_player_choice(&b->p2, 2, mode);
-    mode = step(&s);
+    printf("Reward: %.2f \n", s.rewards[0]);
+    int p1_choice = get_player_choice(&b->p1, 1, b->mode);
+    // int p2_choice = get_player_choice(&b->p2, 2, mode);
+    internal_step(&s, p1_choice);
+    if (b->mode == 0) {
+      end_step(b);
+    }
+    s.battle->action_queue.q_size = 0;
   }
-  printf("Final states: \n");
   printf("Player 1 Info \n");
   print_state(&b->p1);
   printf("\n Player 2 Info \n");
   print_state(&b->p2);
-  int loser_nums = mode - 10;
-  if (loser_nums == 1     ) {
-    printf("Player 1 has lost! \n");
-  } else if (loser_nums == 2) {
-    printf("Player 2 has lost! \n");
-  } else if (loser_nums == 3) {
-    printf("It's a tie! Both players have lost! \n");
-  }
   return 0;
 }

@@ -87,7 +87,7 @@ int eval_queue(Battle* b) {
 
       //Cleanup
       if (User->active_pokemon.pokemon->hp <= 0) {
-        DLOG("%s Fainted!", get_pokemon_name(b->p1.active_pokemon.pokemon->id));
+        DLOG("%s Fainted!", get_pokemon_name(User->active_pokemon.pokemon->id));
         // Clear the currently active pokemon
         User->active_pokemon = (BattlePokemon){0};
         User->active_pokemon_index = -1;
@@ -96,7 +96,7 @@ int eval_queue(Battle* b) {
       // Handle active pokemon fainting
       if (Target->active_pokemon.pokemon->hp <= 0) {
         DLOG("The Opposing %s Fainted!",
-             get_pokemon_name(b->p2.active_pokemon.pokemon->id));
+             get_pokemon_name(Target->active_pokemon.pokemon->id));
         // Clear the currently active pokemon
         Target->active_pokemon = (BattlePokemon){0};
         Target->active_pokemon_index = -1;

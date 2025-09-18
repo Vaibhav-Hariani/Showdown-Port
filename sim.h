@@ -72,13 +72,15 @@ void action(Battle* b, Player* user, Player* target, int input, int type) {
 float reward(Battle* b) {
   float p1_percent_sum = 0, p2_percent_sum = 0;
   for (int j = 0; j < 6; j++) {
-    float max_hp1 = (float)b->p1.team[j].max_hp;
-    p1_percent_sum += max_hp1 > 0 ? ((float)b->p1.team[j].hp / max_hp1) : 0.0f;
-    float max_hp2 = (float)b->p2.team[j].max_hp;
-    p2_percent_sum += max_hp2 > 0 ? ((float)b->p2.team[j].hp / max_hp2) : 0.0f;
+    float hp1 = b->p1.team[j].hp;
+    p1_percent_sum += hp1 > 0 ? (hp1 / b->p1.team[j].max_hp) : 0.0f;
+    float hp2 = b->p2.team[j].hp;
+    p2_percent_sum += hp2 > 0 ? (hp2 / b->p2.team[j].max_hp) : 0.0f;
   }
   float mean_p1 = p1_percent_sum / 6.0f;
   float mean_p2 = p2_percent_sum / 6.0f;
+
+  //These checks are likely unnecessary...
   if (mean_p1 == 0.0f) return -1.0f;
   if (mean_p2 == 0.0f) return 1.0f;
   float result = mean_p1 - mean_p2;
@@ -91,7 +93,7 @@ float reward(Battle* b) {
 void team_generator(Player* p) {
   for (int i = 0; i < 6; i++) {
     Pokemon* cur = &p->team[i];
-    load_pokemon(cur, NULL, -1);
+    load_pokemon(cur, NULL, 0);
   }
   p->active_pokemon.pokemon = &p->team[0];
   p->active_pokemon_index = 0;
@@ -99,11 +101,14 @@ void team_generator(Player* p) {
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
 }
 
-int internal_step(Sim* sim) {
-  int p1_choice = sim->actions[0];
-  int p2_choice = rand() % 10;
+int internal_step(Sim* sim, int choice) {
+  int p1_choice = choice;
+
+  //Make a regular move if feasible
+  int p2_choice = rand() % 4 + 6;
   Battle* b = sim->battle;
   int mode = b->mode;
+
   while (!valid_choice(2, b->p2, p2_choice, mode)) {
     p2_choice = rand() % 10;
   }
@@ -132,6 +137,7 @@ int internal_step(Sim* sim) {
   }
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
+  b->mode = mode;
   float a = reward(b);
   sim->rewards[0] = a;
   return mode;
@@ -215,7 +221,7 @@ void pack_battle(Battle* b, int16_t* out) {
       int base_offset = pokemon_index * 9;
       int16_t* row = out + base_offset;
       // Forcing the obscuring of unseen opponent pokemon
-      if (i == 1 && !(b->p1.seen_pokemon & (1 << j))) {
+      if (i == 2 && !(b->p1.shown_pokemon & (1 << j))) {
         for (int z = 0; z < 9; z++) row[z] = 0;
         continue;
       }
@@ -247,7 +253,9 @@ void c_reset(Sim* sim) {
   pack_battle(sim->battle, sim->observations);
 }
 
+//No rendering: bare text
 void c_render(Sim* sim) { return; }
+
 void c_close(Sim* sim) {
   if (sim->battle) {
     free(sim->battle);  // Frees the entire slab (Battle + Teams + Moves)
@@ -257,7 +265,7 @@ void c_close(Sim* sim) {
 }
 
 void c_step(Sim* sim) {
-  int a = internal_step(sim);
+  int a = internal_step(sim, sim->actions[0]);
   sim->battle->mode = a;
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);

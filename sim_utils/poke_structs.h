@@ -63,8 +63,8 @@ typedef struct STR_POKE {
   poke_stats stats;
   struct STR_STATUS_FLAGS status;
   // Both of these are of length 16
-  uint16_t hp;
-  uint16_t max_hp;
+  int16_t hp;
+  int16_t max_hp;
   TYPE type1;
   TYPE type2;
 } Pokemon;

@@ -48,11 +48,9 @@ void add_switch(Battle* b, Player* user, int target_loc, int type) {
 // Main switch handler
 void perform_switch_action(Action* current_action) {
   int target = current_action->action_d.switch_target;
-
   Player* user = current_action->User;
-  Player* target_player = current_action->Target;
-  // Mark the index of the switched-in Pokémon as seen for the Target player
-  target_player->seen_pokemon |= (1 << target);
+  // Mark the index of the switched-in Pokémon as shown for the User player
+  user->shown_pokemon |= (1 << target);
   // Clear the current active pokemon getup
   memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
   int old_active = user->active_pokemon_index;
