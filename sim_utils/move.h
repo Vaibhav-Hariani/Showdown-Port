@@ -4,14 +4,15 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "battle_structs.h"
 #include "move_structs.h"
 #include "poke_structs.h"
 #include "queue_structs.h"
+#include "stat_modifiers.h"
 #include "utils.h"
-//for memset
-#include "string.h"
+
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
@@ -28,15 +29,20 @@ static inline int calculate_damage(BattlePokemon* attacker,
   int defense_stat;
 
   // Critical hits ignore the stat modifiers.
+  // TODO: Focus energy also has a special critical hit effect.
   // How this is handled should be decided separately
 
   // TODO: Not handling stat modifiers quite yet
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
+    attack_stat *= get_stat_modifier(attacker->stat_mods.specA);
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
+    defense_stat *= get_stat_modifier(defender->stat_mods.specD);
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
+    attack_stat *= get_stat_modifier(attacker->stat_mods.attack);
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
+    defense_stat *= get_stat_modifier(defender->stat_mods.defense);
   }
 
   int level = base_attacker->stats.level;
@@ -146,6 +152,19 @@ inline int attack(Battle* b,
     Move m = attacker->recharge_src;
     m.movePtr(b, attacker, defender);
   }
+
+  // Check for accuracy
+  float accuracy = used_move->accuracy *
+                   get_stat_modifier(attacker->stat_mods.accuracy) *
+                   get_evasion_modifier(defender->stat_mods.evasion);
+  float accuracy_random = (rand() % 255);
+  if (accuracy < accuracy_random) {
+    DLOG("%s's attack %s missed!",
+         get_pokemon_name(attacker->pokemon->id),
+         get_move_name(used_move->id));
+    return 0;
+  }
+
   if (used_move->power != 0) {
     DLOG("%s used %s!",
          get_pokemon_name(attacker->pokemon->id),
@@ -167,9 +186,9 @@ inline int attack(Battle* b,
 }
 
 int valid_move(Player* user, int move_index) {
-  if(user->active_pokemon_index < 0) {
-    //This is a bugged state: Should never arrive here.
-    // The pokemon should have been forced to switch out by now
+  if (user->active_pokemon_index < 0) {
+    // This is a bugged state: Should never arrive here.
+    //  The pokemon should have been forced to switch out by now
     return 0;
   }
   Move m = user->active_pokemon.pokemon->poke_moves[move_index];
@@ -200,8 +219,8 @@ int add_move_to_queue(Battle* battle,
     action_ptr->Target = target;
     action_ptr->order = 200;  // Use 200 as the order for moves
     action_ptr->priority = move->priority;
-    // TODO: Speed should be impacted by the pokemon's stat modifiers
-    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED] *
+                        get_stat_modifier(battle_poke->stat_mods.speed);
     action_ptr->origLoc = user->active_pokemon_index;
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
