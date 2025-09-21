@@ -24,6 +24,16 @@ int end_step(Battle* b) {
       Pokemon* poke = &p->team[j];
       int is_active = (j == p->active_pokemon_index);
       int fainted = 0;
+      // Sleep
+      if (poke->status.sleep) {
+        p->active_pokemon.sleep_ctr--;
+
+        if (p->active_pokemon.sleep_ctr == 0) {
+          DLOG("%s woke up!", get_pokemon_name(poke->id));
+        } else {
+          DLOG("%s is fast asleep.", get_pokemon_name(poke->id));
+        }
+      }
       // Poison damage
       if (poke->status.poison) {
         int dmg = poke->max_hp / 16;
@@ -36,7 +46,9 @@ int end_step(Battle* b) {
         dmg = min(dmg, 15 * poke->max_hp / 16);
         poke->hp -= dmg;
         p->active_pokemon.badly_poisoned_ctr++;
-        DLOG("%s took badly poisoned damage (%d HP)", get_pokemon_name(poke->id), dmg);
+        DLOG("%s took badly poisoned damage (%d HP)",
+             get_pokemon_name(poke->id),
+             dmg);
       }
       // Burn damage
       if (poke->status.burn) {

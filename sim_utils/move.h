@@ -10,7 +10,7 @@
 #include "poke_structs.h"
 #include "queue_structs.h"
 #include "utils.h"
-//for memset
+// for memset
 #include "string.h"
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
@@ -33,6 +33,9 @@ static inline int calculate_damage(BattlePokemon* attacker,
   // TODO: Not handling stat modifiers quite yet
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
+    if (attacker->pokemon->status.burn) {
+      attack_stat /= 2;  // Burn halves physical attack
+    }
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
@@ -163,13 +166,20 @@ inline int attack(Battle* b,
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender);
   }
+
+  // Handle freeze thawing
+  if (defender->pokemon->status.freeze && used_move->type == FIRE &&
+      used_move->id != FIRE_SPIN_MOVE_ID) {
+    attacker->pokemon->status.freeze = 0;
+    DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+  }
   return 1;
 }
 
 int valid_move(Player* user, int move_index) {
-  if(user->active_pokemon_index < 0) {
-    //This is a bugged state: Should never arrive here.
-    // The pokemon should have been forced to switch out by now
+  if (user->active_pokemon_index < 0) {
+    // This is a bugged state: Should never arrive here.
+    //  The pokemon should have been forced to switch out by now
     return 0;
   }
   Move m = user->active_pokemon.pokemon->poke_moves[move_index];
@@ -202,6 +212,9 @@ int add_move_to_queue(Battle* battle,
     action_ptr->priority = move->priority;
     // TODO: Speed should be impacted by the pokemon's stat modifiers
     action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    if (battle_poke->pokemon->status.paralyzed) {
+      action_ptr->speed /= 4;
+    }
     action_ptr->origLoc = user->active_pokemon_index;
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
