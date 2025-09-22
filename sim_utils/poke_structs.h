@@ -1,9 +1,9 @@
 #ifndef POKE_STRUCTS_H
 #define POKE_STRUCTS_H
 
+#include "../data_sim/poke_enum.h"
 #include "move_structs.h"
 #include "stdint.h"
-#include "../data_sim/poke_enum.h"
 // Forward declarations
 typedef enum {
   STAT_HP,
@@ -32,29 +32,28 @@ struct STR_STATS {
   // int teratype;
 } typedef poke_stats;
 
-// As per Davids idea: sleep turns and length is set here
 // I have no clue how substitute is going to work but we'll figure it out
 // eventually
 // Size is 8 bits: 1 int
 struct STR_STATUS_FLAGS {
-  int paralyzed : 1;
-  int burn : 1;
-  int freeze : 1;
-  int poison : 1;
-  int sleep : 3;
+  char paralyzed : 1;
+  char burn : 1;
+  char freeze : 1;
+  char poison : 1;
+  char sleep : 1;
 };
 //+-7
 
 // Can combine these into 2 16 bit ints (attack/defense/specA/specD,
 // speed/acc/eva)
 typedef struct STR_STAT_MODS {
-  int attack : 4;
-  int defense : 4;
-  int speed : 4;
-  int specA : 4;
-  int specD : 4;
-  int accuracy : 4;
-  int evasion : 4;
+  char attack : 4;
+  char defense : 4;
+  char speed : 4;
+  char specA : 4;
+  char specD : 4;
+  char accuracy : 4;
+  char evasion : 4;
 } stat_mods;
 
 typedef struct STR_POKE {
@@ -75,12 +74,13 @@ typedef struct STR_BATTLE_POKEMON {
   TYPE type1;
   TYPE type2;
   int badly_poisoned_ctr;
+  int sleep_ctr;
   int recharge_counter;
   Move recharge_src;
   int recharge_len;
   int dmg_counter;
   int flinch : 1;
-  //Todo: Add in confusion return as
+  // Todo: Add in confusion return as
   int confusion_counter : 2;
 } BattlePokemon;
 

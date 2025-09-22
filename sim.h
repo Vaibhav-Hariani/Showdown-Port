@@ -80,7 +80,7 @@ float reward(Battle* b) {
   float mean_p1 = p1_percent_sum / 6.0f;
   float mean_p2 = p2_percent_sum / 6.0f;
 
-  //These checks are likely unnecessary...
+  // These checks are likely unnecessary...
   if (mean_p1 == 0.0f) return -1.0f;
   if (mean_p2 == 0.0f) return 1.0f;
   float result = mean_p1 - mean_p2;
@@ -104,7 +104,7 @@ void team_generator(Player* p) {
 int internal_step(Sim* sim, int choice) {
   int p1_choice = choice;
 
-  //Make a regular move if feasible
+  // Make a regular move if feasible
   int p2_choice = rand() % 4 + 6;
   Battle* b = sim->battle;
   int mode = b->mode;
@@ -117,8 +117,16 @@ int internal_step(Sim* sim, int choice) {
           valid_choice(2, b->p2, p2_choice, mode))) {
       return -1;
     }
-    action(b, &b->p1, &b->p2, p1_choice, REGULAR);
-    action(b, &b->p2, &b->p1, p2_choice, REGULAR);
+    if ((!b->p1.active_pokemon.pokemon->status.freeze &&
+         !b->p1.active_pokemon.pokemon->status.sleep) ||
+        p1_choice < 6) {
+      action(b, &b->p1, &b->p2, p1_choice, REGULAR);
+    }
+    if ((!b->p2.active_pokemon.pokemon->status.freeze &&
+         !b->p2.active_pokemon.pokemon->status.sleep) ||
+        p2_choice < 6) {
+      action(b, &b->p2, &b->p1, p2_choice, REGULAR);
+    }
 
   } else {
     // player 1 has lost a pokemon
@@ -183,15 +191,15 @@ int16_t pack_status(Pokemon* p) {
   packed |= (p->status.burn & 0x1) << 1;
   packed |= (p->status.freeze & 0x1) << 2;
   packed |= (p->status.poison & 0x1) << 3;
-  packed |= ((p->status.sleep > 0) & 0x1)
-            << 4;  // 3 bits for sleep counter, just checking if it's greater
-                   // than zero
+  packed |= (p->status.sleep & 0x1) << 4;
+
   return packed;
 }
 
 void pack_poke(int16_t* row, Player* player, int poke_index) {
   Pokemon* poke = &player->team[poke_index];
-  row[0] = poke->id + 1; // Currently starting pokedex at zero; this should fix that (?)
+  row[0] = poke->id +
+           1;  // Currently starting pokedex at zero; this should fix that (?)
   row[1] = poke->hp;
   // Also contains confusion if the pokemon is active (and confused)
   row[2] = pack_status(poke);
@@ -253,7 +261,7 @@ void c_reset(Sim* sim) {
   pack_battle(sim->battle, sim->observations);
 }
 
-//No rendering: bare text
+// No rendering: bare text
 void c_render(Sim* sim) { return; }
 
 void c_close(Sim* sim) {
@@ -272,7 +280,7 @@ void c_step(Sim* sim) {
   }
   // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
   // and move on
-  sim->battle->action_queue.q_size = 0; 
+  sim->battle->action_queue.q_size = 0;
   sim->tick++;
   pack_battle(sim->battle, sim->observations);
   return;

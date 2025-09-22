@@ -12,7 +12,8 @@
 #include "queue_structs.h"
 #include "stat_modifiers.h"
 #include "utils.h"
-
+// for memset
+#include "string.h"
 // Source: https://bulbapedia.bulbagarden.net/wiki/Damage
 static inline int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
@@ -35,6 +36,9 @@ static inline int calculate_damage(BattlePokemon* attacker,
   // TODO: Not handling stat modifiers quite yet
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
+    if (attacker->pokemon->status.burn) {
+      attack_stat /= 2;  // Burn halves physical attack
+    }
     attack_stat *= get_stat_modifier(attacker->stat_mods.specA);
     //Specials use stat_special_defence: this should always be the same as their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
@@ -183,6 +187,13 @@ inline int attack(Battle* b,
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender);
   }
+
+  // Handle freeze thawing
+  if (defender->pokemon->status.freeze && used_move->type == FIRE &&
+      used_move->id != FIRE_SPIN_MOVE_ID) {
+    attacker->pokemon->status.freeze = 0;
+    DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+  }
   return 1;
 }
 
@@ -220,8 +231,12 @@ int add_move_to_queue(Battle* battle,
     action_ptr->Target = target;
     action_ptr->order = 200;  // Use 200 as the order for moves
     action_ptr->priority = move->priority;
+
     int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
     action_ptr->speed = base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
+    if (battle_poke->pokemon->status.paralyzed) {
+      action_ptr->speed /= 4;
+    }
     action_ptr->origLoc = user->active_pokemon_index;
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
