@@ -36,6 +36,7 @@ static inline int calculate_damage(BattlePokemon* attacker,
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     attack_stat *= get_stat_modifier(attacker->stat_mods.specA);
+    //Specials use stat_special_defence: this should always be the same as their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.specD);
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
@@ -219,8 +220,8 @@ int add_move_to_queue(Battle* battle,
     action_ptr->Target = target;
     action_ptr->order = 200;  // Use 200 as the order for moves
     action_ptr->priority = move->priority;
-    action_ptr->speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED] *
-                        get_stat_modifier(battle_poke->stat_mods.speed);
+    int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    action_ptr->speed = base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
     action_ptr->origLoc = user->active_pokemon_index;
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
