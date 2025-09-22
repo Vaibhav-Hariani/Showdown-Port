@@ -13,6 +13,7 @@ if __name__ == "__main__":
     policy = Default(env)
     args = pufferl.load_config('default')
     args['train']['env'] = env_name
+    args['train']['minibatch_size'] = 32
     print(args)
     model = pufferl.PuffeRL(args['train'], env, policy=policy)
     model.train()
