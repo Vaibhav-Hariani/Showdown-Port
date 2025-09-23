@@ -10,7 +10,7 @@
 #include "move_structs.h"
 #include "poke_structs.h"
 #include "queue_structs.h"
-#include "stat_modifiers.h"
+#include "../data_sim/stat_modifiers.h"
 #include "utils.h"
 // for memset
 #include "string.h"
