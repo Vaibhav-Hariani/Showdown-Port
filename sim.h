@@ -81,8 +81,8 @@ float reward(Battle* b) {
   float mean_p2 = p2_percent_sum / 6.0f;
 
   // These checks are likely unnecessary...
-  if (mean_p1 == 0.0f) return -1.0f;
-  if (mean_p2 == 0.0f) return 1.0f;
+  if (p1_percent_sum == 0.0f) return -1.0f;
+  if (p2_percent_sum == 0.0f) return 1.0f;
   float result = mean_p1 - mean_p2;
   // Clamp to [-1, 1] just in case
   if (result > 1.0f) result = 1.0f;
@@ -91,9 +91,12 @@ float reward(Battle* b) {
 }
 
 void team_generator(Player* p) {
-  for (int i = 0; i < 6; i++) {
+  //Disabling anything other than pokemon 1... must be easy!
+  load_pokemon(&p->team[0], NULL, 0);
+  for (int i = 1; i < 6; i++) {
     Pokemon* cur = &p->team[i];
-    load_pokemon(cur, NULL, 0);
+    memset(cur, 0, sizeof(Pokemon));
+    // load_pokemon(cur, NULL, 0);
   }
   p->active_pokemon.pokemon = &p->team[0];
   p->active_pokemon_index = 0;

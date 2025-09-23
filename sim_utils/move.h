@@ -120,14 +120,15 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     early_ret = 0;
   }
   // Check for sleep (Gen 1: can't act if asleep)
-  if (attacker->pokemon->status.sleep > 0) {
-    attacker->pokemon->status.sleep--;
-    if (attacker->pokemon->status.sleep == 0) {
-      DLOG("%s woke up!", get_pokemon_name(attacker->pokemon->id));
-    } else {
+  if (attacker->sleep_ctr > 0) {
+    // attacker->sleep_ctr--;
+    // if (attacker->sleep_ctr == 0) {
+    //   DLOG("%s woke up!", get_pokemon_name(attacker->pokemon->id));
+    //   attacker->pokemon->status.sleep = 0;
+    // } else {
       DLOG("%s is asleep and can't move!",
-           get_pokemon_name(attacker->pokemon->id));
-    }
+               get_pokemon_name(attacker->pokemon->id));
+    // }
     early_ret = 0;
   }
   if (attacker->pokemon->status.freeze) {

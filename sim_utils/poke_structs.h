@@ -40,7 +40,7 @@ struct STR_STATUS_FLAGS {
   char burn : 1;
   char freeze : 1;
   char poison : 1;
-  char sleep : 1;
+  char sleep : 3;
 };
 //+-7
 

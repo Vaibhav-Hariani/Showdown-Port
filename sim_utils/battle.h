@@ -27,8 +27,8 @@ int end_step(Battle* b) {
       // Sleep
       if (poke->status.sleep) {
         p->active_pokemon.sleep_ctr--;
-
         if (p->active_pokemon.sleep_ctr == 0) {
+          p->active_pokemon.pokemon->status.sleep = 0;
           DLOG("%s woke up!", get_pokemon_name(poke->id));
         } else {
           DLOG("%s is fast asleep.", get_pokemon_name(poke->id));
