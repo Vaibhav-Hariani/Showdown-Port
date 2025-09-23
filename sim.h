@@ -152,7 +152,6 @@ int internal_step(Sim* sim, int choice) {
   float a = reward(b);
   sim->rewards[0] = a;
   if (a == 1.0f || a == -1.0f) {
-    sim->terminals[0] == 1;  // Game over
   }
   return mode;
   // If this is greater than 0, that means a player has lost a pokemon. If it is
@@ -257,12 +256,16 @@ void clear_battle(Battle* b) {
 
 void c_reset(Sim* sim) {
   sim->tick = 0;
+  //These seem to be somewhat pointless,
+  sim->terminals[0] = 0;
+  sim->rewards[0] = 0.0f;
   // Allocate Battle on first use; Player.team and Pokemon.poke_moves are inline
   if (sim->battle == NULL) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
   }
-
-  clear_battle(sim->battle);
+  else {
+    clear_battle(sim->battle);
+  }
   team_generator(&sim->battle->p1);
   team_generator(&sim->battle->p2);
   pack_battle(sim->battle, sim->observations);
@@ -284,9 +287,11 @@ void c_step(Sim* sim) {
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);
   }
+  if (sim->terminals[0]) {
+    c_reset(sim);
+  }
   // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
   // and move on
-  sim->battle->action_queue.q_size = 0;
   sim->battle->action_queue.q_size = 0;
   sim->tick++;
   pack_battle(sim->battle, sim->observations);

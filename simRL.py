@@ -2,7 +2,6 @@ from pufferlib import pufferl
 from pufferlib.ocean.Showdown.sim import Sim
 from pufferlib.models import Default
 
-import tomllib
 if __name__ == "__main__":
     N = 10
     env_name = 'Showdown'

@@ -119,6 +119,20 @@ def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
 
     return {'players': players}
 
+def min_obs(data_dict: dict):
+    """Print active Pokémon, HP, and any active status flags for both players."""
+    players = data_dict['players']
+    for idx, player in enumerate(players, start=1):
+        active_idx = player['active_index']
+        team = player['team']
+        mon = team[active_idx]
+        mon_id = mon['id']
+        hp = mon['hp']
+        status = mon['status']
+        active_flags = [name for name, val in status.items() if val]
+        status_str = ', '.join(active_flags) if active_flags else 'healthy'
+        print(f"Player {idx}: Pokemon {mon_id} | HP {hp} | Status: {status_str}")
+
 
 
 class Sim(pufferlib.PufferEnv):
@@ -135,8 +149,11 @@ class Sim(pufferlib.PufferEnv):
         super().__init__(buf)
         self.c_envs = binding.vec_init(self.observations, self.actions, self.rewards,
             self.terminals, self.truncations, num_envs, seed)
- 
-    def reset(self, seed=0):
+
+    def reset(self, seed=0, options=None):
+        if options:
+            ## Reset a specific environment
+            binding.env_reset(self.c_envs+options, seed)
         binding.vec_reset(self.c_envs, seed)
         self.tick = 0
         return self.observations, []
@@ -174,7 +191,12 @@ if __name__ == '__main__':
     print("Starting now")
     start = time.time()
     while time.time() - start < 10:
-        env.step(actions[i % CACHE])
+        obs, rewards, terminals, trunc, info = env.step(actions[i % CACHE])
+        # print("Iterated 10 steps forward")
+        # obs_dict = parse_observation(obs[0]) 
+        # min_obs(obs_dict)
+            # print("Episode ended, resetting environment")
+            # env.reset(seed=42)
         steps += N
         i += 1
         print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
