@@ -10,10 +10,13 @@ if __name__ == "__main__":
     env = Sim(num_envs=N)
     env.reset(seed=42)
 
-    policy = Default(env)
+    policy = Default(env).cuda()
     args = pufferl.load_config('default')
     args['train']['env'] = env_name
-    args['train']['minibatch_size'] = 32
-    print(args)
-    model = pufferl.PuffeRL(args['train'], env, policy=policy)
-    model.train()
+    args['train']['minibatch_size'] = 64
+    trainer = pufferl.PuffeRL(args['train'], env, policy=policy)
+    for epoch in range(10):
+        trainer.evaluate()
+        logs = trainer.train()
+    trainer.print_dashboard()
+    trainer.close()

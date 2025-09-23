@@ -166,15 +166,16 @@ if __name__ == '__main__':
     env.reset(
         seed=42
     )
-    # steps = 0
-    # CACHE = 1024
-    # actions = np.random.randint(0, 10, (CACHE, N))
-    # i = 0
-    # import time
-    # start = time.time()
-    # while time.time() - start < 10:
-    #     env.step(actions[i % CACHE])
-    #     steps += N
-    #     i += 1
-    #     print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
-    # print('Squared SPS:', int(steps / (time.time() - start)))
+    steps = 0
+    CACHE = 1024
+    actions = np.random.randint(0, 10, (CACHE, N))
+    i = 0
+    import time
+    print("Starting now")
+    start = time.time()
+    while time.time() - start < 10:
+        env.step(actions[i % CACHE])
+        steps += N
+        i += 1
+        print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
+    print('\n Squared SPS:', int(steps / (time.time() - start)))

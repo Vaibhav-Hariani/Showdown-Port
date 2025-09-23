@@ -36,7 +36,6 @@ typedef struct {
   //  figure this might make life a bit easier with de-rewarding long running
   //  games.
   int tick;
-  int loser;
 } Sim;
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
@@ -108,6 +107,7 @@ int internal_step(Sim* sim, int choice) {
   int p1_choice = choice;
 
   // Make a regular move if feasible
+  // Make a regular move if feasible
   int p2_choice = rand() % 4 + 6;
   Battle* b = sim->battle;
   int mode = b->mode;
@@ -151,6 +151,9 @@ int internal_step(Sim* sim, int choice) {
   b->mode = mode;
   float a = reward(b);
   sim->rewards[0] = a;
+  if (a == 1.0f || a == -1.0f) {
+    sim->terminals[0] == 1;  // Game over
+  }
   return mode;
   // If this is greater than 0, that means a player has lost a pokemon. If it is
   // 10, the game is
@@ -202,7 +205,8 @@ int16_t pack_status(Pokemon* p) {
 void pack_poke(int16_t* row, Player* player, int poke_index) {
   Pokemon* poke = &player->team[poke_index];
   row[0] = poke->id +
-           1;  // Currently starting pokedex at zero; this should fix that (?)
+          
+           1;   // Currently starting pokedex at zero; this should fix that (?)
   row[1] = poke->hp;
   // Also contains confusion if the pokemon is active (and confused)
   row[2] = pack_status(poke);
@@ -272,7 +276,6 @@ void c_close(Sim* sim) {
     free(sim->battle);  // Frees the entire slab (Battle + Teams + Moves)
     sim->battle = NULL;
   }
-  pack_battle(sim->battle, sim->observations);
 }
 
 void c_step(Sim* sim) {
@@ -283,6 +286,7 @@ void c_step(Sim* sim) {
   }
   // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
   // and move on
+  sim->battle->action_queue.q_size = 0;
   sim->battle->action_queue.q_size = 0;
   sim->tick++;
   pack_battle(sim->battle, sim->observations);
