@@ -178,7 +178,7 @@ class Sim(pufferlib.PufferEnv):
 
 
 if __name__ == '__main__':
-    N = 10
+    N = 32
     env = Sim(num_envs=N)
     env.reset(
         seed=42
@@ -192,12 +192,9 @@ if __name__ == '__main__':
     start = time.time()
     while time.time() - start < 10:
         obs, rewards, terminals, trunc, info = env.step(actions[i % CACHE])
-        # print("Iterated 10 steps forward")
-        # obs_dict = parse_observation(obs[0]) 
+        # obs_dict = parse_observation(obs[0])
         # min_obs(obs_dict)
-            # print("Episode ended, resetting environment")
-            # env.reset(seed=42)
         steps += N
         i += 1
-        print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
-    print('\n Squared SPS:', int(steps / (time.time() - start)))
+        # print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
+    print('\n Showdown SPS:', int(steps / (time.time() - start)))

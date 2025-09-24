@@ -149,10 +149,7 @@ int internal_step(Sim* sim, int choice) {
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
   b->mode = mode;
-  float a = reward(b);
-  sim->rewards[0] = a;
-  if (a == 1.0f || a == -1.0f) {
-  }
+  //Move these after end step: more fitting there.
   return mode;
   // If this is greater than 0, that means a player has lost a pokemon. If it is
   // 10, the game is
@@ -287,13 +284,15 @@ void c_step(Sim* sim) {
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);
   }
-  if (sim->terminals[0]) {
-    c_reset(sim);
-  }
   // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
   // and move on
   sim->battle->action_queue.q_size = 0;
   sim->tick++;
+  float r = reward(sim->battle);
+  if (r == 1.0f || r == -1.0f) {
+    c_reset(sim);
+  }
+  sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);
   return;
 }
