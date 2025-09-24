@@ -103,7 +103,7 @@ void team_generator(Player* p) {
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
 }
 
-int internal_step(Sim* sim, int choice) {
+static inline int battle_step(Sim* sim, int choice) {
   int p1_choice = choice;
 
   // Make a regular move if feasible
@@ -149,16 +149,9 @@ int internal_step(Sim* sim, int choice) {
   // Sort & evaluate the battlequeue on a move by move basis
   mode = eval_queue(b);
   b->mode = mode;
-  //Move these after end step: more fitting there.
   return mode;
-  // If this is greater than 0, that means a player has lost a pokemon. If it is
-  // 10, the game is
 }
 
-// For generating the observation space.
-//  Helper: Packs 6 stat mods (each 4 bits) into a single int (24 bits used)
-//  Order: Atk (0-3), Def (4-7), Spd (8-11), SpecA (12-15), Acc (16-19), Eva
-//  (20-23)
 int16_t pack_attack_def_specA_specD(stat_mods* mods) {
   int16_t packed = 0;
   packed |= (mods->attack & 0xF) << 0;
@@ -200,9 +193,7 @@ int16_t pack_status(Pokemon* p) {
 
 void pack_poke(int16_t* row, Player* player, int poke_index) {
   Pokemon* poke = &player->team[poke_index];
-  row[0] = poke->id +
-          
-           1;   // Currently starting pokedex at zero; this should fix that (?)
+  row[0] = poke->id;   
   row[1] = poke->hp;
   // Also contains confusion if the pokemon is active (and confused)
   row[2] = pack_status(poke);
@@ -254,7 +245,6 @@ void clear_battle(Battle* b) {
 void c_reset(Sim* sim) {
   sim->tick = 0;
   //These seem to be somewhat pointless,
-  sim->terminals[0] = 0;
   sim->rewards[0] = 0.0f;
   // Allocate Battle on first use; Player.team and Pokemon.poke_moves are inline
   if (sim->battle == NULL) {
@@ -279,7 +269,10 @@ void c_close(Sim* sim) {
 }
 
 void c_step(Sim* sim) {
-  int a = internal_step(sim, sim->actions[0]);
+  // Reset terminal flag at start of step so model can observe if game ended
+  sim->terminals[0] = 0;
+  sim->tick++;  
+  int a = battle_step(sim, sim->actions[0]);
   sim->battle->mode = a;
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);
@@ -287,10 +280,10 @@ void c_step(Sim* sim) {
   // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
   // and move on
   sim->battle->action_queue.q_size = 0;
-  sim->tick++;
   float r = reward(sim->battle);
   if (r == 1.0f || r == -1.0f) {
     c_reset(sim);
+    sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
   }
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);

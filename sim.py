@@ -178,7 +178,7 @@ class Sim(pufferlib.PufferEnv):
 
 
 if __name__ == '__main__':
-    N = 32
+    N = 8192
     env = Sim(num_envs=N)
     env.reset(
         seed=42

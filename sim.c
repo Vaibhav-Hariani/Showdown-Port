@@ -77,7 +77,7 @@ int main() {
     printf("Reward: %.2f \n", s.rewards[0]);
     int p1_choice = get_player_choice(&b->p1, 1, b->mode);
     // int p2_choice = get_player_choice(&b->p2, 2, mode);
-    internal_step(&s, p1_choice);
+    battle_step(&s, p1_choice);
     if (b->mode == 0) {
       end_step(b);
     }
