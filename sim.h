@@ -193,13 +193,20 @@ int16_t pack_status(Pokemon* p) {
 
 void pack_poke(int16_t* row, Player* player, int poke_index) {
   Pokemon* poke = &player->team[poke_index];
+  
+  // Pack pokemon number first
   row[0] = poke->id;   
-  row[1] = poke->hp;
-  // Also contains confusion if the pokemon is active (and confused)
-  row[2] = pack_status(poke);
+  
+  // Pack move data next (positions 1-4)
   for (int k = 0; k < 4; k++) {
-    row[3 + k] = pack_move(&poke->poke_moves[k]);
+    row[1 + k] = pack_move(&poke->poke_moves[k]);
   }
+  
+  // Pack everything else after move data
+  row[5] = poke->hp;
+  // Also contains confusion if the pokemon is active (and confused)
+  row[6] = pack_status(poke);
+  
   if (poke_index == player->active_pokemon_index) {
     row[0] *= -1;  // Mark active pokemon with negative id
     stat_mods* mods = &player->active_pokemon.stat_mods;
@@ -212,8 +219,8 @@ void pack_poke(int16_t* row, Player* player, int poke_index) {
 }
 
 void pack_battle(Battle* b, int16_t* out) {
-  // Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2,
-  // move3, move4] 6 pokemon per player, 2 players Active pokemon have 2 extra
+  // Each pokemon: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
+  // 6 pokemon per player, 2 players Active pokemon have 2 extra
   // ints for stat mods Flattened array: 12 rows * 9 columns = 108 elements
   // total
   for (int i = 0; i < 2; i++) {

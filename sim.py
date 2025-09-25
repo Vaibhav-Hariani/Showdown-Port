@@ -68,11 +68,11 @@ def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
 
     This mirrors the layout produced by pack_battle in sim.h:
       For each of 2 players, for each of 6 Pokemon (row size = 9):
-        [id, hp, status_flags, stat_mods_1, stat_mods_2, move1, move2, move3, move4]
+        [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
 
     Notes:
       - Active Pokemon are marked by a negative id. We report absolute id and set is_active.
-      - Non-active Pokemon have stat_mods_1 and stat_mods_2 set to 0.
+      - Non-active Pokemon have stat_mod1 and stat_mod2 set to 0.
       - status_flags bit 5 (confused) is only set for the active Pokemon.
     """
     obs = np.asarray(flat_obs)
@@ -94,19 +94,25 @@ def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
             if is_active:
                 active_index = j
 
-            status = _unpack_status(int(row[2]))
-            # Stat mods only meaningful for active mon; zeros otherwise
+            # Move data is now at positions 1-4
+            moves = [_unpack_move(int(row[1 + k])) for k in range(4)]
+            
+            # HP is now at position 5
+            hp = int(row[5])
+            
+            # Status flags are now at position 6
+            status = _unpack_status(int(row[6]))
+            
+            # Stat mods are at positions 7 and 8 (only meaningful for active mon; zeros otherwise)
             if is_active:
-                stat_mods = _unpack_stat_mods(int(row[3]), int(row[4]))
+                stat_mods = _unpack_stat_mods(int(row[7]), int(row[8]))
             else:
                 stat_mods = None
-
-            moves = [_unpack_move(int(row[5 + k])) for k in range(4)]
 
             team.append({
                 'id': poke_id,
                 'is_active': is_active,
-                'hp': int(row[1]),
+                'hp': hp,
                 'status': status,
                 'stat_mods': stat_mods,
                 'moves': moves,
@@ -138,7 +144,7 @@ def min_obs(data_dict: dict):
 class Sim(pufferlib.PufferEnv):
     def __init__(self, num_envs=1, render_mode=None, log_interval=128, buf=None, seed=0):
         ##Dims for observations = 6 (Pokemon) * 2(Players) * 9 (Entries per pokemon) = 108
-        # Each pokemon is represented by: [id, hp, status_flags, stat_mod1, stat_mod2, move1, move2, move3, move4]
+        # Each pokemon is represented by: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
         self.single_observation_space = gymnasium.spaces.Box(low=-32768, high=32767,
             shape=(108,), dtype=np.int16)
         self.single_action_space = gymnasium.spaces.Discrete(10)
