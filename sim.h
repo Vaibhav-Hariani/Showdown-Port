@@ -90,7 +90,7 @@ float reward(Battle* b) {
 }
 
 void team_generator(Player* p) {
-  //Disabling anything other than pokemon 1... must be easy!
+  // Disabling anything other than pokemon 1... must be easy!
   load_pokemon(&p->team[0], NULL, 0);
   for (int i = 1; i < 6; i++) {
     Pokemon* cur = &p->team[i];
@@ -193,20 +193,20 @@ int16_t pack_status(Pokemon* p) {
 
 void pack_poke(int16_t* row, Player* player, int poke_index) {
   Pokemon* poke = &player->team[poke_index];
-  
+
   // Pack pokemon number first
-  row[0] = poke->id;   
-  
+  row[0] = poke->id;
+
   // Pack move data next (positions 1-4)
   for (int k = 0; k < 4; k++) {
     row[1 + k] = pack_move(&poke->poke_moves[k]);
   }
-  
+
   // Pack everything else after move data
   row[5] = poke->hp;
   // Also contains confusion if the pokemon is active (and confused)
   row[6] = pack_status(poke);
-  
+
   if (poke_index == player->active_pokemon_index) {
     row[0] *= -1;  // Mark active pokemon with negative id
     stat_mods* mods = &player->active_pokemon.stat_mods;
@@ -219,10 +219,9 @@ void pack_poke(int16_t* row, Player* player, int poke_index) {
 }
 
 void pack_battle(Battle* b, int16_t* out) {
-  // Each pokemon: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
-  // 6 pokemon per player, 2 players Active pokemon have 2 extra
-  // ints for stat mods Flattened array: 12 rows * 9 columns = 108 elements
-  // total
+  // Each pokemon: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1,
+  // stat_mod2] 6 pokemon per player, 2 players Active pokemon have 2 extra ints
+  // for stat mods Flattened array: 12 rows * 9 columns = 108 elements total
   for (int i = 0; i < 2; i++) {
     Player* p = get_player(b, i + 1);
     for (int j = 0; j < 6; j++) {
@@ -251,13 +250,12 @@ void clear_battle(Battle* b) {
 
 void c_reset(Sim* sim) {
   sim->tick = 0;
-  //These seem to be somewhat pointless,
+  // These seem to be somewhat pointless,
   sim->rewards[0] = 0.0f;
   // Allocate Battle on first use; Player.team and Pokemon.poke_moves are inline
   if (sim->battle == NULL) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
-  }
-  else {
+  } else {
     clear_battle(sim->battle);
   }
   team_generator(&sim->battle->p1);
@@ -278,7 +276,7 @@ void c_close(Sim* sim) {
 void c_step(Sim* sim) {
   // Reset terminal flag at start of step so model can observe if game ended
   sim->terminals[0] = 0;
-  sim->tick++;  
+  sim->tick++;
   int a = battle_step(sim, sim->actions[0]);
   sim->battle->mode = a;
   if (a == 0) {
@@ -290,7 +288,8 @@ void c_step(Sim* sim) {
   float r = reward(sim->battle);
   if (r == 1.0f || r == -1.0f) {
     c_reset(sim);
-    sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
+    sim->terminals[0] =
+        1;  // Set terminal flag so that model knows to reload embeddings
   }
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);

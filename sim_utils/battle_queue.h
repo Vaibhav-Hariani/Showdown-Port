@@ -2,9 +2,9 @@
 #define BATTLE_QUEUE_H
 
 // Structs in these files should all be pointers and can be forward declared
+#include "battle_structs.h"
 #include "stdlib.h"
 #include "switch.h"
-#include "battle_structs.h"
 /**
 Basic idea: player swings, moves collide (based on priority/speed), and then
 follow up triggers hit the stack. Less important for Gen1.
@@ -85,7 +85,7 @@ int eval_queue(Battle* b) {
 
       attack(b, &User->active_pokemon, &Target->active_pokemon, move);
 
-      //Cleanup
+      // Cleanup
       if (User->active_pokemon.pokemon->hp <= 0) {
         DLOG("%s Fainted!", get_pokemon_name(User->active_pokemon.pokemon->id));
         // Clear the currently active pokemon

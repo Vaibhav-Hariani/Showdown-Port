@@ -5,9 +5,9 @@
 #include <stdlib.h>
 
 #include "../sim_utils/battle.h"
-#include "generated_move_enum.h"
 #include "../sim_utils/log.h"
 #include "../sim_utils/move.h"
+#include "generated_move_enum.h"
 #include "typing.h"
 // TODO: Bind, Counter, Dig, Fly, Disable, Gust, etc.
 
@@ -126,7 +126,8 @@ void apply_glare(Battle *battle,
                  BattlePokemon *attacker,
                  BattlePokemon *defender) {
   defender->pokemon->status.paralyzed = 1;
-  DLOG("%s's paralyzed status was raised!", get_pokemon_name(defender->pokemon->id));
+  DLOG("%s's paralyzed status was raised!",
+       get_pokemon_name(defender->pokemon->id));
 }
 
 void apply_toxic(Battle *battle,

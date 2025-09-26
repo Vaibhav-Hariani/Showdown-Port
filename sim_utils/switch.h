@@ -24,7 +24,7 @@ int valid_switch(Player cur, int target_loc) {
 }
 
 void add_switch(Battle* b, Player* user, int target_loc, int type) {
-  if(b->action_queue.q_size >= 15) {
+  if (b->action_queue.q_size >= 15) {
     DLOG("Action queue full, cannot add switch action.");
     return;
   }
@@ -56,16 +56,15 @@ void perform_switch_action(Action* current_action) {
   int old_active = user->active_pokemon_index;
   user->active_pokemon_index = target;
   user->active_pokemon.pokemon = &user->team[target];
-  //Should probably remove these
+  // Should probably remove these
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
-  //Log old sleep status with current sleep status
+  // Log old sleep status with current sleep status
   user->active_pokemon.sleep_ctr = user->active_pokemon.pokemon->status.sleep;
   if (old_active > 0) {
-    DLOG("Come back %s! ",
-         get_pokemon_name(user->team[old_active].id));
+    DLOG("Come back %s! ", get_pokemon_name(user->team[old_active].id));
   }
-    DLOG("Go %s!", get_pokemon_name(user->active_pokemon.pokemon->id));
-  }
+  DLOG("Go %s!", get_pokemon_name(user->active_pokemon.pokemon->id));
+}
 
 #endif

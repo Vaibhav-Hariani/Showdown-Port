@@ -17,7 +17,7 @@ enum ENUM_ACTIONS {
 
 union UN_ACTIONS {
   Move m;
-  //Index of switch target
+  // Index of switch target
   int switch_target;
 } typedef action_union;
 

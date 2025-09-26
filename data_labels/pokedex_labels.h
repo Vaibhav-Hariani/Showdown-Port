@@ -34,19 +34,19 @@ const char* POKE_NAMES[] = {
     "mewtwo",     "mew"};
 
 const char* TYPE_LABELS[] = {"NORMAL",
-                            "FIRE",
-                            "WATER",
-                            "ELECTRIC",
-                            "GRASS",
-                            "ICE",
-                            "FIGHTING",
-                            "POISON",
-                            "GROUND",
-                            "FLYING",
-                            "PSYCHIC",
-                            "BUG",
-                            "ROCK",
-                            "GHOST",
-                            "DRAGON"};
+                             "FIRE",
+                             "WATER",
+                             "ELECTRIC",
+                             "GRASS",
+                             "ICE",
+                             "FIGHTING",
+                             "POISON",
+                             "GROUND",
+                             "FLYING",
+                             "PSYCHIC",
+                             "BUG",
+                             "ROCK",
+                             "GHOST",
+                             "DRAGON"};
 
 #endif

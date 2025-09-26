@@ -2,9 +2,9 @@
 #ifndef GENERATED_MOVEDEX_H
 #define GENERATED_MOVEDEX_H
 
-#include "typing.h"
 #include "generated_move_enum.h"
 #include "movedex.h"
+#include "typing.h"
 const Move MOVES[] = {
     {.id = NO_MOVE,
      .type = NONETYPE,
@@ -1336,5 +1336,4 @@ const Move MOVES[] = {
      .movePtr = NULL},
 };
 
-
-#endif // GENERATED_MOVEDEX_H
+#endif  // GENERATED_MOVEDEX_H

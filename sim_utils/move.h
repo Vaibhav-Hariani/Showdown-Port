@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../data_sim/stat_modifiers.h"
 #include "battle_structs.h"
 #include "move_structs.h"
 #include "poke_structs.h"
 #include "queue_structs.h"
-#include "../data_sim/stat_modifiers.h"
 #include "utils.h"
 // for memset
 #include "string.h"
@@ -40,7 +40,8 @@ static inline int calculate_damage(BattlePokemon* attacker,
       attack_stat /= 2;  // Burn halves physical attack
     }
     attack_stat *= get_stat_modifier(attacker->stat_mods.specA);
-    //Specials use stat_special_defence: this should always be the same as their stat_special
+    // Specials use stat_special_defence: this should always be the same as
+    // their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.specD);
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
@@ -126,8 +127,8 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     //   DLOG("%s woke up!", get_pokemon_name(attacker->pokemon->id));
     //   attacker->pokemon->status.sleep = 0;
     // } else {
-      DLOG("%s is asleep and can't move!",
-               get_pokemon_name(attacker->pokemon->id));
+    DLOG("%s is asleep and can't move!",
+         get_pokemon_name(attacker->pokemon->id));
     // }
     early_ret = 0;
   }
@@ -234,7 +235,8 @@ int add_move_to_queue(Battle* battle,
     action_ptr->priority = move->priority;
 
     int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
-    action_ptr->speed = base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
+    action_ptr->speed =
+        base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
     if (battle_poke->pokemon->status.paralyzed) {
       action_ptr->speed /= 4;
     }

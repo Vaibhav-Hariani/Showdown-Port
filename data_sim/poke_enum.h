@@ -4,7 +4,7 @@
 #define POKE_ENUM_H
 
 typedef enum {
-  MISSINGNO=0,
+  MISSINGNO = 0,
   BULBASAUR = 1,
   IVYSAUR,
   VENUSAUR,
@@ -154,7 +154,7 @@ typedef enum {
   DRATINI,
   DRAGONAIR,
   DRAGONITE = 148,
-  LAST_POKEMON=149,
+  LAST_POKEMON = 149,
 } POKEDEX_IDS;
 //     //These two are illegal in OU.
 //     Just ending the pokedex early.

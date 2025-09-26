@@ -12,7 +12,7 @@
 
 #define NUM_POKEMON ((int)LAST_POKEMON)
 
-//DV * 15 + floor(statexp/4)
+// DV * 15 + floor(statexp/4)
 #define MAX_CONST_STATBOOST 93
 
 void generate_moveset(MOVE_IDS out_moves[4],
@@ -44,16 +44,14 @@ void generate_moveset(MOVE_IDS out_moves[4],
 }
 // take an input pokemon object, and load it with moves, DV's/EV's (optionally)
 // Can expand to take in more data
-void load_pokemon(Pokemon* ret,
-                  MOVE_IDS* move_ids,
-                  int opt_id) {
-                  // int* evs,
-                  // int* ivs,
-                  // int* opt_level
+void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int opt_id) {
+  // int* evs,
+  // int* ivs,
+  // int* opt_level
   // 1. Lookup base stats/types
-  
+
   POKEDEX_IDS pokedex_id = opt_id;
-  while(pokedex_id == MISSINGNO) {
+  while (pokedex_id == MISSINGNO) {
     pokedex_id = rand() % NUM_POKEMON;
   }
   const poke_ref* base = &POKEMON_BASE[pokedex_id];
@@ -68,7 +66,7 @@ void load_pokemon(Pokemon* ret,
   ret->stats.level = 100;
 
   // 4. HP
-  //Assuming max level simplifies this transaction dramatically
+  // Assuming max level simplifies this transaction dramatically
   int hp = base->base_stats[STAT_HP] * 2 + MAX_CONST_STATBOOST + 110;
   ret->stats.base_stats[STAT_HP] = hp;
   ret->max_hp = hp;
@@ -76,8 +74,10 @@ void load_pokemon(Pokemon* ret,
   for (int i = 1; i < STAT_COUNT; i++) {
     // maxxing out for gen1
     // Gen1 had StatExp instead of evs:
-    // https://bulbapedia.bulbagarden.net/wiki/Stat#Formula Can be maxxed right away.
-    ret->stats.base_stats[i] = base->base_stats[i] * 2 + MAX_CONST_STATBOOST + 5;
+    // https://bulbapedia.bulbagarden.net/wiki/Stat#Formula Can be maxxed right
+    // away.
+    ret->stats.base_stats[i] =
+        base->base_stats[i] * 2 + MAX_CONST_STATBOOST + 5;
   }
   // 3. Moves
   if (move_ids) {

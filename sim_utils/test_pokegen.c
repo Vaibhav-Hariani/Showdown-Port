@@ -1,13 +1,14 @@
-#include "pokegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "../data_sim/pokedex.h"
-#include "../data_sim/poke_enum.h"
-#include "../data_labels/pokedex_labels.h"
-#include "../data_labels/move_labels.h"
 
-int stat_test(POKEDEX_IDS poke){
+#include "../data_labels/move_labels.h"
+#include "../data_labels/pokedex_labels.h"
+#include "../data_sim/poke_enum.h"
+#include "../data_sim/pokedex.h"
+#include "pokegen.h"
+
+int stat_test(POKEDEX_IDS poke) {
   const MOVE_IDS* learnset = LEARNSETS[poke];
   int learnset_len = LEARNSET_LENGTHS[poke];
   Pokemon p = {0};
@@ -20,7 +21,8 @@ int stat_test(POKEDEX_IDS poke){
   printf("Generated Pokemon: %d %s\n", poke, POKE_NAMES[poke]);
   // Print computed stats (HP shown as current/max)
   printf("Stats - HP: %d/%d, Atk: %d, Def: %d, SpA: %d, SpD: %d, Spe: %d\n",
-         p.hp, p.max_hp,
+         p.hp,
+         p.max_hp,
          p.stats.base_stats[STAT_ATTACK],
          p.stats.base_stats[STAT_DEFENSE],
          p.stats.base_stats[STAT_SPECIAL_ATTACK],
