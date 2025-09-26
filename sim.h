@@ -60,8 +60,31 @@ void action(Battle* b, Player* user, Player* target, int input, int type) {
     add_switch(b, user, input, type);
   }
   b->action_queue.q_size++;
-  return;
 }
+
+int get_highest_damage_move_index(Player* player) {
+    BattlePokemon* active_pokemon = &player->active_pokemon;
+    int best_move_index = -1;
+    int max_damage = -1;
+
+    // Iterate through the Pokémon's moves
+    for (int i = 0; i < 4; i++) {
+        Move* move = &active_pokemon->pokemon->poke_moves[i];
+
+        // Check if the move has PP left
+        if (move->pp > 0) {
+            int damage = move->power; // Simplified damage calculation
+
+            // Update the best move if this move has higher damage
+            if (damage > max_damage) {
+                max_damage = damage;
+                best_move_index = i;
+            }
+        }
+    }
+    return best_move_index;
+}
+
 
 // Returns a reward in [-1, 1]:
 // -1 if player 1 has lost all Pokémon
@@ -106,15 +129,15 @@ void team_generator(Player* p) {
 static inline int battle_step(Sim* sim, int choice) {
   int p1_choice = choice;
 
-  // Make a regular move if feasible
-  // Make a regular move if feasible
-  int p2_choice = rand() % 4 + 6;
   Battle* b = sim->battle;
+  //5 year old: choose the move that hits the hardest
+  int p2_choice = get_highest_damage_move_index(&b->p2);
+  // Make a regular move if feasible
   int mode = b->mode;
-
   while (!valid_choice(2, b->p2, p2_choice, mode)) {
     p2_choice = rand() % 10;
   }
+
   if (mode == 0) {
     if (!(valid_choice(1, b->p1, p1_choice, mode) &&
           valid_choice(2, b->p2, p2_choice, mode))) {
@@ -278,6 +301,13 @@ void c_step(Sim* sim) {
   sim->terminals[0] = 0;
   sim->tick++;
   int a = battle_step(sim, sim->actions[0]);
+  if (a == -1) {
+    //Sim inputted something invalid; this should be penalized?
+    //Otherwise, the sim is incentivized to spam wrong moves to extend the game when it knows it's lost
+    sim->rewards[0] = -1.0f;
+    pack_battle(sim->battle, sim->observations);
+    return;
+  }
   sim->battle->mode = a;
   if (a == 0) {
     sim->battle->mode = end_step(sim->battle);
@@ -295,5 +325,6 @@ void c_step(Sim* sim) {
   pack_battle(sim->battle, sim->observations);
   return;
 }
+
 
 #endif
