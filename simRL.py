@@ -1,5 +1,5 @@
 from pufferlib import pufferl
-# from pufferlib.ocean.Showdown import Showdown, 
+from pufferlib.ocean.showdown.showdown import Showdown
 # from pufferlib.ocean.breakout.breakout import Breakout
 # from pufferlib.ocean.squared.squared import Squared
 from pufferlib.models import Default
@@ -103,28 +103,28 @@ def test_model(n=12):
 
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
-    # env = pufferlib.vector.make(
-    #     Squared,
-    #     num_envs=12,
-    #     env_args=[1024],
-    #     batch_size=4,
-    #     backend=pufferlib.vector.Multiprocessing,
-    # )
-    # # env = Showdown(num_envs=1)
+    env = pufferlib.vector.make(
+        Showdown,
+        num_envs=12,
+        env_args=[1024],
+        batch_size=4,
+        backend=pufferlib.vector.Multiprocessing,
+    )
     # env.reset(seed=42)
     args = pufferl.load_config("default")
     args["wandb"] = True
     args["package"] = 'ocean'
-    args["train"]["batch_size"] = 32768
-    pufferl.sweep(args, env_name="puffer_showdown")
+    # args["train"]["batch_size"] = 32768
+    args["train"]["optimizer"] = "adam"
+    args["train"]["env"] = "Showdown"
+    # pufferl.sweep(args, env_name="puffer_showdown")
+    policy = ShowdownModel(hidden_size=512, depth=12).cuda()
 
-    # # with wandb.init(project="squared", config=args["train"]) as run:
-    # # args["train"]["minibatch_size"] = 64
-    # policy = Default(env).cuda()
-    # trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-    # for epoch in range(100):
-    #     trainer.evaluate()
-    #     logs = trainer.train()
-    #     # wandb.log(logs)
-    # trainer.print_dashboard()
-    # trainer.close()
+    with wandb.init(project="Showdown", config=args["train"],id="Showdown-adam-hidden-512") as run:
+        trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
+        for epoch in range(100):
+            trainer.evaluate()
+            logs = trainer.train()
+            wandb.log(logs)
+    trainer.print_dashboard()
+    trainer.close()

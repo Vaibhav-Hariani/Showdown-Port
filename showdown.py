@@ -52,7 +52,7 @@ class Showdown(pufferlib.PufferEnv):
             # print("Episode finished after {} timesteps".format(self.tick))
             self.tick = 0
         ##Remove for actual work, might work for training the default env?
-        self.observations = self.observations.astype(float) / 32768
+        # self.observations
         return (self.observations, self.rewards, self.terminals, self.truncations, info)
 
     def render(self):
