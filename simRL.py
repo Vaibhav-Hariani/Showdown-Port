@@ -1,35 +1,42 @@
 from pufferlib import pufferl
-from pufferlib.ocean.Showdown.sim import Sim, ShowdownParser
+# from pufferlib.ocean.Showdown import Showdown, 
+# from pufferlib.ocean.breakout.breakout import Breakout
+# from pufferlib.ocean.squared.squared import Squared
+from pufferlib.models import Default
 import pufferlib
 
 import torch
 from torch import nn
+import wandb
 
+wandb.login()
 def get_params(x):
     return [p for p in x.parameters()]
 
 
 class ShowdownModel(nn.Module):
     # Embedding pokemon IDs and moves, sum per pokemon, combine with gamestate
-    def __init__(self, hidden_size=128):
+    def __init__(self, hidden_size=128, depth=1):
         super().__init__()
 
         self.input_size = 108
-        self.embed_size = 4
+        self.embed_size = 5
 
         # 4 embedding vectors, 9 regular vectors per pokemon * 12 = 13 * 12 = 156
-        self.total_size = 156
-
+        self.total_size = (self.embed_size + 9) * 12
         # Max embedding is 165, for maximum move value.
         # 4d embedding dimension should be sufficient.
-        self.embed = nn.Embedding(165, embedding_dim=4)
+        # self.embed = nn.Embedding(165, embedding_dim=4)
+        self.embed = nn.Identity(5)
         self.hidden_size = hidden_size
-        self.encoder = nn.Sequential(
-            pufferlib.pytorch.layer_init(nn.Linear(156, hidden_size)),
-            nn.GELU(),
-        )
-
         self.num_actions = 10
+
+        encoder_layers = [nn.Linear(self.total_size, hidden_size), nn.GELU()]
+        for i in range(depth):
+            encoder_layers.append(nn.Linear(hidden_size, hidden_size))
+            encoder_layers.append(nn.GELU())
+
+        self.encoder = nn.Sequential(*encoder_layers)
         self.decoder = pufferlib.pytorch.layer_init(
             nn.Linear(hidden_size, self.num_actions), std=0.01
         )
@@ -37,7 +44,7 @@ class ShowdownModel(nn.Module):
 
     def forward(self, observations, state=None):
         ##print for the very first batch 
-        ShowdownParser.pretty_print(observations[0].cpu().numpy())
+        # ShowdownParser.pretty_print(observations[0].cpu().numpy())
         return self.forward_eval(observations, state)
 
 
@@ -50,26 +57,35 @@ class ShowdownModel(nn.Module):
         mat = observations.view(-1, 12, 9)
 
         # All of this can can be cached during inference
-        embed_in = (torch.abs(mat[:, :, 0:5]) & 0xFF).long()
+        # embed_in = torch.zeros_like(mat[:, :, 0:5],dtype=float)
+        embed_in = (torch.abs(mat[:, :, 0:5]) & 0xFF).float()
+        # embed_in[:,:,0] = torch.abs(embed_in[:,:,0]) / 155
+        # embed_in[:,:,1:5] = embed_in[:,:,1:5] / 165
+
+        embed_in = embed_in / 255
 
         embeddings = self.embed(embed_in[0:])
-        embeddings = embeddings.sum(dim=2)
-        # embeddings = [embeddings].sum(dim=1)
+        # embeddings = embeddings.sum(dim=2)
 
         # Also encoding active pokemon here
-        active_and_pps = (mat[:, :, 0:5] & ~0xFF) >> 8
-        gamestate = mat[:, :, 5:]
-
+        active_and_pps = ((mat[:, :, 0:5] & ~0xFF) >> 8) / 255
+        gamestate = (mat[:, :, 5:]) / 800
         # Dimensions should be batch x (48 + 9 * 12) = 156
         combined_input = torch.cat(
             [embeddings, active_and_pps, gamestate], dim=2
         ).flatten(start_dim=1)
-
-        return self.encoder.forward(combined_input)
+        if(combined_input.max() > 1 or combined_input.min() < -1):
+            print("Warning: combined input out of range", combined_input.max(), combined_input.min())
+        out =  self.encoder.forward(combined_input)
+        if(out.isnan().any()):
+            pass
+        return out
 
     def decode_actions(self, hidden: torch.Tensor):
         logits = self.decoder.forward(hidden)
         values = self.value.forward(hidden)
+        if(logits.isnan().any() or values.isnan().any()):
+            pass
         return logits, values
 
 
@@ -88,39 +104,27 @@ def test_model(n=12):
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
     # env = pufferlib.vector.make(
-    #     Sim,
-    #     num_envs=8,
+    #     Squared,
+    #     num_envs=12,
     #     env_args=[1024],
     #     batch_size=4,
     #     backend=pufferlib.vector.Multiprocessing,
     # )
-    env = Sim(num_envs=1)
-    env.reset(seed=42)
+    # # env = Showdown(num_envs=1)
+    # env.reset(seed=42)
     args = pufferl.load_config("default")
-    args["train"]["env"] = "Showdown"
-    args["train"]["minibatch_size"] = 64
-    policy = ShowdownModel().cuda()
-    trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-    for epoch in range(100):
-        trainer.evaluate()
-        logs = trainer.train()
-    trainer.print_dashboard()
-    trainer.close()
+    args["wandb"] = True
+    args["package"] = 'ocean'
+    args["train"]["batch_size"] = 32768
+    pufferl.sweep(args, env_name="puffer_showdown")
 
-    # ## Pokemon number, move1,move2, move3, move4 + PP for each, hp, status effects
-    # num_rows = 16
-    # policy = torch.nn.Embedding(num_rows, int(num_rows**0.25), device="cuda")
-
-    # policy = Default(multiproc_vecenv.driver_env).cuda()
-    # args = pufferl.load_config("default")
-    # args["train"]["env"] = "Showdown"
-    # # print(args)
-    # # args['train']['compile'] = True
-    # # args['train']['batch_size'] = 12288
-    # args["train"]["minibatch_size"] = 32768
-    # trainer = pufferl.PuffeRL(args["train"], multiproc_vecenv, policy=policy)
-    # for epoch in range(10):
+    # # with wandb.init(project="squared", config=args["train"]) as run:
+    # # args["train"]["minibatch_size"] = 64
+    # policy = Default(env).cuda()
+    # trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
+    # for epoch in range(100):
     #     trainer.evaluate()
     #     logs = trainer.train()
+    #     # wandb.log(logs)
     # trainer.print_dashboard()
     # trainer.close()
