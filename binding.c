@@ -14,6 +14,7 @@ static int my_log(PyObject* dict, Log* log) {
   assign_to_dict(dict, "num_moves", log->num_moves);
   assign_to_dict(dict, "num_won", log->num_won);
   assign_to_dict(dict, "num_lost", log->num_lost);
+  assign_to_dict(dict, "valid_moves", log->valid_moves);
   assign_to_dict(dict, "invalid_moves", log->invalid_moves);
   assign_to_dict(dict, "win_rate", log->win_rate);
   assign_to_dict(dict, "avg_game_len", log->avg_game_len);

@@ -13,12 +13,13 @@
 // reset
 
 typedef struct {
-  int num_games;
+  float num_games;
   // Ticks is a local num_moves
-  int num_moves;
-  int num_won;
-  int num_lost;
-  int invalid_moves;
+  float num_moves;
+  float num_won;
+  float num_lost;
+  float invalid_moves;
+  float valid_moves;
 
   float win_rate;
   float avg_game_len;
@@ -88,22 +89,36 @@ int get_highest_damage_move_index(Player* player) {
   return best_move_index;
 }
 
-// Triggered when a game ends
-void update_log(Log* log, Sim* s) {
-  log->num_games += 1;
-  log->num_moves += s->tick;
+// // Triggered when a game ends
+// void sub_log_update(Log* log, Sim* s) {
+//   log->num_moves += s->tick;
+
+// }
+
+void log_mini(Log* log, int valid_move) {
+  log->num_moves+= 1.0f;
+   if (valid_move > 0) {
+    log->valid_moves+=1.0f;
+  } else if (valid_move < 0) {
+    log->invalid_moves+=1.0f;
+    log->invalid_moves_pct = log->invalid_moves / log->num_moves;
+  }
+  log->n+= 1.0f;
+}
+
+void final_update(Log* log, Sim* s) {
+  log->num_games += 1.0f;
   // Updating avg: (n * prev + new) / (n + 1)
   //  (n + 1 * prev) + (new - prev) / (n + 1)
   //  avg += (new - prev) / (n + 1)
   log->avg_game_len += (s->tick - log->avg_game_len) / log->num_games;
-  log->invalid_moves_pct = (float)log->invalid_moves / (float)log->num_moves;
   if (s->rewards[0] > 0) {
-    log->num_won += 1;
+    log->num_won += 1.0f;
     log->avg_win_len += (s->tick - log->avg_win_len) / log->num_won;
   } else {
-    log->num_lost += 1;
+    log->num_lost += 1.0f;
   }
-  log->win_rate = (float)log->num_won / (float)log->num_games;
+  log->win_rate = log->num_won / log->num_games;
 }
 
 // Returns a reward in [-1, 1]:
@@ -173,13 +188,15 @@ static inline int battle_step(Sim* sim, int choice) {
   }
 
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
-    sim->log.invalid_moves++;
+    log_mini(&sim->log, -1); // Track invalid move via log_mini
     return -1;
   }
   // Should never arrive here
   if (!valid_choice(2, b->p2, p2_choice, mode)) {
     return -2;
   }
+  // Track valid move
+  log_mini(&sim->log, 1);
   if (mode == 0) {
     if ((!b->p1.active_pokemon.pokemon->status.freeze &&
          !b->p1.active_pokemon.pokemon->status.sleep) ||
@@ -219,6 +236,7 @@ void clear_battle(Battle* b) {
 void c_reset(Sim* sim) {
   if (sim->battle == NULL) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
+    sim->log = (Log){0};
   } else {
     clear_battle(sim->battle);
   }
@@ -263,9 +281,9 @@ void c_step(Sim* sim) {
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
 
-  update_log(&sim->log, sim);
   if (r == 1.0f || r == -1.0f) {
     sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
+    final_update(&sim->log, sim);  // Use final_update for end-of-game statistics
     c_reset(sim);
   }
   sim->rewards[0] = r;

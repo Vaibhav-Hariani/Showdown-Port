@@ -1,7 +1,7 @@
 from pufferlib import pufferl
 from pufferlib.ocean.showdown.showdown import Showdown
-# from pufferlib.ocean.breakout.breakout import Breakout
-# from pufferlib.ocean.squared.squared import Squared
+from pufferlib.ocean.squared.squared import Squared
+
 from pufferlib.models import Default
 import pufferlib
 from pufferlib.ocean.torch import Showdown as ShowdownModel
@@ -9,7 +9,7 @@ import torch
 from torch import nn
 import wandb
 
-wandb.login()
+# wandb.login()
 
 
 def get_params(x):
@@ -30,33 +30,31 @@ def test_model(n=12):
 
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
-    env = pufferlib.vector.make(
-        Showdown,
-        num_envs=12,
-        env_args=[1024],
-        batch_size=4,
-        backend=pufferlib.vector.Multiprocessing,
-    )
+    # env = pufferlib.vector.make(
+    #     Showdown,
+    #     num_envs=12,
+    #     env_args=[1024,0,10],
+    #     batch_size=4,
+    #     backend=pufferlib.vector.Multiprocessing,
+    # )
     # env.reset(seed=42)
+    env = Showdown(num_envs=1)
     args = pufferl.load_config("default")
     args["wandb"] = True
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     # args["train"]["batch_size"] = 32768
+    args["train"]["minibatch_size"] = 64 
+
     # args["train"]["optimizer"] = "adam"
-
-
-    args["train"]["env"] = "Showdown"
+    args["train"]["env"] = "showdown"
     args["train"]["amp"] = False
-    # args["train"]["learning_rate"] = 2.0e-4
-    # pufferl.sweep(args, env_name="puffer_showdown")
-    # policy = ShowdownModel(hidden_size=512, depth=12).cuda()
 
-    with wandb.init(project="Showdown", config=args["train"]) as run:
-        trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-        for epoch in range(100):
-            trainer.evaluate()
-            logs = trainer.train()
-            wandb.log(logs)
+    policy = Default(env.driver_env).cuda()
+    trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
+    # with wandb.init(project="squared", config=args["train"],id="squared-logging") as run:
+    for epoch in range(100):
+        trainer.evaluate()
+        logs = trainer.train()
     trainer.print_dashboard()
     trainer.close()

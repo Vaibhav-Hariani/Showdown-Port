@@ -1,7 +1,4 @@
 from pufferlib import pufferl
-from pufferlib.ocean.showdown.showdown import Showdown
-from pufferlib.ocean.torch import Showdown as ShowdownModel
-
 
 from pufferlib.models import Default
 import pufferlib
