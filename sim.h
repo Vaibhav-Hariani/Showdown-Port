@@ -282,7 +282,7 @@ void c_reset(Sim* sim) {
   sim->log.perf = 0.0f;  // Reset performance metric too
 }
 // No rendering: bare text
-void c_render(Sim* sim) { }
+void c_render(Sim* sim) { return; }
 
 void c_close(Sim* sim) {
   if (sim->battle) {
@@ -301,8 +301,6 @@ void c_step(Sim* sim) {
     // Otherwise, the sim is incentivized to spam wrong moves to extend the game
     // when it knows it's lost
     sim->rewards[0] = -1.0f;
-    // Use log_mini to track metrics for invalid moves
-    log_mini(&sim->log, -1, sim->rewards[0]);
     pack_battle(sim->battle, sim->observations);
     return;
   }
