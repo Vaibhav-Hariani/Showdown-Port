@@ -104,6 +104,7 @@ void update_log(Log* log, Sim* s) {
     log->num_lost += 1;
   }
   log->win_rate = (float)log->num_won / (float)log->num_games;
+  log->n += 1.0f;
 }
 
 // Returns a reward in [-1, 1]:
@@ -220,7 +221,6 @@ void c_reset(Sim* sim) {
   if (sim->battle == NULL) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
   } else {
-    update_log(&sim->log, sim);
     clear_battle(sim->battle);
   }
   sim->tick = 0;
@@ -264,9 +264,10 @@ void c_step(Sim* sim) {
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
   if (r == 1.0f || r == -1.0f) {
+    update_log(&sim->log, sim);
     c_reset(sim);
-    sim->terminals[0] =
-        1;  // Set terminal flag so that model knows to reload embeddings
+    // Set terminal flag so that model knows to reload embeddings + to prevent model self-burn
+    sim->terminals[0] = 1;
   }
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);
