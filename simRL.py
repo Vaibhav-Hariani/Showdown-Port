@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # env = pufferlib.vector.make(
     #     Showdown,
     #     num_envs=12,
-    #     env_args=[1024,0,10],
+    #     env_args=[1024,0,10], 
     #     batch_size=4,
     #     backend=pufferlib.vector.Multiprocessing,
     # )
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     args["train"]["env"] = "showdown"
     args["train"]["amp"] = False
 
-    policy = Default(env.driver_env).cuda()
+    policy = ShowdownModel(env.driver_env).cuda()
     trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
     # with wandb.init(project="squared", config=args["train"],id="squared-logging") as run:
-    for epoch in range(100):
+    for epoch in range(1000):
         trainer.evaluate()
         logs = trainer.train()
     trainer.print_dashboard()

@@ -13,7 +13,8 @@
 // reset
 
 typedef struct {
-  float num_games;
+  // n is num_games
+  // int num_games;
   // Ticks is a local num_moves
   float num_moves;
   float num_won;
@@ -24,8 +25,14 @@ typedef struct {
   float win_rate;
   float avg_game_len;
   float avg_win_len;
-  float invalid_moves_pct;  // Count of invalid moves made by the agent
   float avg_damage_pct;
+  
+  // Squared metrics
+  float perf;           // 0-1 normalized performance metric
+  float score;          // Unnormalized score metric
+  float episode_return; // Sum of agent rewards over episode
+  float episode_length; // Number of steps of agent episode
+  
   float n;  // Required as the last field
 } Log;
 
@@ -95,30 +102,56 @@ int get_highest_damage_move_index(Player* player) {
 
 // }
 
-void log_mini(Log* log, int valid_move) {
-  log->num_moves+= 1.0f;
-   if (valid_move > 0) {
-    log->valid_moves+=1.0f;
+void log_mini(Log* log, int valid_move, float reward) {
+  log->num_moves += 1.0f;
+  if (valid_move > 0) {
+    log->valid_moves += 1.0f;
   } else if (valid_move < 0) {
-    log->invalid_moves+=1.0f;
-    log->invalid_moves_pct = log->invalid_moves / log->num_moves;
+    log->invalid_moves += 1.0f;
   }
-  log->n+= 1.0f;
+  
+  // Update episode length for squared metrics
+  log->episode_length += 1.0f;
+  
+  // Track rewards for score and episode_return
+  log->episode_return += reward;
+  log->score += reward;
+  
+  // Update perf metric based on reward
+  // For positive rewards, consider it as performance contribution
+  if (reward > 0.0f) {
+    log->perf += reward; // Only add positive rewards to perf
+  }
 }
 
 void final_update(Log* log, Sim* s) {
-  log->num_games += 1.0f;
   // Updating avg: (n * prev + new) / (n + 1)
   //  (n + 1 * prev) + (new - prev) / (n + 1)
   //  avg += (new - prev) / (n + 1)
-  log->avg_game_len += (s->tick - log->avg_game_len) / log->num_games;
   if (s->rewards[0] > 0) {
     log->num_won += 1.0f;
     log->avg_win_len += (s->tick - log->avg_win_len) / log->num_won;
+    // For perf, treat win as 1.0 (perfect performance)
+    log->perf = 1.0f;  // Set to 1.0 for win regardless of accumulated perf
   } else {
     log->num_lost += 1.0f;
+    // For perf, keep as is (already accumulated through log_mini)
   }
-  log->win_rate = log->num_won / log->num_games;
+  
+  // Update win rate
+  log->win_rate = log->num_won / (log->num_won + log->num_lost);
+  
+  // Update average game length
+  log->avg_game_len += (s->tick - log->avg_game_len) / (log->num_won + log->num_lost);
+  
+  // Final reward was already added in log_mini during the last step,
+  // so we don't need to update score and episode_return again here.
+  
+  // Just increment n to track total episodes
+  log->n += 1.0f;
+  
+  // Increment game counter
+  log->n += 1.0f;
 }
 
 // Returns a reward in [-1, 1]:
@@ -148,12 +181,12 @@ float reward(Sim* s) {
   float mean_p2 = p2_percent_sum / num_p2;
   if (p1_percent_sum == 0.0f) {
     float avg_dmg = (1 - mean_p2) / s->tick;
-    s->log.avg_damage_pct += avg_dmg / s->log.num_games;
+    s->log.avg_damage_pct += avg_dmg;
     return -1.0f;
   }
   if (p2_percent_sum == 0.0f) {
     float avg_dmg = 1.0f / s->tick;
-    s->log.avg_damage_pct += avg_dmg / s->log.num_games;
+    s->log.avg_damage_pct += avg_dmg;
     return 1.0f;
   }
   float result = mean_p1 - mean_p2;
@@ -188,15 +221,15 @@ static inline int battle_step(Sim* sim, int choice) {
   }
 
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
-    log_mini(&sim->log, -1); // Track invalid move via log_mini
+    log_mini(&sim->log, -1, -1.0f); // Track invalid move via log_mini with penalty
     return -1;
   }
   // Should never arrive here
   if (!valid_choice(2, b->p2, p2_choice, mode)) {
     return -2;
   }
-  // Track valid move
-  log_mini(&sim->log, 1);
+  // Track valid move (with 0.0f reward for now - actual reward calculated later)
+  log_mini(&sim->log, 1, 0.0f);
   if (mode == 0) {
     if ((!b->p1.active_pokemon.pokemon->status.freeze &&
          !b->p1.active_pokemon.pokemon->status.sleep) ||
@@ -234,23 +267,22 @@ void clear_battle(Battle* b) {
 }
 
 void c_reset(Sim* sim) {
-  if (sim->battle == NULL) {
+  if (!sim->battle) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
-    sim->log = (Log){0};
+    // sim->log = (Log){0};
   } else {
     clear_battle(sim->battle);
   }
   sim->tick = 0;
-  // These seem to be somewhat pointless,
   sim->rewards[0] = 0.0f;
-  // Allocate Battle on first use; Player.team and Pokemon.poke_moves are inline
-  team_generator(&sim->battle->p1);
-  team_generator(&sim->battle->p2);
-  pack_battle(sim->battle, sim->observations);
+  
+  // Reset episode-specific metrics for new episode
+  sim->log.episode_return = 0.0f;
+  sim->log.episode_length = 0.0f;
+  sim->log.perf = 0.0f;  // Reset performance metric too
 }
-
 // No rendering: bare text
-void c_render(Sim* sim) { return; }
+void c_render(Sim* sim) { }
 
 void c_close(Sim* sim) {
   if (sim->battle) {
@@ -269,6 +301,8 @@ void c_step(Sim* sim) {
     // Otherwise, the sim is incentivized to spam wrong moves to extend the game
     // when it knows it's lost
     sim->rewards[0] = -1.0f;
+    // Use log_mini to track metrics for invalid moves
+    log_mini(&sim->log, -1, sim->rewards[0]);
     pack_battle(sim->battle, sim->observations);
     return;
   }
@@ -280,13 +314,22 @@ void c_step(Sim* sim) {
   // and move on
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
+  sim->rewards[0] = r;
 
   if (r == 1.0f || r == -1.0f) {
+    // Terminal state (win or loss)
     sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
-    final_update(&sim->log, sim);  // Use final_update for end-of-game statistics
+    
+    // Call final_update to track end-of-episode metrics
+    final_update(&sim->log, sim);
+    
+    // Reset for next episode
     c_reset(sim);
+  } else {
+    // For non-terminal steps, use log_mini to track metrics
+    log_mini(&sim->log, 1, r); // Valid move since we passed the a == -1 check
   }
-  sim->rewards[0] = r;
+  
   pack_battle(sim->battle, sim->observations);
   return;
 }
