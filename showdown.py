@@ -45,14 +45,16 @@ class Showdown(pufferlib.PufferEnv):
         self.tick += 1
         self.actions[:] = actions
         binding.vec_step(self.c_envs)
+        
         info = []
         if self.tick % self.log_interval == 0:
-            info.append(binding.vec_log(self.c_envs))
+            log = binding.vec_log(self.c_envs)
+            info.append(log)
+        
         if self.terminals[0] == True:
             # print("Episode finished after {} timesteps".format(self.tick))
             self.tick = 0
-        ##Remove for actual work, might work for training the default env?
-        # self.observations
+        
         return (self.observations, self.rewards, self.terminals, self.truncations, info)
 
     def render(self):
@@ -64,7 +66,7 @@ class Showdown(pufferlib.PufferEnv):
 
 
 if __name__ == "__main__":
-    N = 1024
+    N = 1
     env = Showdown(num_envs=N)
     env.reset(seed=42)
     steps = 0
@@ -81,5 +83,7 @@ if __name__ == "__main__":
         # min_obs(obs_dict)
         steps += N
         i += 1
-        print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
+        if info:
+            pass
+        # print(steps, 'steps in', time.time() - start, 'seconds', end='\r')
     print("\n Showdown SPS:", int(steps / (time.time() - start)))

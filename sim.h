@@ -220,7 +220,6 @@ void c_reset(Sim* sim) {
   if (sim->battle == NULL) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
   } else {
-    update_log(&sim->log, sim);
     clear_battle(sim->battle);
   }
   sim->tick = 0;
@@ -263,10 +262,11 @@ void c_step(Sim* sim) {
   // and move on
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
+
+  update_log(&sim->log, sim);
   if (r == 1.0f || r == -1.0f) {
+    sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
     c_reset(sim);
-    sim->terminals[0] =
-        1;  // Set terminal flag so that model knows to reload embeddings
   }
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);
