@@ -1,4 +1,7 @@
 from pufferlib import pufferl
+from pufferlib.ocean.showdown.showdown import Showdown
+from pufferlib.ocean.torch import ShowdownLSTM as ShowdownModel
+
 
 from pufferlib.models import Default
 import pufferlib
@@ -17,5 +20,6 @@ if __name__ == "__main__":
     args["policy"]["depth"] = 12
     args["vec"]["num_envs"] = 12
     args["env"] = {"num_envs": 1024}
-    args["policy_name"] = "Showdown"
+    args["tag"] = "showdown_lstm_test"
+    args["policy_name"] = "ShowdownLSTM"
     pufferl.sweep(args, env_name="puffer_showdown")

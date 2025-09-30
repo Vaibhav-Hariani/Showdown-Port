@@ -134,23 +134,8 @@ void final_update(Log* log, Sim* s) {
     // For perf, treat win as 1.0 (perfect performance)
     log->perf = 1.0f;  // Set to 1.0 for win regardless of accumulated perf
   } else {
-    log->num_lost += 1.0f;
-    // For perf, keep as is (already accumulated through log_mini)
+    log->num_lost += 1;
   }
-  
-  // Update win rate
-  log->win_rate = log->num_won / (log->num_won + log->num_lost);
-  
-  // Update average game length
-  log->avg_game_len += (s->tick - log->avg_game_len) / (log->num_won + log->num_lost);
-  
-  // Final reward was already added in log_mini during the last step,
-  // so we don't need to update score and episode_return again here.
-  
-  // Just increment n to track total episodes
-  log->n += 1.0f;
-  
-  // Increment game counter
   log->n += 1.0f;
 }
 
@@ -312,22 +297,13 @@ void c_step(Sim* sim) {
   // and move on
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
-  sim->rewards[0] = r;
-
   if (r == 1.0f || r == -1.0f) {
-    // Terminal state (win or loss)
-    sim->terminals[0] = 1;  // Set terminal flag so that model knows to reload embeddings
-    
-    // Call final_update to track end-of-episode metrics
-    final_update(&sim->log, sim);
-    
-    // Reset for next episode
+    update_log(&sim->log, sim);
     c_reset(sim);
-  } else {
-    // For non-terminal steps, use log_mini to track metrics
-    log_mini(&sim->log, 1, r); // Valid move since we passed the a == -1 check
+    // Set terminal flag so that model knows to reload embeddings + to prevent model self-burn
+    sim->terminals[0] = 1;
   }
-  
+  sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);
   return;
 }
