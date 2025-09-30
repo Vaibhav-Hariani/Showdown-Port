@@ -20,6 +20,8 @@ if __name__ == "__main__":
     args["policy"]["depth"] = 12
     args["vec"]["num_envs"] = 12
     args["env"] = {"num_envs": 1024}
-    args["tag"] = "showdown_lstm_test"
-    args["policy_name"] = "ShowdownLSTM"
+    args["tag"] = "showdown_lstm_new_log_data"
+    args["policy_name"] = "Showdown"
+    args["rnn_name"] = "ShowdownLSTM"
+    args["train"]["use_rnn"] = True
     pufferl.sweep(args, env_name="puffer_showdown")

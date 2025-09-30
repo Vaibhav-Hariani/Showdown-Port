@@ -66,7 +66,7 @@ class Showdown(pufferlib.PufferEnv):
 
 
 if __name__ == "__main__":
-    N = 1
+    N = 1024
     env = Showdown(num_envs=N)
     env.reset(seed=42)
     steps = 0

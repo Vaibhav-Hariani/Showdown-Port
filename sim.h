@@ -5,6 +5,7 @@
 #include "sim_utils/battle_queue.h"
 #include "sim_utils/move.h"
 #include "sim_utils/pokegen.h"
+#include "data_sim/typing.h"
 #include "stdint.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -23,10 +24,16 @@ typedef struct {
   float valid_moves;
 
   float win_rate;
-  float avg_game_len;
-  float avg_win_len;
   float avg_damage_pct;
-  
+
+  float team_strength; 
+  float matchup_advantage; // Type matchup score: +1 for each P1 advantage, -1 for each P2 advantage
+
+  float damage_dealing_move_pct; // Number of moves that dealt damage
+  float max_damage_move;
+  int highest_damage_move_id; // ID of the move with highest damage
+  float highest_damage_value; // The highest damage value encountered
+  float opponent_avg_hp;
   // Squared metrics
   float perf;           // 0-1 normalized performance metric
   float score;          // Unnormalized score metric
@@ -96,6 +103,107 @@ int get_highest_damage_move_index(Player* player) {
   return best_move_index;
 }
 
+void log_team_average_hp(Battle* b, Log* log) {
+  float total_hp = 0.0f;
+  int active_pokemon_count = 0;
+  Player* p = &b->p2;
+  for (int i = 0; i < 6; i++) {
+    if (p->team[i].max_hp > 0) {
+      total_hp += p->team[i].hp;
+      active_pokemon_count++;
+    }
+  }
+  // return total_hp / active_pokemon_count;
+  // float p2_avg_hp = calculate_average_hp(&b->p2);
+  log->opponent_avg_hp += total_hp / active_pokemon_count;  
+}
+
+
+// Calculate type matchup advantage between two teams
+// Returns positive score for Player 1 advantage, negative for Player 2 advantage
+void matchup_score(Sim* s) {
+  Battle* battle = s->battle;
+  float score = 0.0f;
+
+  int avg_poke_power = 0;
+  int num_valid_pokes = 0;
+  int max_move_pow = 0;
+  int highest_damage_move_id = -1;
+  float highest_damage_value = 0.0f;
+  // For each Pokemon on Player 1's team
+  for (int p1_idx = 0; p1_idx < 6; p1_idx++) {
+    Pokemon* p1_poke = &battle->p1.team[p1_idx];
+
+    // Skip if Pokemon has no HP (not a valid team member)
+    if (p1_poke->max_hp <= 0) continue;
+    num_valid_pokes++;
+    
+    for(int i = 0; i < 4; i++){
+      int power = p1_poke->poke_moves[i].power;
+      avg_poke_power += power;
+      max_move_pow = (power > max_move_pow) ? power : max_move_pow;
+      
+      // Track the highest damage move
+      if (power > highest_damage_value) {
+        highest_damage_value = (float)power;
+        highest_damage_move_id = p1_poke->poke_moves[i].id;
+      }
+    }
+    
+    // Check this Pokemon against all of Player 2's Pokemon
+    for (int p2_idx = 0; p2_idx < 6; p2_idx++) {
+      Pokemon* p2_poke = &battle->p2.team[p2_idx];
+      // Skip if Pokemon has no HP (not a valid team member)
+      if (p2_poke->max_hp <= 0) continue;
+      
+      // Calculate P1 Pokemon's best type effectiveness against P2 Pokemon
+      float p1_effectiveness = 1.0f;
+      if (p1_poke->type1 != NONETYPE) {
+        float type1_eff = damage_chart[p1_poke->type1][p2_poke->type1] * 
+                         damage_chart[p1_poke->type1][p2_poke->type2];
+        p1_effectiveness = type1_eff;
+      }
+      if (p1_poke->type2 != NONETYPE) {
+        float type2_eff = damage_chart[p1_poke->type2][p2_poke->type1] * 
+                         damage_chart[p1_poke->type2][p2_poke->type2];
+        if (type2_eff > p1_effectiveness) {
+          p1_effectiveness = type2_eff;
+        }
+      }
+      
+      // Calculate P2 Pokemon's best type effectiveness against P1 Pokemon
+      float p2_effectiveness = 1.0f;
+      if (p2_poke->type1 != NONETYPE) {
+        float type1_eff = damage_chart[p2_poke->type1][p1_poke->type1] * 
+                         damage_chart[p2_poke->type1][p1_poke->type2];
+        p2_effectiveness = type1_eff;
+      }
+      if (p2_poke->type2 != NONETYPE) {
+        float type2_eff = damage_chart[p2_poke->type2][p1_poke->type1] * 
+                         damage_chart[p2_poke->type2][p1_poke->type2];
+        if (type2_eff > p2_effectiveness) {
+          p2_effectiveness = type2_eff;
+        }
+      }
+      
+      // Compare effectiveness and award points
+      if (p1_effectiveness > p2_effectiveness) {
+        score += 1.0f; // P1 has advantage
+      } else if (p2_effectiveness > p1_effectiveness) {
+        score -= 1.0f; // P2 has advantage
+      }
+      // If equal, no change to score
+    }
+  }
+  avg_poke_power /= (num_valid_pokes * 4); // Average over all moves of valid pokes
+  s->log.team_strength += avg_poke_power;
+  s->log.matchup_advantage += score;
+  
+  // Log the highest damage move information
+  s->log.highest_damage_move_id = highest_damage_move_id;
+  s->log.highest_damage_value += highest_damage_value;
+}
+
 // // Triggered when a game ends
 // void sub_log_update(Log* log, Sim* s) {
 //   log->num_moves += s->tick;
@@ -109,14 +217,13 @@ void log_mini(Log* log, int valid_move, float reward) {
   } else if (valid_move < 0) {
     log->invalid_moves += 1.0f;
   }
-  
   // Update episode length for squared metrics
   log->episode_length += 1.0f;
   
   // Track rewards for score and episode_return
   log->episode_return += reward;
   log->score += reward;
-  
+
   // Update perf metric based on reward
   // For positive rewards, consider it as performance contribution
   if (reward > 0.0f) {
@@ -130,7 +237,6 @@ void final_update(Log* log, Sim* s) {
   //  avg += (new - prev) / (n + 1)
   if (s->rewards[0] > 0) {
     log->num_won += 1.0f;
-    log->avg_win_len += (s->tick - log->avg_win_len) / log->num_won;
     // For perf, treat win as 1.0 (perfect performance)
     log->perf = 1.0f;  // Set to 1.0 for win regardless of accumulated perf
   } else {
@@ -251,10 +357,12 @@ void clear_battle(Battle* b) {
   return;
 }
 
+
+
 void c_reset(Sim* sim) {
   if (!sim->battle) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
-    // sim->log = (Log){0};
+    // Initialize all log metrics to zero
   } else {
     clear_battle(sim->battle);
   }
@@ -265,6 +373,13 @@ void c_reset(Sim* sim) {
   sim->log.episode_return = 0.0f;
   sim->log.episode_length = 0.0f;
   sim->log.perf = 0.0f;  // Reset performance metric too
+  
+  team_generator(&sim->battle->p1);
+  team_generator(&sim->battle->p2);
+
+  matchup_score(sim);
+  log_team_average_hp(sim->battle, &sim->log);
+  pack_battle(sim->battle, sim->observations);
 }
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
@@ -298,7 +413,8 @@ void c_step(Sim* sim) {
   sim->battle->action_queue.q_size = 0;
   float r = reward(sim);
   if (r == 1.0f || r == -1.0f) {
-    update_log(&sim->log, sim);
+    final_update(&sim->log, sim);
+    // update_log(&sim->log, sim);
     c_reset(sim);
     // Set terminal flag so that model knows to reload embeddings + to prevent model self-burn
     sim->terminals[0] = 1;
