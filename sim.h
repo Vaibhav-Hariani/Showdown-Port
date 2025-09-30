@@ -31,7 +31,6 @@ typedef struct {
 
   float damage_dealing_move_pct; // Number of moves that dealt damage
   float max_damage_move;
-  int highest_damage_move_id; // ID of the move with highest damage
   float highest_damage_value; // The highest damage value encountered
   float opponent_avg_hp;
   // Squared metrics
@@ -128,7 +127,6 @@ void matchup_score(Sim* s) {
   int avg_poke_power = 0;
   int num_valid_pokes = 0;
   int max_move_pow = 0;
-  int highest_damage_move_id = -1;
   float highest_damage_value = 0.0f;
   // For each Pokemon on Player 1's team
   for (int p1_idx = 0; p1_idx < 6; p1_idx++) {
@@ -146,7 +144,6 @@ void matchup_score(Sim* s) {
       // Track the highest damage move
       if (power > highest_damage_value) {
         highest_damage_value = (float)power;
-        highest_damage_move_id = p1_poke->poke_moves[i].id;
       }
     }
     
@@ -200,8 +197,7 @@ void matchup_score(Sim* s) {
   s->log.matchup_advantage += score;
   
   // Log the highest damage move information
-  s->log.highest_damage_move_id = highest_damage_move_id;
-  s->log.highest_damage_value += highest_damage_value;
+    s->log.highest_damage_value += highest_damage_value;
 }
 
 // // Triggered when a game ends
