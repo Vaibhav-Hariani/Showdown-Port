@@ -7,20 +7,21 @@
 #include "log.h"
 #include "utils.h"
 
+// Define number of Pokemon per team
+#define NUM_POKE 6
+
 Player* get_player(Battle* b, int i) { return (i == 1) ? &b->p1 : &b->p2; }
 // Forward declarations for functions defined elsewhere
 void force_switch(Player* p);
 
 // Any triggers that need to be resolved for inactive pokemon resolve here,
 // and the queue is reset to zero.
-
-// This is super
 int end_step(Battle* b) {
   int ret = 0;
   for (int i = 1; i <= 2; i++) {
     Player* p = get_player(b, i);
     DLOG("Player %d's Resolution", i);
-    for (int j = 0; j < 6; j++) {
+    for (int j = 0; j < NUM_POKE; j++) {
       Pokemon* poke = &p->team[j];
       int is_active = (j == p->active_pokemon_index);
       int fainted = 0;
