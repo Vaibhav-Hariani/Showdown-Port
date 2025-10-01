@@ -41,7 +41,6 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   return 0;
 }
 void action(Battle* b, Player* user, Player* target, int input, int type) {
-  // Action* cur = (b->action_queue.queue) + b->action_queue.q_size;
   if (input >= 6) {
     input -= 6;
     add_move_to_queue(b, user, target, input);
@@ -85,19 +84,18 @@ float reward(Sim* s) {
   // Calculate mean HP percentage for each team (always NUM_POKE Pokemon)
   float mean_p1 = p1_percent_sum / NUM_POKE;
   float mean_p2 = p2_percent_sum / NUM_POKE;
+
+  float avg_dmg = (1 - mean_p2) / s->tick;
+  s->log.avg_damage_pct += avg_dmg;
+
   if (p1_percent_sum == 0.0f) {
-    float avg_dmg = (1 - mean_p2) / s->tick;
-    s->log.avg_damage_pct += avg_dmg;
     return -1.0f;
   }
   if (p2_percent_sum == 0.0f) {
-    float avg_dmg = 1.0f / s->tick;
-    s->log.avg_damage_pct += avg_dmg;
     return 1.0f;
   }
-  float result = mean_p1 - mean_p2;
   //Clamping happens in puffeRL anyway
-  return result;
+  return mean_p1 - mean_p2;
 }
 
 void team_generator(Player* p) {
@@ -131,15 +129,10 @@ static inline int select_best_move_choice(Player* player) {
 
 // Select a valid switch index [0..NUM_POKE-1]
 static inline int select_valid_switch_choice(Player p) {
-  // Try random first; fall back to first valid if needed
-  for (int tries = 0; tries < 32; ++tries) {
-    int c = rand() % NUM_POKE;
-    if (valid_switch(p, c)) return c;
-  }
   for (int i = 0; i < NUM_POKE; ++i) {
     if (valid_switch(p, i)) return i;
   }
-  // Should not happen; return 0 as a last resort
+  // Crash state
   return 0;
 }
 
