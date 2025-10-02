@@ -219,7 +219,8 @@ inline int attack(Battle* b,
           max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
     }
   }
-  if (attacker->recharge_counter != attacker->recharge_len) {
+  if (attacker->recharge_len == 0 ||
+      attacker->recharge_counter != attacker->recharge_len) {
     if (defender->substitute_hp > 0) {
       if (damage >= defender->substitute_hp) {
         defender->substitute_hp = 0;
