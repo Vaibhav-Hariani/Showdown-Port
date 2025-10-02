@@ -46,11 +46,14 @@ if __name__ == "__main__":
     # args["train"]["batch_size"] = 32768
     # args["train"]["optimizer"] = "adam"
     args["train"]["env"] = "showdown"
-    args["train"]["use_rnn"] = False
-    args["train"]["amp"] = False
+    # args["train"]["amp"] = True
 
     policy = ShowdownModel(env.driver_env).cuda()
-    # policy = ShowdownLSTM(env.driver_env, raw_policy).cuda()
+    
+    
+    args["train"]["use_rnn"] = True
+    policy = ShowdownLSTM(env.driver_env, policy).cuda()
+    
     trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
     # with wandb.init(project="squared", config=args["train"],id="squared-logging") as run:
     for epoch in range(1000):

@@ -8,7 +8,7 @@
 #include "utils.h"
 
 // Define number of Pokemon per team
-#define NUM_POKE 6
+#define NUM_POKE 1
 
 Player* get_player(Battle* b, int i) { return (i == 1) ? &b->p1 : &b->p2; }
 // Forward declarations for functions defined elsewhere

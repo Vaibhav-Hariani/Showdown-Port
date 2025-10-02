@@ -30,5 +30,9 @@ static int my_log(PyObject* dict, Log* log) {
   assign_to_dict(dict, "episode_return", log->episode_return);
   assign_to_dict(dict, "episode_length", log->episode_length);
   
+  // Reward calculation parameters
+  assign_to_dict(dict, "mean_p1_hp", log->mean_p1_hp);
+  assign_to_dict(dict, "mean_p2_hp", log->mean_p2_hp);
+  
   return 0;
 }

@@ -85,6 +85,10 @@ float reward(Sim* s) {
   float mean_p1 = p1_percent_sum / NUM_POKE;
   float mean_p2 = p2_percent_sum / NUM_POKE;
 
+  // Log reward calculation parameters (add for compounding)
+  s->log.mean_p1_hp += mean_p1;
+  s->log.mean_p2_hp += mean_p2;
+
   float avg_dmg = (1 - mean_p2) / s->tick;
   s->log.avg_damage_pct += avg_dmg;
 

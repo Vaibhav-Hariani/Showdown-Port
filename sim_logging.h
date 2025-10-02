@@ -24,6 +24,9 @@ typedef struct {
   float score;
   float episode_return;
   float episode_length;
+  // Reward calculation parameters
+  float mean_p1_hp;
+  float mean_p2_hp;
   float n;
 } Log;
 
