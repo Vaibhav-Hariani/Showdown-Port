@@ -73,6 +73,7 @@ typedef struct STR_BATTLE_POKEMON {
   struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
+  int substitute_hp;
   int badly_poisoned_ctr;
   int sleep_ctr;
   int recharge_counter;
@@ -82,6 +83,30 @@ typedef struct STR_BATTLE_POKEMON {
   int flinch : 1;
   // Todo: Add in confusion return as
   int confusion_counter : 2;
+  int reflect : 1;
+  int light_screen : 1;
+  int mist : 1;
+
 } BattlePokemon;
+
+def reset_battle_pokemon(BattlePokemon* bp) {
+  bp->stat_mods.attack = 0;
+  bp->stat_mods.defense = 0;
+  bp->stat_mods.speed = 0;
+  bp->stat_mods.specA = 0;
+  bp->stat_mods.specD = 0;
+  bp->stat_mods.accuracy = 0;
+  bp->stat_mods.evasion = 0;
+  bp->badly_poisoned_ctr = 0;
+  bp->sleep_ctr = 0;
+  bp->recharge_counter = 0;
+  bp->recharge_len = 0;
+  bp->dmg_counter = 0;
+  bp->flinch = 0;
+  bp->confusion_counter = 0;
+  bp->reflect = 0;
+  bp->light_screen = 0;
+  bp->mist = 0;
+}
 
 #endif

@@ -10,35 +10,35 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 9,Thunder Punch,Electric,Physical,15,75,100,0,NULL
 10,Scratch,Normal,Physical,35,40,100,0,NULL
 11,Vice Grip,Normal,Physical,30,55,100,0,NULL
-12,Guillotine,Normal,Physical,5,INF,30,0,NULL
-13,Razor Wind,Normal,Special,10,80,100,0,NULL
+12,Guillotine,Normal,Physical,5,INF,30,0,apply_guillotine
+13,Razor Wind,Normal,Special,10,80,100,0,apply_razor_wind
 14,Swords Dance,Normal,Status,20,0,100,0,NULL
 15,Cut,Normal,Physical,30,50,95,0,NULL
 16,Gust,Flying,Special,35,40,100,0,NULL
 17,Wing Attack,Flying,Physical,35,60,100,0,NULL
 18,Whirlwind,Normal,Status,20,0,INF,0,NULL
-19,Fly,Flying,Physical,15,90,95,0,NULL
-20,Bind,Normal,Physical,20,15,85,0,NULL
+19,Fly,Flying,Physical,15,90,95,0,apply_fly
+20,Bind,Normal,Physical,20,15,75,0,apply_bind
 21,Slam,Normal,Physical,20,80,75,0,NULL
 22,Vine Whip,Grass,Physical,25,45,100,0,NULL
-23,Stomp,Normal,Physical,20,65,100,0,NULL
+23,Stomp,Normal,Physical,20,65,100,0,apply_stomp
 24,Double Kick,Fighting,Physical,30,30,100,0,NULL
 25,Mega Kick,Normal,Physical,5,120,75,0,NULL
 26,Jump Kick,Fighting,Physical,10,100,95,0,NULL
 27,Rolling Kick,Fighting,Physical,15,60,85,0,NULL
-28,Sand Attack,Ground,Status,15,0,100,0,NULL
+28,Sand Attack,Ground,Status,15,0,100,0,apply_sand_attack
 29,Headbutt,Normal,Physical,15,70,100,0,NULL
 30,Horn Attack,Normal,Physical,25,65,100,0,NULL
 31,Fury Attack,Normal,Physical,20,15,85,0,NULL
-32,Horn Drill,Normal,Physical,5,INF,30,0,NULL
+32,Horn Drill,Normal,Physical,5,INF,30,0,apply_horn_drill
 33,Tackle,Normal,Physical,35,40,100,0,NULL
 34,Body Slam,Normal,Physical,15,85,100,0,NULL
 35,Wrap,Normal,Physical,20,15,90,0,NULL
 36,Take Down,Normal,Physical,20,90,85,0,NULL
-37,Thrash,Normal,Physical,10,120,100,0,NULL
-38,Double-Edge,Normal,Physical,15,120,100,0,NULL
+37,Thrash,Normal,Physical,10,120,100,0,apply_thrash
+38,Double Edge,Normal,Physical,15,120,100,0,apply_double_edge
 39,Tail Whip,Normal,Status,30,0,100,0,apply_tail_whip
-40,Poison Sting,Poison,Physical,35,15,100,0,NULL
+40,Poison Sting,Poison,Physical,35,15,100,0,apply_poison_sting
 41,Twineedle,Bug,Physical,20,25,100,0,NULL
 42,Pin Missile,Bug,Physical,20,25,95,0,NULL
 43,Leer,Normal,Status,30,0,100,0,NULL
@@ -48,11 +48,11 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 47,Sing,Normal,Status,15,0,55,0,NULL
 48,Supersonic,Normal,Status,20,0,55,0,NULL
 49,Sonic Boom,Normal,Special,20,0,90,0,NULL
-50,Disable,Normal,Status,20,0,100,0,NULL
+50,Disable,Normal,Status,20,0,100,0,apply_disable
 51,Acid,Poison,Special,30,40,100,0,apply_acid
 52,Ember,Fire,Special,25,40,100,0,NULL
 53,Flamethrower,Fire,Special,15,90,100,0,NULL
-54,Mist,Ice,Status,30,0,100,0,NULL
+54,Mist,Ice,Status,30,0,100,0,apply_mist
 55,Water Gun,Water,Special,25,40,100,0,NULL
 56,Hydro Pump,Water,Special,5,110,80,0,NULL
 57,Surf,Water,Special,15,90,100,0,NULL
@@ -61,64 +61,64 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 60,Psybeam,Psychic,Special,20,65,100,0,NULL
 61,Bubble Beam,Water,Special,20,65,100,0,apply_bubble_beam
 62,Aurora Beam,Ice,Special,20,65,100,0,apply_aurora_beam
-63,Hyper Beam,Normal,Special,5,150,90,0,NULL
+63,Hyper Beam,Normal,Special,5,150,90,0,apply_hyper_beam
 64,Peck,Flying,Physical,35,35,100,0,NULL
 65,Drill Peck,Flying,Physical,20,80,100,0,NULL
 66,Submission,Fighting,Physical,20,80,80,0,NULL
-67,Low Kick,Fighting,Physical,20,0,100,0,NULL
-68,Counter,Fighting,Physical,20,0,100,-1,NULL
-69,Seismic Toss,Fighting,Physical,20,0,100,0,NULL
+67,Low Kick,Fighting,Physical,20,50,90,0,apply_low_kick
+68,Counter,Fighting,Physical,20,0,100,-1,apply_counter
+69,Seismic Toss,Fighting,Physical,20,0,100,0,apply_seismic_toss
 70,Strength,Normal,Physical,15,80,100,0,NULL
 71,Absorb,Grass,Special,25,20,100,0,NULL
 72,Mega Drain,Grass,Special,15,40,100,0,NULL
-73,Leech Seed,Grass,Status,10,0,90,0,NULL
+73,Leech Seed,Grass,Status,10,0,90,0,apply_leech_seed
 74,Growth,Normal,Status,20,0,100,0,NULL
 75,Razor Leaf,Grass,Physical,25,55,95,0,NULL
-76,Solar Beam,Grass,Special,10,120,100,0,NULL
+76,Solar Beam,Grass,Special,10,120,100,0,apply_solar_beam
 77,Poison Powder,Poison,Status,35,0,75,0,NULL
 78,Stun Spore,Grass,Status,30,0,75,0,NULL
 79,Sleep Powder,Grass,Status,15,0,75,0,NULL
-80,Petal Dance,Grass,Special,10,120,100,0,NULL
+80,Petal Dance,Grass,Special,10,120,100,0,apply_petal_dance
 81,String Shot,Bug,Status,40,0,95,0,NULL
 82,Dragon Rage,Dragon,Special,10,0,100,0,NULL
 83,Fire Spin,Fire,Special,15,35,85,0,NULL
 84,Thunder Shock,Electric,Special,30,40,100,0,NULL
 85,Thunderbolt,Electric,Special,15,90,100,0,NULL
 86,Thunder Wave,Electric,Status,20,0,90,0,apply_thunder_wave
-87,Thunder,Electric,Special,10,110,70,0,NULL
+87,Thunder,Electric,Special,10,110,70,0,apply_thunder
 88,Rock Throw,Rock,Physical,15,50,90,0,NULL
 89,Earthquake,Ground,Physical,10,100,100,0,NULL
-90,Fissure,Ground,Physical,5,INF,30,0,NULL
-91,Dig,Ground,Physical,10,80,100,0,NULL
+90,Fissure,Ground,Physical,5,INF,30,0,apply_fissure
+91,Dig,Ground,Physical,10,80,100,0,apply_dig
 92,Toxic,Poison,Status,10,0,84.6,0,apply_toxic
 93,Confusion,Psychic,Special,25,50,100,0,NULL
-94,Psychic,Psychic,Special,10,90,100,0,NULL
+94,Psychic,Psychic,Special,10,90,100,0,apply_psychic
 95,Hypnosis,Psychic,Status,20,0,60,0,NULL
 96,Meditate,Psychic,Status,40,0,100,0,NULL
 97,Agility,Psychic,Status,30,0,100,0,NULL
 98,Quick Attack,Normal,Physical,30,40,100,1,NULL
-99,Rage,Normal,Physical,20,20,100,0,NULL
+99,Rage,Normal,Physical,20,20,100,0,apply_rage
 100,Teleport,Psychic,Status,20,0,100,0,NULL
-101,Night Shade,Ghost,Special,15,0,100,0,NULL
-102,Mimic,Normal,Status,10,0,INF,0,NULL
+101,Night Shade,Ghost,Special,15,0,100,0,apply_night_shade
+102,Mimic,Normal,Status,10,0,INF,0,apply_mimic
 103,Screech,Normal,Status,40,0,85,0,NULL
 104,Double Team,Normal,Status,15,0,100,0,NULL
-105,Recover,Normal,Status,5,0,100,0,NULL
+105,Recover,Normal,Status,5,0,100,0,apply_recover
 106,Harden,Normal,Status,30,0,100,0,NULL
-107,Minimize,Normal,Status,10,0,100,0,NULL
+107,Minimize,Normal,Status,10,0,100,0,apply_minimize
 108,Smokescreen,Normal,Status,20,0,100,0,NULL
 109,Confuse Ray,Ghost,Status,10,0,100,0,NULL
 110,Withdraw,Water,Status,40,0,100,0,NULL
 111,Defense Curl,Normal,Status,40,0,100,0,NULL
 112,Barrier,Psychic,Status,20,0,100,0,NULL
-113,Light Screen,Psychic,Status,30,0,100,0,NULL
-114,Haze,Ice,Status,30,0,100,0,NULL
-115,Reflect,Psychic,Status,20,0,100,0,NULL
+113,Light Screen,Psychic,Status,30,0,100,0,apply_light_screen
+114,Haze,Ice,Status,30,0,100,0,apply_haze
+115,Reflect,Psychic,Status,20,0,100,0,apply_reflect
 116,Focus Energy,Normal,Status,30,0,100,0,NULL
 117,Bide,Normal,Physical,10,0,INF,0,apply_bide
 118,Metronome,Normal,Status,10,0,100,0,NULL
-119,Mirror Move,Flying,Status,20,0,100,0,NULL
-120,Self-Destruct,Normal,Physical,5,200,100,0,NULL
+119,Mirror Move,Flying,Status,20,0,100,0,apply_mirror_move
+120,Self Destruct,Normal,Physical,5,200,100,0,apply_self_destruct
 121,Egg Bomb,Normal,Physical,10,100,75,0,NULL
 122,Lick,Ghost,Physical,30,30,100,0,NULL
 123,Smog,Poison,Special,20,30,70,0,NULL
@@ -128,39 +128,39 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 127,Waterfall,Water,Physical,15,80,100,0,NULL
 128,Clamp,Water,Physical,15,35,85,0,NULL
 129,Swift,Normal,Special,20,60,INF,0,NULL
-130,Skull Bash,Normal,Physical,10,130,100,0,NULL
+130,Skull Bash,Normal,Physical,10,130,100,0,apply_skull_bash
 131,Spike Cannon,Normal,Physical,15,20,100,0,NULL
 132,Constrict,Normal,Physical,35,10,100,0,apply_constrict
 133,Amnesia,Psychic,Status,20,0,100,0,NULL
 134,Kinesis,Psychic,Status,15,0,80,0,NULL
-135,Soft-Boiled,Normal,Status,5,0,100,0,NULL
-136,High Jump Kick,Fighting,Physical,10,130,90,0,NULL
+135,Soft Boiled,Normal,Status,5,0,100,0,apply_soft_boiled
+136,High Jump Kick,Fighting,Physical,10,130,90,0,apply_high_jump_kick
 137,Glare,Normal,Status,30,0,74.6,0,apply_glare
 138,Dream Eater,Psychic,Special,15,100,100,0,NULL
 139,Poison Gas,Poison,Status,40,0,90,0,NULL
 140,Barrage,Normal,Physical,20,15,85,0,NULL
 141,Leech Life,Bug,Physical,10,80,100,0,NULL
 142,Lovely Kiss,Normal,Status,10,0,75,0,NULL
-143,Sky Attack,Flying,Physical,5,140,90,0,NULL
-144,Transform,Normal,Status,10,0,INF,0,NULL
+143,Sky Attack,Flying,Physical,5,140,90,0,apply_sky_attack
+144,Transform,Normal,Status,10,0,INF,0,apply_transform
 145,Bubble,Water,Special,30,40,100,0,apply_bubble
-146,Dizzy Punch,Normal,Physical,10,70,100,0,NULL
+146,Dizzy Punch,Normal,Physical,10,70,100,0,apply_dizzy_punch
 147,Spore,Grass,Status,15,0,100,0,NULL
 148,Flash,Normal,Status,20,0,100,0,NULL
-149,Psywave,Psychic,Special,15,0,100,0,NULL
+149,Psywave,Psychic,Special,15,0,100,0,apply_psywave
 150,Splash,Normal,Status,40,0,100,0,NULL
 151,Acid Armor,Poison,Status,20,0,100,0,NULL
 152,Crabhammer,Water,Physical,10,100,90,0,NULL
-153,Explosion,Normal,Physical,5,250,100,0,NULL
+153,Explosion,Normal,Physical,5,250,100,0,apply_explosion
 154,Fury Swipes,Normal,Physical,15,18,80,0,NULL
 155,Bonemerang,Ground,Physical,10,50,90,0,NULL
-156,Rest,Psychic,Status,5,0,100,0,NULL
-157,Rock Slide,Rock,Physical,10,75,90,0,NULL
+156,Rest,Psychic,Status,5,0,100,0,apply_rest
+157,Rock Slide,Rock,Physical,10,75,90,0,apply_rock_slide
 158,Hyper Fang,Normal,Physical,15,80,90,0,NULL
 159,Sharpen,Normal,Status,30,0,100,0,NULL
 160,Conversion,Normal,Status,30,0,100,0,apply_conversion
 161,Tri Attack,Normal,Special,10,80,100,0,NULL
 162,Super Fang,Normal,Physical,10,0,90,0,NULL
 163,Slash,Normal,Physical,20,70,100,0,NULL
-164,Substitute,Normal,Status,10,0,100,0,NULL
-165,Struggle,Normal,Physical,1,50,INF,0,NULL
+164,Substitute,Normal,Status,10,0,100,0,apply_substitute
+165,Struggle,Normal,Physical,1,50,INF,0,apply_struggle

@@ -44,11 +44,23 @@ static inline int calculate_damage(BattlePokemon* attacker,
     // their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.specD);
+    if (defender->light_screen) {
+      defense_stat *= 2;  // Light Screen doubles special defense
+      if (defense_stat > 1024) {
+        defense_stat -= defense_stat % 1024;
+      }
+    }
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
     attack_stat *= get_stat_modifier(attacker->stat_mods.attack);
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.defense);
+    if (defender->reflect) {
+      defense_stat *= 2;  // Reflect doubles physical defense
+    }
+    if (defense_stat > 1024) {
+      defense_stat -= defense_stat % 1024;
+    }
   }
 
   int level = base_attacker->stats.level;
@@ -95,6 +107,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       int level = attacker->pokemon->stats.level;
       int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
       int def = attacker->pokemon->stats.base_stats[STAT_DEFENSE];
+      if (attacker->reflect) {
+        def *= 2;  // Reflect doubles physical defense
+      }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
       float random_factor = (rand() % 38 + 217) / 255.0;
       damage = (int)(damage * random_factor);
@@ -172,22 +187,66 @@ inline int attack(Battle* b,
     return 0;
   }
 
-  if (used_move->power != 0) {
+  // Gen 1 quirk - a move's power is fixed for the duration of the move
+  // e.g. firespin, bind, wrap
+  int damage = 0;
+  if (used_move->power != 0 &&
+      attacker->recharge_counter == attacker->recharge_len) {
     DLOG("%s used %s!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
 
     // Calculate damage
-    int damage = calculate_damage(attacker, defender, used_move);
-    // Not this simple with substitutes and whatnot: might need an apply_damage
-    // function.
-    defender->pokemon->hp -= damage;
-    defender->pokemon->hp =
-        max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+    damage = calculate_damage(attacker, defender, used_move);
+
+    // Apply damage with substitute logic
+    if (defender->substitute_hp > 0) {
+      if (damage >= defender->substitute_hp) {
+        DLOG("%s's substitute broke!", get_pokemon_name(defender->pokemon->id));
+        defender->substitute_hp = 0;
+        // In Gen 1, overflow damage doesn't carry through
+        damage = 0;
+      } else {
+        defender->substitute_hp -= damage;
+        DLOG("%s's substitute took the hit! (%d HP remaining)",
+             get_pokemon_name(defender->pokemon->id),
+             defender->substitute_hp);
+        damage = 0;
+      }
+    } else {
+      defender->pokemon->hp -= damage;
+      defender->pokemon->hp =
+          max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+    }
+  }
+  if (attacker->recharge_counter != attacker->recharge_len) {
+    if (defender->substitute_hp > 0) {
+      if (damage >= defender->substitute_hp) {
+        defender->substitute_hp = 0;
+        damage = 0;
+      } else {
+        defender->substitute_hp -= damage;
+        damage = 0;
+      }
+    } else {
+      defender->pokemon->hp -= damage;
+      defender->pokemon->hp =
+          max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+    }
+    defender->dmg_counter += damage;
   }
   // Handle move-specific logic
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender);
+  }
+
+  // Maybe make a post apply function for things like bide, bind, etc?
+  if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
+      used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
+    used_move->power = damage;
+  }
+  if (used_move->id == HYPER_BEAM_MOVE_ID) {
+    used_move->power = 0;
   }
 
   // Handle freeze thawing
