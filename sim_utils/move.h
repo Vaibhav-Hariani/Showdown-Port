@@ -200,117 +200,97 @@ inline int attack(Battle* b,
     damage = calculate_damage(attacker, defender, used_move);
 
     // Apply damage with substitute logic
-    if (defender->substitute_hp > 0) {
-      if (damage >= defender->substitute_hp) {
-        DLOG("%s's substitute broke!", get_pokemon_name(defender->pokemon->id));
-        defender->substitute_hp = 0;
-        // In Gen 1, overflow damage doesn't carry through
-        damage = 0;
+
+    if (attacker->recharge_len == 0 ||
+        attacker->recharge_counter != attacker->recharge_len) {
+      if (defender->substitute_hp > 0) {
+        if (damage >= defender->substitute_hp) {
+          defender->substitute_hp = 0;
+          damage = 0;
+        } else {
+          defender->substitute_hp -= damage;
+          damage = 0;
+        }
       } else {
-        defender->substitute_hp -= damage;
-        DLOG("%s's substitute took the hit! (%d HP remaining)",
-             get_pokemon_name(defender->pokemon->id),
-             defender->substitute_hp);
-        damage = 0;
+        defender->pokemon->hp -= damage;
+        defender->pokemon->hp =
+            max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
       }
-    } else {
-      defender->pokemon->hp -= damage;
-      defender->pokemon->hp =
-          max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+      defender->dmg_counter += damage;
     }
-  }
-  if (attacker->recharge_len == 0 ||
-      attacker->recharge_counter != attacker->recharge_len) {
-    if (defender->substitute_hp > 0) {
-      if (damage >= defender->substitute_hp) {
-        defender->substitute_hp = 0;
-        damage = 0;
-      } else {
-        defender->substitute_hp -= damage;
-        damage = 0;
-      }
-    } else {
-      defender->pokemon->hp -= damage;
-      defender->pokemon->hp =
-          max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+    // Handle move-specific logic
+    if (used_move->movePtr != NULL) {
+      used_move->movePtr(b, attacker, defender);
     }
-    defender->dmg_counter += damage;
-  }
-  // Handle move-specific logic
-  if (used_move->movePtr != NULL) {
-    used_move->movePtr(b, attacker, defender);
-  }
 
-  // Maybe make a post apply function for things like bide, bind, etc?
-  if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
-      used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
-    used_move->power = damage;
-  }
-  if (used_move->id == HYPER_BEAM_MOVE_ID) {
-    used_move->power = 0;
-  }
-
-  // Handle freeze thawing
-  if (defender->pokemon->status.freeze && used_move->type == FIRE &&
-      used_move->id != FIRE_SPIN_MOVE_ID) {
-    attacker->pokemon->status.freeze = 0;
-    DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
-  }
-  return 1;
-}
-
-int valid_move(Player* user, int move_index) {
-  if (user->active_pokemon_index < 0) {
-    // This is a bugged state: Should never arrive here.
-    //  The pokemon should have been forced to switch out by now
-    return 0;
-  }
-  Move m = user->active_pokemon.pokemon->poke_moves[move_index];
-  if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
-    DLOG("Move %s has no PP left!", get_move_name(m.id));
-    return 0;
-  }
-  return 1;
-}
-
-// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
-// if added.
-int add_move_to_queue(Battle* battle,
-                      Player* user,
-                      Player* target,
-                      int move_index) {
-  // Assumes input is screened beforehand.
-  BattlePokemon* battle_poke = &user->active_pokemon;
-  Move* move = (battle_poke->pokemon->poke_moves) + move_index;
-  // Add to queue by modifying the action at q_size
-  if (battle->action_queue.q_size < 15) {
-    Action* action_ptr =
-        &battle->action_queue.queue[battle->action_queue.q_size];
-    memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
-    action_ptr->action_type = move_action;
-    action_ptr->action_d.m = *move;
-    action_ptr->User = user;
-    action_ptr->Target = target;
-    action_ptr->order = 200;  // Use 200 as the order for moves
-    action_ptr->priority = move->priority;
-
-    int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
-    action_ptr->speed =
-        base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
-    if (battle_poke->pokemon->status.paralyzed) {
-      action_ptr->speed /= 4;
+    // Maybe make a post apply function for things like bide, bind, etc?
+    if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
+        used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
+      used_move->power = damage;
     }
-    action_ptr->origLoc = user->active_pokemon_index;
-    DLOG("Added move %s to queue for %s.",
-         get_move_name(move->id),
-         get_pokemon_name(battle_poke->pokemon->id));
+    if (used_move->id == HYPER_BEAM_MOVE_ID) {
+      used_move->power = 0;
+    }
+
+    // Handle freeze thawing
+    if (defender->pokemon->status.freeze && used_move->type == FIRE &&
+        used_move->id != FIRE_SPIN_MOVE_ID) {
+      attacker->pokemon->status.freeze = 0;
+      DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+    }
     return 1;
-  } else {
-    // Need to crash
-    DLOG("Battle queue is full!\n");
-    exit(1);
-    return 0;  // Changed from -2 to 0 for standardized return values
   }
-}
+
+  int valid_move(Player * user, int move_index) {
+    if (user->active_pokemon_index < 0) {
+      // This is a bugged state: Should never arrive here.
+      //  The pokemon should have been forced to switch out by now
+      return 0;
+    }
+    Move m = user->active_pokemon.pokemon->poke_moves[move_index];
+    if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
+      DLOG("Move %s has no PP left!", get_move_name(m.id));
+      return 0;
+    }
+    return 1;
+  }
+
+  // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low),
+  // 1 if added.
+  int add_move_to_queue(
+      Battle * battle, Player * user, Player * target, int move_index) {
+    // Assumes input is screened beforehand.
+    BattlePokemon* battle_poke = &user->active_pokemon;
+    Move* move = (battle_poke->pokemon->poke_moves) + move_index;
+    // Add to queue by modifying the action at q_size
+    if (battle->action_queue.q_size < 15) {
+      Action* action_ptr =
+          &battle->action_queue.queue[battle->action_queue.q_size];
+      memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
+      action_ptr->action_type = move_action;
+      action_ptr->action_d.m = *move;
+      action_ptr->User = user;
+      action_ptr->Target = target;
+      action_ptr->order = 200;  // Use 200 as the order for moves
+      action_ptr->priority = move->priority;
+
+      int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+      action_ptr->speed =
+          base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
+      if (battle_poke->pokemon->status.paralyzed) {
+        action_ptr->speed /= 4;
+      }
+      action_ptr->origLoc = user->active_pokemon_index;
+      DLOG("Added move %s to queue for %s.",
+           get_move_name(move->id),
+           get_pokemon_name(battle_poke->pokemon->id));
+      return 1;
+    } else {
+      // Need to crash
+      DLOG("Battle queue is full!\n");
+      exit(1);
+      return 0;  // Changed from -2 to 0 for standardized return values
+    }
+  }
 
 #endif
