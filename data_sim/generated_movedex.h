@@ -2,10 +2,9 @@
 #ifndef GENERATED_MOVEDEX_H
 #define GENERATED_MOVEDEX_H
 
-#include "typing.h"
 #include "generated_move_enum.h"
 #include "movedex.h"
-#include "pokemon.h"
+#include "typing.h"
 
 const Move MOVES[] = {
     {.id = NO_MOVE,
@@ -1103,7 +1102,7 @@ const Move MOVES[] = {
      .power = 130,
      .accuracy = 0.9,
      .priority = 0,
-     .movePtr = apply_high_jump_kick},
+     .movePtr = NULL},
     {.id = GLARE_MOVE_ID,
      .type = NORMAL,
      .category = STATUS_MOVE_CATEGORY,
@@ -1338,5 +1337,4 @@ const Move MOVES[] = {
      .movePtr = apply_struggle},
 };
 
-
-#endif // GENERATED_MOVEDEX_H
+#endif  // GENERATED_MOVEDEX_H

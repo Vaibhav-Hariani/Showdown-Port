@@ -197,7 +197,8 @@ void apply_counter(Battle *battle,
                    BattlePokemon *defender) {
   // Counter does double the damage received from the last physical attack
   // Only if the last attack was physical
-  if (attacker->dmg_counter > 0 && battle->lastMove == PHYSICAL_MOVE_CATEGORY) {
+  if (attacker->dmg_counter > 0 &&
+      battle->lastMove->category == PHYSICAL_MOVE_CATEGORY) {
     defender->dmg_counter *= 2;
     attacker->pokemon->hp -= defender->dmg_counter;
     DLOG("Counter triggered!");
@@ -227,11 +228,11 @@ void apply_disable(Battle *battle,
   if (defender->last_used == NULL) {
     return;
   }
-  disable_index = 0;
+  int disable_index = 0;
   for (int i = 0; i < 4; ++i) {
     // TODO: Check if last used is the correct algo here
-    if (defender->moves[i].id == last_used->id ||
-        defender->pokemon->poke_moves[i].id == last_used->id) {
+    if (defender->moves[i].id == defender->last_used->id ||
+        defender->pokemon->poke_moves[i].id == defender->last_used->id) {
       defender->disabled_index = i;
       // TODO: Set disabled move count
       defender->disabled_count = 3;
@@ -428,7 +429,7 @@ void apply_leech_seed(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
   DLOG("Leech Seed planted");
-  defender->leech_seed = 1
+  defender->leech_seed = 1;
 }
 
 void apply_light_screen(Battle *battle,
@@ -557,12 +558,12 @@ void apply_psywave(Battle *battle,
 void apply_rage(Battle *battle,
                 BattlePokemon *attacker,
                 BattlePokemon *defender) {
-  DLOG("%s is enraged!");
+  DLOG("%s is enraged!", get_pokemon_name(attacker->pokemon->id));
   // find rage
   for (int i = 0; i < 4; ++i) {
     if (attacker->moves[i].id == RAGE_MOVE_ID ||
-        attacker->pokemon->poke_moves[i] == RAGE_MOVE_ID) {
-      attacker->rage = attacker->moves[i];
+        attacker->pokemon->poke_moves[i].id == RAGE_MOVE_ID) {
+      attacker->rage = attacker->moves + i;
     }
   }
 }

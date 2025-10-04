@@ -7,8 +7,8 @@
 #include "../data_labels/move_labels.h"
 #include "../data_labels/pokedex_labels.h"
 
-char* get_move_name(int move_id) { return MOVE_LABELS[move_id]; }
-char* get_pokemon_name(int pokemon_id) { return POKE_NAMES[pokemon_id]; }
+const char* get_move_name(int move_id) { return MOVE_LABELS[move_id]; }
+const char* get_pokemon_name(int pokemon_id) { return POKE_NAMES[pokemon_id]; }
 #define DLOG(fmt, ...)                                                       \
   do {                                                                       \
     fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \

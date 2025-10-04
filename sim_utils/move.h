@@ -90,7 +90,6 @@ static inline int calculate_damage(BattlePokemon* attacker,
   return damage * random_factor;
 }
 
-// Todo:
 // Add status checks for flinching and other statuses
 //  Check for critical moves and other effects.
 // Pre-move checker: applies status effects, checks recharge/flinch, and handles
@@ -223,89 +222,92 @@ inline int attack(Battle* b,
       }
       defender->dmg_counter += damage;
     }
-    // Handle move-specific logic
-    if (used_move->movePtr != NULL) {
-      used_move->movePtr(b, attacker, defender);
-    }
+  }
+  // Handle move-specific logic
+  if (used_move->movePtr != NULL) {
+    used_move->movePtr(b, attacker, defender);
+  }
 
-    // Maybe make a post apply function for things like bide, bind, etc?
-    if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
-        used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
-      used_move->power = damage;
-    }
-    if (used_move->id == HYPER_BEAM_MOVE_ID) {
-      used_move->power = 0;
-    }
+  // Maybe make a post apply function for things like bide, bind, etc?
+  if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
+      used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
+    used_move->power = damage;
+  }
+  if (used_move->id == HYPER_BEAM_MOVE_ID) {
+    used_move->power = 0;
+  }
 
-    // Handle freeze thawing
-    if (defender->pokemon->status.freeze && used_move->type == FIRE &&
-        used_move->id != FIRE_SPIN_MOVE_ID) {
-      attacker->pokemon->status.freeze = 0;
-      DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+  // Handle freeze thawing
+  if (defender->pokemon->status.freeze && used_move->type == FIRE &&
+      used_move->id != FIRE_SPIN_MOVE_ID) {
+    attacker->pokemon->status.freeze = 0;
+    DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+  }
+  return 1;
+}
+
+int valid_move(Player* user, int move_index) {
+  if (user->active_pokemon_index < 0) {
+    // This is a bugged state: Should never arrive here.
+    //  The pokemon should have been forced to switch out by now
+    return 0;
+  }
+  // check if move is disabled
+  if (user->active_pokemon.disabled_count > 0 &&
+      move_index == user->active_pokemon.disabled_index) {
+    DLOG("Attempt to use disabled move");
+    return 0;
+  }
+  Move m = user->active_pokemon.pokemon->poke_moves[move_index];
+  if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
+    DLOG("Move %s has no PP left!", get_move_name(m.id));
+    return 0;
+  }
+  return 1;
+}
+
+// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low),
+// 1 if added.
+int add_move_to_queue(Battle* battle,
+                      Player* user,
+                      Player* target,
+                      int move_index) {
+  // Assumes input is screened beforehand.
+  BattlePokemon* battle_poke = &user->active_pokemon;
+  Move* move = (battle_poke->pokemon->poke_moves) + move_index;
+  // In the case of transform, mimic.
+  if (battle_poke->moves[move_index].id != 0) {
+    move = battle_poke->moves + move_index;
+  }
+  // Add to queue by modifying the action at q_size
+  if (battle->action_queue.q_size < 15) {
+    Action* action_ptr =
+        &battle->action_queue.queue[battle->action_queue.q_size];
+    memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
+    action_ptr->action_type = move_action;
+    action_ptr->action_d.m = move;
+    action_ptr->User = user;
+    action_ptr->Target = target;
+    action_ptr->order = 200;  // Use 200 as the order for moves
+    action_ptr->priority = move->priority;
+
+    int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
+    action_ptr->speed =
+        base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
+    if (battle_poke->pokemon->status.paralyzed) {
+      action_ptr->speed /= 4;
     }
+    action_ptr->origLoc = user->active_pokemon_index;
+    DLOG("Added move %s to queue for %s.",
+         get_move_name(move->id),
+         get_pokemon_name(battle_poke->pokemon->id));
     return 1;
+  } else {
+    // Need to crash
+    DLOG("Battle queue is full!\n");
+    exit(1);
+    return 0;  // Changed from -2 to 0 for standardized return values
   }
-
-  int valid_move(Player * user, int move_index) {
-    if (user->active_pokemon_index < 0) {
-      // This is a bugged state: Should never arrive here.
-      //  The pokemon should have been forced to switch out by now
-      return 0;
-    }
-    // check if move is disabled
-    if (user->active_pokemon.disabled_count > 0 &&
-        move_index == user->active_pokemon.disabled_index) {
-      DLOG("Attempt to use disabled move");
-      return 0;
-    }
-    Move m = user->active_pokemon.pokemon->poke_moves[move_index];
-    if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
-      DLOG("Move %s has no PP left!", get_move_name(m.id));
-      return 0;
-    }
-    return 1;
-  }
-
-  // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low),
-  // 1 if added.
-  int add_move_to_queue(
-      Battle * battle, Player * user, Player * target, int move_index) {
-    // Assumes input is screened beforehand.
-    BattlePokemon* battle_poke = &user->active_pokemon;
-    Move* move = (battle_poke->pokemon->poke_moves) + move_index;
-    // In the case of transform, mimic.
-    if (battle_poke->moves[move_index].id != 0) {
-      move = battle_poke->moves + move_index;
-    }
-    // Add to queue by modifying the action at q_size
-    if (battle->action_queue.q_size < 15) {
-      Action* action_ptr =
-          &battle->action_queue.queue[battle->action_queue.q_size];
-      memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
-      action_ptr->action_type = move_action;
-      action_ptr->action_d.m = *move;
-      action_ptr->User = user;
-      action_ptr->Target = target;
-      action_ptr->order = 200;  // Use 200 as the order for moves
-      action_ptr->priority = move->priority;
-
-      int base_speed = battle_poke->pokemon->stats.base_stats[STAT_SPEED];
-      action_ptr->speed =
-          base_speed * get_stat_modifier(battle_poke->stat_mods.speed);
-      if (battle_poke->pokemon->status.paralyzed) {
-        action_ptr->speed /= 4;
-      }
-      action_ptr->origLoc = user->active_pokemon_index;
-      DLOG("Added move %s to queue for %s.",
-           get_move_name(move->id),
-           get_pokemon_name(battle_poke->pokemon->id));
-      return 1;
-    } else {
-      // Need to crash
-      DLOG("Battle queue is full!\n");
-      exit(1);
-      return 0;  // Changed from -2 to 0 for standardized return values
-    }
-  }
+}
 
 #endif
