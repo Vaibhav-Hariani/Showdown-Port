@@ -134,7 +134,7 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 133,Amnesia,Psychic,Status,20,0,100,0,NULL
 134,Kinesis,Psychic,Status,15,0,80,0,NULL
 135,Soft Boiled,Normal,Status,5,0,100,0,apply_soft_boiled
-136,High Jump Kick,Fighting,Physical,10,130,90,0,apply_high_jump_kick
+136,High Jump Kick,Fighting,Physical,10,130,90,0,NULL
 137,Glare,Normal,Status,30,0,74.6,0,apply_glare
 138,Dream Eater,Psychic,Special,15,100,100,0,NULL
 139,Poison Gas,Poison,Status,40,0,90,0,NULL

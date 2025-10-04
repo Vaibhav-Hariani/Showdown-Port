@@ -219,16 +219,25 @@ void apply_dig(Battle *battle,
   }
 }
 
-// Disable - Prevents the last move used by opponent from being used for 1-7
-// turns
-// TODO: Requires tracking disabled moves in BattlePokemon struct
-// TODO: Add disabled_move_id field to BattlePokemon
-// TODO: Add disabled_turns_remaining counter to BattlePokemon
+// Disable - Prevents the last move (?) used by opponent from being used for 1-7
 void apply_disable(Battle *battle,
                    BattlePokemon *attacker,
                    BattlePokemon *defender) {
   DLOG("Disable effect not fully implemented yet");
-  // TODO: Implement move disabling logic
+  if (defender->last_used == NULL) {
+    return;
+  }
+  disable_index = 0;
+  for (int i = 0; i < 4; ++i) {
+    // TODO: Check if last used is the correct algo here
+    if (defender->moves[i].id == last_used->id ||
+        defender->pokemon->poke_moves[i].id == last_used->id) {
+      defender->disabled_index = i;
+      // TODO: Set disabled move count
+      defender->disabled_count = 3;
+      break;
+    }
+  }
 }
 
 // Dizzy Punch - 20% chance to confuse the defender
@@ -376,16 +385,6 @@ void apply_haze(Battle *battle,
   DLOG("All stat changes were eliminated!");
 }
 
-// High Jump Kick - In Gen 1, user takes 1 HP crash damage if move misses
-// TODO: Crash damage logic needs to be in move.h (on miss detection)
-// TODO: Gen 1 crash damage is exactly 1 HP (not 1/8 like later gens)
-void apply_high_jump_kick(Battle *battle,
-                          BattlePokemon *attacker,
-                          BattlePokemon *defender) {
-  // This function is only called on hit, so no crash damage here
-  DLOG("High Jump Kick connected!");
-}
-
 // Horn Drill - One-hit KO move (if it hits)
 // Gen 1 OHKO accuracy: (attacker_level - defender_level + 30)%
 // Fails if attacker level < defender level
@@ -425,14 +424,11 @@ void apply_hyper_beam(Battle *battle,
   DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
 }
 
-// Leech Seed - Drains 1/16 of defender's max HP each turn
-// TODO: Requires per-turn effect tracking in battle state
-// TODO: Add leech_seed_target field to BattlePokemon
 void apply_leech_seed(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
   DLOG("Leech Seed planted");
-  // TODO: Set defender as seeded and implement turn-by-turn HP drain
+  defender->leech_seed = 1
 }
 
 void apply_light_screen(Battle *battle,
@@ -453,36 +449,34 @@ void apply_low_kick(Battle *battle,
   }
 }
 
-// Mimic - Copies the last move used by the opponent
-// TODO: Requires move copying implementation
-// TODO: Track last move used by opponent
-// TODO: Replace one of attacker's moves with copied move temporarily
 void apply_mimic(Battle *battle,
                  BattlePokemon *attacker,
                  BattlePokemon *defender) {
   DLOG("Mimic used");
-  // TODO: Copy opponent's last used move
+  // Find the index of mimic in the attacker
+  int mimic_index = 0;
+  for (int i = 0; i < 4; ++i) {
+    if (attacker->pokemon->poke_moves[i].id == MIMIC_MOVE_ID) {
+      mimic_index = i;
+      break;
+    }
+  }
+  // TODO: Construct a move in the mimic indexes place
 }
 
 // Minimize - Raises user's evasion by 1 stage
 void apply_minimize(Battle *battle,
                     BattlePokemon *attacker,
                     BattlePokemon *defender) {
-  attacker->stat_mods.evasion = (attacker->stat_mods.evasion + 1 > 6)
-                                    ? 6
-                                    : attacker->stat_mods.evasion + 1;
+  attacker->stat_mods.evasion = max(attacker->stat_mods.evasion + 1, 6);
   DLOG("%s's evasion rose!", get_pokemon_name(attacker->pokemon->id));
 }
 
-// Mirror Move - Uses the last move used by the opponent
-// TODO: Requires move tracking and execution
-// TODO: Track opponent's last move
-// TODO: Execute that move as if attacker used it
 void apply_mirror_move(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
   DLOG("Mirror Move used");
-  // TODO: Execute opponent's last move
+  attack(battle, attacker, defender, defender->last_used);
 }
 
 void apply_mist(Battle *battle,
@@ -560,15 +554,17 @@ void apply_psywave(Battle *battle,
   }
 }
 
-// Rage - When hit while using Rage, Attack increases
-// TODO: Requires continuous effect tracking
-// TODO: Add rage_active flag to BattlePokemon
-// TODO: Increment attack when damaged while rage is active
 void apply_rage(Battle *battle,
                 BattlePokemon *attacker,
                 BattlePokemon *defender) {
   DLOG("%s is enraged!");
-  // TODO: Mark rage as active and implement attack boost on taking damage
+  // find rage
+  for (int i = 0; i < 4; ++i) {
+    if (attacker->moves[i].id == RAGE_MOVE_ID ||
+        attacker->pokemon->poke_moves[i] == RAGE_MOVE_ID) {
+      attacker->rage = attacker->moves[i];
+    }
+  }
 }
 
 // Razor Wind - Two-turn move: charges on turn 1, attacks on turn 2
@@ -824,15 +820,24 @@ void apply_toxic(Battle *battle,
 }
 
 // Transform - User transforms into the opponent, copying stats and moves
-// TODO: Requires complete Pokemon data copying
-// TODO: Copy defender's stats, types, and moves to attacker
-// TODO: Keep original HP values
-// TODO: Handle Transform failing against another Transform
 void apply_transform(Battle *battle,
                      BattlePokemon *attacker,
                      BattlePokemon *defender) {
   DLOG("%s transformed!", get_pokemon_name(attacker->pokemon->id));
-  // TODO: Copy all relevant Pokemon data except HP
+  attacker->stats = defender->stats;
+  for (int i = 0; i < 4; ++i) {
+    attacker->moves[i].id = defender->pokemon->poke_moves[i].id;
+    attacker->moves[i].power = defender->pokemon->poke_moves[i].power;
+    attacker->moves[i].accuracy = defender->pokemon->poke_moves[i].accuracy;
+    attacker->moves[i].type = defender->pokemon->poke_moves[i].type;
+    attacker->moves[i].category = defender->pokemon->poke_moves[i].category;
+    // TODO: Set PP
+    attacker->moves[i].pp = defender->pokemon->poke_moves[i].pp;
+    attacker->moves[i].movePtr = defender->pokemon->poke_moves[i].movePtr;
+    attacker->moves[i].priority = defender->pokemon->poke_moves[i].priority;
+  }
+  attacker->type1 = defender->type1;
+  attacker->type2 = defender->type2;
 }
 
 // ============================================================================

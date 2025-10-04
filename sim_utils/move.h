@@ -184,6 +184,11 @@ inline int attack(Battle* b,
     DLOG("%s's attack %s missed!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
+
+    // if high jump kick, apply 1 damage to the attacker
+    if (used_move->id == HIGH_JUMP_KICK_MOVE_ID) {
+      attacker->pokemon->hp = max(attacker->pokemon->hp - 1, 0);
+    }
     return 0;
   }
 
@@ -247,6 +252,12 @@ inline int attack(Battle* b,
       //  The pokemon should have been forced to switch out by now
       return 0;
     }
+    // check if move is disabled
+    if (user->active_pokemon.disabled_count > 0 &&
+        move_index == user->active_pokemon.disabled_index) {
+      DLOG("Attempt to use disabled move");
+      return 0;
+    }
     Move m = user->active_pokemon.pokemon->poke_moves[move_index];
     if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
       DLOG("Move %s has no PP left!", get_move_name(m.id));
@@ -262,6 +273,10 @@ inline int attack(Battle* b,
     // Assumes input is screened beforehand.
     BattlePokemon* battle_poke = &user->active_pokemon;
     Move* move = (battle_poke->pokemon->poke_moves) + move_index;
+    // In the case of transform, mimic.
+    if (battle_poke->moves[move_index].id != 0) {
+      move = battle_poke->moves + move_index;
+    }
     // Add to queue by modifying the action at q_size
     if (battle->action_queue.q_size < 15) {
       Action* action_ptr =

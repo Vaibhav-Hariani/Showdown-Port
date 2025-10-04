@@ -57,6 +57,16 @@ int end_step(Battle* b) {
         poke->hp -= dmg;
         DLOG("%s took burn damage (%d HP)", get_pokemon_name(poke->id), dmg);
       }
+      // Leech seed damage
+      // TODO: Toxic modifier?
+      if (p->active_pokemon.leech_seed) {
+        int dmg = poke->max_hp / 16;
+        poke->hp -= dmg;
+      }
+      // disabled
+      if (p->active_pokemon.disabled_count > 0) {
+        p->active_pokemon.disabled_count -= 1;
+      }
       // Fainting and active checks
       if (poke->hp <= 0) {
         poke->hp = 0;

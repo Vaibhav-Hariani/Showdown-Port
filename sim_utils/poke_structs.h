@@ -32,8 +32,6 @@ struct STR_STATS {
   // int teratype;
 } typedef poke_stats;
 
-// I have no clue how substitute is going to work but we'll figure it out
-// eventually
 // Size is 8 bits: 1 int
 struct STR_STATUS_FLAGS {
   char paralyzed : 1;
@@ -70,6 +68,13 @@ typedef struct STR_POKE {
 
 typedef struct STR_BATTLE_POKEMON {
   Pokemon* pokemon;
+  // moves is by default NULL
+  // The existence of a move will override the reference from
+  // the base Pokemon struct
+  // This is mainly useful for transform / mimic
+  // We copy over the moves and the
+  poke_stats stats;
+  Move moves[4];
   struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
@@ -81,11 +86,16 @@ typedef struct STR_BATTLE_POKEMON {
   int recharge_len;
   int dmg_counter;
   int flinch : 1;
-  // Todo: Add in confusion return as
   int confusion_counter : 2;
   int reflect : 1;
   int light_screen : 1;
   int mist : 1;
+  int leech_seed : 1;
+  int disabled_count : 3;
+  int disabled_index : 2;
+  // if not null, then rage is active
+  Move* rage;
+  Move* last_used;
 
 } BattlePokemon;
 
@@ -107,6 +117,7 @@ def reset_battle_pokemon(BattlePokemon* bp) {
   bp->reflect = 0;
   bp->light_screen = 0;
   bp->mist = 0;
+  bp->leech_seed = 0
 }
 
 #endif
