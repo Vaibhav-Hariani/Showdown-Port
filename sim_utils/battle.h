@@ -58,7 +58,6 @@ int end_step(Battle* b) {
         DLOG("%s took burn damage (%d HP)", get_pokemon_name(poke->id), dmg);
       }
       // Leech seed damage
-      // TODO: Toxic modifier?
       if (p->active_pokemon.leech_seed) {
         int dmg =
             (max(p->active_pokemon.badly_poisoned_ctr, 1) * poke->max_hp) / 16;
