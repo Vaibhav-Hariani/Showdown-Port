@@ -38,18 +38,22 @@ class ShowdownParser:
         obs = np.asarray(flat_obs)
         if obs.ndim != 1:
             raise ValueError(f"Expected 1D observation, got shape {obs.shape}")
-        if obs.size != 2 * team_size * 9:
+        expected = (1 + 2 * team_size) * 9
+        if obs.size != expected:
             raise ValueError(
-                f"Unexpected observation size {obs.size}; expected {2 * team_size * 9}"
+                f"Unexpected observation size {obs.size}; expected {expected}"
             )
 
+        offset = 9
         players = []
-        rows = obs.reshape(2 * team_size, 9)
+        rows = obs[offset:].reshape(2 * team_size, 9)
+        # Interleaved ordering: (p1_0, p2_0, p1_1, p2_1, ...)
         for p_idx in range(2):
             team = []
             active_index = None
             for j in range(team_size):
-                row = rows[p_idx * team_size + j]
+                row_index = j * 2 + p_idx
+                row = rows[row_index]
                 raw_id = int(row[0])
                 is_active = raw_id < 0
                 poke_id = abs(raw_id)
@@ -61,10 +65,7 @@ class ShowdownParser:
                 moves = [ShowdownParser.unpack_move(int(row[1 + k])) for k in range(4)]
                 hp = int(row[5])
                 status = ShowdownParser.unpack_status(int(row[6]))
-                if is_active:
-                    stat_mods = ShowdownParser.unpack_stat_mods(int(row[7]), int(row[8]))
-                else:
-                    stat_mods = None
+                stat_mods = ShowdownParser.unpack_stat_mods(int(row[7]), int(row[8])) if is_active else None
 
                 team.append(
                     {
@@ -77,14 +78,55 @@ class ShowdownParser:
                     }
                 )
 
-            players.append(
-                {
-                    "active_index": active_index,
-                    "team": team,
-                }
-            )
+            players.append({"active_index": active_index, "team": team})
 
         return {"players": players}
+
+    @staticmethod
+    def parse_observation_fast(obs: np.ndarray, team_size: int = 6) -> dict:
+        """Optimized fast parse for interleaved ordering.
+        Assumes first pokemon of each player (rows 0 and 1 after action row) are active."""
+        offset = 9
+        rows = obs[offset:].reshape(2 * team_size, 9)
+
+        status_names = ["paralyzed", "burn", "freeze", "poison", "sleep", "confused"]
+
+        # P1 active: row 0, P2 active: row 1 in interleaved scheme
+        p1_row = rows[0]
+        p2_row = rows[1]
+
+        def fmt(row):
+            status_flags = int(row[6]) & 0xFFFF
+            status_list = [status_names[i] for i in range(6) if (status_flags >> i) & 0x1]
+            status_str = ','.join(status_list) if status_list else "healthy"
+            moves_parts = []
+            for k in range(4):
+                move_packed = int(row[1 + k]) & 0xFFFF
+                move_id = move_packed & 0xFF
+                if move_id > 0:
+                    pp = (move_packed >> 8) & 0x3F
+                    moves_parts.append(f"{move_id}({pp})")
+            return {
+                'id': abs(int(row[0])),
+                'hp': int(row[5]),
+                'status': status_str,
+                'moves': ','.join(moves_parts)
+            }
+
+        out = {
+            'p1_active': fmt(p1_row),
+            'p2_active': fmt(p2_row),
+            'prev_action_type': int(obs[0]),
+            'prev_action_value': int(obs[1]),
+        }
+        return out
+    
+    @staticmethod
+    def format_status_fast(status: dict, status_names: list) -> str:
+        """Fast status formatting using pre-computed names"""
+        # Use list comp with direct indexing instead of dict iteration
+        active = [name for name in status_names if status.get(name, False)]
+        return ','.join(active) if active else "healthy"
 
     @staticmethod
     def pretty_print(obs):

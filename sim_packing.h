@@ -5,13 +5,23 @@
 #include "sim_utils/move.h"
 #include "stdint.h"
 
+// Previous choices for both players
+typedef struct {
+  int16_t p1_choice; // raw encoded choice (switch idx or move slot)
+  int16_t p1_val;    // switch idx or resolved move id
+  int16_t p2_choice;
+  int16_t p2_val;    // switch idx or resolved move id
+} PrevChoices;
+
 // Packing function declarations
 int16_t pack_attack_def_specA_specD(stat_mods* mods);
 int16_t pack_stat_acc_eva(stat_mods* mods);
 int16_t pack_move(Move* move);
 int16_t pack_status(Pokemon* p);
 void pack_poke(int16_t* row, Player* player, int poke_index);
-void pack_battle(Battle* b, int16_t* out);
+// Observation layout: [ action_row (9 ints) , (NUM_POKE*2) * 9 pokemon ints ]
+// action_row: p1_choice, p1_val, p2_choice, p2_val, pad x5
+void pack_battle(Battle* b, int16_t* out, PrevChoices* prev);
 
 // Implementation
 int16_t pack_attack_def_specA_specD(stat_mods* mods) {
@@ -81,20 +91,32 @@ void pack_poke(int16_t* row, Player* player, int poke_index) {
   }
 }
 
-void pack_battle(Battle* b, int16_t* out) {
-  // Each pokemon: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1,
-  // stat_mod2] NUM_POKE pokemon per player, 2 players Active pokemon have 2 extra ints
-  // for stat mods Flattened array: (NUM_POKE * 2) rows * 9 columns = (NUM_POKE * 18) elements total
-  for (int i = 0; i < 2; i++) {
-    Player* p = get_player(b, i + 1);
-    for (int j = 0; j < NUM_POKE; j++) {
-      int pokemon_index = i * NUM_POKE + j;
-      int base_offset = pokemon_index * 9;
+void pack_battle(Battle* b, int16_t* out, PrevChoices* prev) {
+  out[0] = prev->p1_choice;
+  out[1] = prev->p1_val;
+  out[2] = prev->p2_choice;
+  out[3] = prev->p2_val;
+  for (int pad = 4; pad < 9; pad++) out[pad] = 0;
+
+  // Each pokemon row: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
+  // Interleaved ordering for scalability: p1_poke1, p2_poke1, p1_poke2, p2_poke2, ...
+  // Flattened after action row: (NUM_POKE * 2) rows * 9 columns.
+  for (int j = 0; j < NUM_POKE; j++) {
+    for (int i = 0; i < 2; i++) {
+      Player* p = get_player(b, i + 1); // i=0 -> p1, i=1 -> p2
+      int interleave_index = j * 2 + i; // interleaved slot
+      int base_offset = 9 + interleave_index * 9; // +9 to skip action row
       int16_t* row = out + base_offset;
-      // Forcing the obscuring of unseen opponent pokemon
-      if (i == 2 && !(b->p1.shown_pokemon & (1 << j))) {
-        for (int z = 0; z < 9; z++) row[z] = 0;
-        continue;
+      // Obscure unseen opponent pokemon (only applies when looking at opponent's roster)
+      // Player 1's view: hide p2 mons not yet shown; Player 2's view: hide p1 mons not yet shown.
+      // Since we produce a symmetric observation (no per-player perspective), we conservatively
+      // hide only for truly unseen opponent mons. Here we assume p1.shown_pokemon tracks p2 reveals
+      // and p2.shown_pokemon tracks p1 reveals.
+
+      if (i == 1) { // p2 pokemon potentially hidden from p1
+        if (!(b->p1.shown_pokemon & (1u << j))) {
+          continue;
+        }
       }
       pack_poke(row, p, j);
     }

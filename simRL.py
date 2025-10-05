@@ -2,13 +2,13 @@ from pufferlib import pufferl
 from pufferlib.ocean.showdown.showdown import Showdown
 from pufferlib.ocean.squared.squared import Squared
 
-from pufferlib.models import Default
 import pufferlib
 from pufferlib.ocean.torch import ShowdownLSTM
 from pufferlib.ocean.torch import Showdown as ShowdownModel
 import torch
 from torch import nn
 import wandb
+import numpy as np
 
 # wandb.login()
 
@@ -30,34 +30,43 @@ def test_model(n=12):
 
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
-    env = pufferlib.vector.make(
-        Showdown,
-        num_envs=12,
-        env_args=[1024,0,10], 
-        batch_size=4,
-        backend=pufferlib.vector.Multiprocessing,
-    )
-    env.reset(seed=42)
-    # env = Showdown(num_envs=1)
-    args = pufferl.load_config("default")
+    # Initialize WandB first
+    args = pufferl.load_config("showdown")
     args["wandb"] = True
     args["package"] = 'ocean'
     args["policy"] = "puffer"
-    # args["train"]["batch_size"] = 32768
-    # args["train"]["optimizer"] = "adam"
     args["train"]["env"] = "showdown"
-    # args["train"]["amp"] = True
+    
+    with wandb.init(project="showdown", config=args["train"]) as run:
+        # Create artifact for episode observations (now stores WandB tables)
+        artifact = wandb.Artifact(
+            name="showdown_episodes",
+            type="episode_tables",
+            description="Pokemon battle episode recordings as tables from training"
+        )
+        env_args = [1024, 0, 1, 10, artifact]
 
-    policy = ShowdownModel(env.driver_env).cuda()
-    
-    
-    args["train"]["use_rnn"] = True
-    policy = ShowdownLSTM(env.driver_env, policy).cuda()
-    
-    trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-    # with wandb.init(project="squared", config=args["train"],id="squared-logging") as run:
-    for epoch in range(1000):
-        trainer.evaluate()
-        logs = trainer.train()
-    trainer.print_dashboard()
-    trainer.close()
+        env = pufferlib.vector.make(
+            Showdown,
+            num_envs=1,
+            env_args=env_args,
+            batch_size=1,
+            backend=pufferlib.vector.Serial,
+        )
+        
+        env.reset(seed=42)
+        policy = ShowdownModel(env.driver_env).cuda()
+        args["train"]["use_rnn"] = True
+        policy = ShowdownLSTM(env.driver_env, policy).cuda()
+        
+        trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
+        
+        for epoch in range(100):
+            # Run evaluation and training
+            trainer.evaluate()
+            logs = trainer.train()
+            if logs:
+                wandb.log(logs)
+        trainer.print_dashboard()
+        trainer.close()
+        run.log_artifact(artifact)

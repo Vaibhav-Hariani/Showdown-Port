@@ -12,13 +12,9 @@ typedef struct {
   float num_lost;
   float invalid_moves;
   float valid_moves;
-  float win_rate;
   float avg_damage_pct;
   float team_strength;
   float matchup_advantage;
-  float damage_dealing_move_pct;
-  float max_damage_move;
-  float highest_damage_value;
   float opponent_avg_hp;
   float perf;
   float score;
@@ -27,13 +23,15 @@ typedef struct {
   // Reward calculation parameters
   float mean_p1_hp;
   float mean_p2_hp;
+  // Move effectiveness tracking
+  float super_effective_moves;
+  float stab_moves;
   float n;
 } Log;
 
 // Logging function declarations
 void initial_log(Log* log, Battle* battle);
-void log_mini(Log* log, int valid_move, float reward);
-void final_update(Log* log, float reward);
+void final_update(Log* log, float reward, float mean_p1_hp, float mean_p2_hp, float avg_damage_pct, int tick);
 
 // Implementation
 // Initial logging function - combines team HP logging and matchup scoring
@@ -50,8 +48,6 @@ void initial_log(Log* log, Battle* battle) {
   // Calculate type matchup advantage and team strength
   float score = 0.0f;
   int avg_poke_power = 0;
-  int max_move_pow = 0;
-  float highest_damage_value = 0.0f;
 
   // For each Pokemon on Player 1's team (all NUM_POKE Pokemon are valid)
   for (int p1_idx = 0; p1_idx < NUM_POKE; p1_idx++) {
@@ -61,12 +57,7 @@ void initial_log(Log* log, Battle* battle) {
     for (int i = 0; i < 4; i++) {
       int power = p1_poke->poke_moves[i].power;
       avg_poke_power += power;
-      max_move_pow = (power > max_move_pow) ? power : max_move_pow;
 
-      // Track the highest damage move
-      if (power > highest_damage_value) {
-        highest_damage_value = (float)power;
-      }
     }
 
     // Check this Pokemon against all of Player 2's Pokemon for matchup scoring
@@ -101,41 +92,27 @@ void initial_log(Log* log, Battle* battle) {
   avg_poke_power /= (NUM_POKE * 4);
   log->team_strength += avg_poke_power;
   log->matchup_advantage += score;
-  log->highest_damage_value += highest_damage_value;
 }
 
-void log_mini(Log* log, int valid_move, float reward) {
-  log->num_moves += 1.0f;
-  if (valid_move > 0) {
-    log->valid_moves += 1.0f;
-  } else if (valid_move < 0) {
-    log->invalid_moves += 1.0f;
-  }
-  // Update episode length for squared metrics
-  log->episode_length += 1.0f;
-
-  // Track rewards for score and episode_return
-  log->episode_return += reward;
-  log->score += reward;
-
-  // Update perf metric based on reward
-  // For positive rewards, consider it as performance contribution
-  if (reward > 0.0f) {
-    log->perf += reward;  // Only add positive rewards to perf
-  }
-}
-
-void final_update(Log* log, float reward) {
-  // Updating avg: (n * prev + new) / (n + 1)
-  //  (n + 1 * prev) + (new - prev) / (n + 1)
-  //  avg += (new - prev) / (n + 1)
+void final_update(Log* log, float reward, float mean_p1_hp, float mean_p2_hp, float avg_damage_pct, int tick) {
+  // Track number of moves using tick count
+  log->num_moves += (float)tick;
+  log->episode_length += (float)tick;
+  // Track wins and losses (will be summed, then averaged by n to get win/loss rate)
   if (reward > 0) {
     log->num_won += 1.0f;
-    // For perf, treat win as 1.0 (perfect performance)
-    log->perf = 1.0f;  // Set to 1.0 for win regardless of accumulated perf
+    log->perf += 1.0f;  // Sum wins (will be divided by n to get win rate)
   } else {
-    log->num_lost += 1;
+    log->num_lost += 1.0f;
+    // perf stays same for losses (0/n contributes 0 to average)
   }
+  
+  // Record final HP values at end of episode (will be summed, then averaged by n)
+  log->mean_p1_hp += mean_p1_hp;
+  log->mean_p2_hp += mean_p2_hp;
+  log->avg_damage_pct += avg_damage_pct;
+  
+  // Increment episode counter (used for averaging all metrics in vec_log)
   log->n += 1.0f;
 }
 

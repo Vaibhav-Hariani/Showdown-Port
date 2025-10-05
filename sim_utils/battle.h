@@ -24,7 +24,6 @@ int end_step(Battle* b) {
     for (int j = 0; j < NUM_POKE; j++) {
       Pokemon* poke = &p->team[j];
       int is_active = (j == p->active_pokemon_index);
-      int fainted = 0;
       // Sleep
       if (poke->status.sleep) {
         p->active_pokemon.sleep_ctr--;
