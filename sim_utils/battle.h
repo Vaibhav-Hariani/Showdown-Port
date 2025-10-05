@@ -60,12 +60,17 @@ int end_step(Battle* b) {
       // Leech seed damage
       // TODO: Toxic modifier?
       if (p->active_pokemon.leech_seed) {
-        int dmg = poke->max_hp / 16;
-        poke->hp -= dmg;
+        int dmg =
+            (max(p->active_pokemon.badly_poisoned_ctr, 1) * poke->max_hp) / 16;
+        poke->hp = max(poke->hp - dmg, 0);
+        if (poke->hp > 0) {
+          get_player(b, i == 1 ? 2 : 1)->active_pokemon.pokemon->hp +=
+              dmg;  // Heal the other player
+        }
       }
       // disabled
       if (p->active_pokemon.disabled_count > 0) {
-        p->active_pokemon.disabled_count -= 1;
+        p->active_pokemon.disabled_count--;
       }
       // Fainting and active checks
       if (poke->hp <= 0) {

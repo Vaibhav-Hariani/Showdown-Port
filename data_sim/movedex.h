@@ -228,17 +228,8 @@ void apply_disable(Battle *battle,
   if (defender->last_used == NULL) {
     return;
   }
-  int disable_index = 0;
-  for (int i = 0; i < 4; ++i) {
-    // TODO: Check if last used is the correct algo here
-    if (defender->moves[i].id == defender->last_used->id ||
-        defender->pokemon->poke_moves[i].id == defender->last_used->id) {
-      defender->disabled_index = i;
-      // TODO: Set disabled move count
-      defender->disabled_count = 3;
-      break;
-    }
-  }
+  defender->disabled_index = rand() % 4;
+  defender->disabled_count = rand() % 8;  // 0-7 turns
 }
 
 // Dizzy Punch - 20% chance to confuse the defender
@@ -462,7 +453,20 @@ void apply_mimic(Battle *battle,
       break;
     }
   }
-  // TODO: Construct a move in the mimic indexes place
+  // Copy a random move from the defender
+  int random_move_index = rand() % 4;
+  attacker->moves[mimic_index].id = defender->moves[random_move_index].id;
+  attacker->moves[mimic_index].power = defender->moves[random_move_index].power;
+  attacker->moves[mimic_index].accuracy =
+      defender->moves[random_move_index].accuracy;
+  attacker->moves[mimic_index].type = defender->moves[random_move_index].type;
+  attacker->moves[mimic_index].category =
+      defender->moves[random_move_index].category;
+  attacker->moves[mimic_index].pp = defender->moves[random_move_index].pp;
+  attacker->moves[mimic_index].movePtr =
+      defender->moves[random_move_index].movePtr;
+  attacker->moves[mimic_index].priority =
+      defender->moves[random_move_index].priority;
 }
 
 // Minimize - Raises user's evasion by 1 stage
@@ -832,8 +836,7 @@ void apply_transform(Battle *battle,
     attacker->moves[i].accuracy = defender->pokemon->poke_moves[i].accuracy;
     attacker->moves[i].type = defender->pokemon->poke_moves[i].type;
     attacker->moves[i].category = defender->pokemon->poke_moves[i].category;
-    // TODO: Set PP
-    attacker->moves[i].pp = defender->pokemon->poke_moves[i].pp;
+    attacker->moves[i].pp = 5;
     attacker->moves[i].movePtr = defender->pokemon->poke_moves[i].movePtr;
     attacker->moves[i].priority = defender->pokemon->poke_moves[i].priority;
   }
