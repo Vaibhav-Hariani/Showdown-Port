@@ -12,6 +12,15 @@ typedef struct {
   float num_lost;
   float invalid_moves;
   float valid_moves;
+  float percent_valid_moves;  // Aggregated sum of per-episode valid move
+                              // percentages
+  /*
+  // Damaging move capacity metrics (disabled)
+  float damaging_moves_p1;
+  float damaging_moves_p2;
+  float avg_damaging_moves_per_poke_p1;
+  float avg_damaging_moves_per_poke_p2;
+  */
   float avg_damage_pct;
   float team_strength;
   float matchup_advantage;
@@ -31,7 +40,14 @@ typedef struct {
 
 // Logging function declarations
 void initial_log(Log* log, Battle* battle);
-void final_update(Log* log, float reward, float mean_p1_hp, float mean_p2_hp, float avg_damage_pct, int tick);
+void final_update(Log* log,
+                  float reward,
+                  float mean_p1_hp,
+                  float mean_p2_hp,
+                  float avg_damage_pct,
+                  int tick,
+                  int episode_valid_moves,
+                  int episode_invalid_moves);
 
 // Implementation
 // Initial logging function - combines team HP logging and matchup scoring
@@ -41,25 +57,26 @@ void initial_log(Log* log, Battle* battle) {
   float total_hp = 0.0f;
   Player* p2 = &battle->p2;
   for (int i = 0; i < NUM_POKE; i++) {
-    total_hp += p2->team[i].hp;
+    Pokemon* p2_poke_hp = &p2->team[i];
+    total_hp += p2_poke_hp->hp;
+    // Count damaging moves (power > 0) for P2 here
+    // for (int m = 0; m < 4; m++) {
+    //   if (p2_poke_hp->poke_moves[m].power > 0) team_damaging_p2++;
+    // }
   }
   log->opponent_avg_hp += total_hp / NUM_POKE;
 
   // Calculate type matchup advantage and team strength
   float score = 0.0f;
   int avg_poke_power = 0;
-
   // For each Pokemon on Player 1's team (all NUM_POKE Pokemon are valid)
   for (int p1_idx = 0; p1_idx < NUM_POKE; p1_idx++) {
     Pokemon* p1_poke = &battle->p1.team[p1_idx];
-
     // Calculate move power statistics
     for (int i = 0; i < 4; i++) {
       int power = p1_poke->poke_moves[i].power;
       avg_poke_power += power;
-
     }
-
     // Check this Pokemon against all of Player 2's Pokemon for matchup scoring
     for (int p2_idx = 0; p2_idx < NUM_POKE; p2_idx++) {
       Pokemon* p2_poke = &battle->p2.team[p2_idx];
@@ -92,26 +109,41 @@ void initial_log(Log* log, Battle* battle) {
   avg_poke_power /= (NUM_POKE * 4);
   log->team_strength += avg_poke_power;
   log->matchup_advantage += score;
+  // Damaging move metrics disabled
 }
 
-void final_update(Log* log, float reward, float mean_p1_hp, float mean_p2_hp, float avg_damage_pct, int tick) {
-  // Track number of moves using tick count
-  log->num_moves += (float)tick;
+void final_update(Log* log,
+                  float reward,
+                  float mean_p1_hp,
+                  float mean_p2_hp,
+                  float avg_damage_pct,
+                  int tick,
+                  int episode_valid_moves,
+                  int episode_invalid_moves) {
+  // num_moves is now tracked incrementally each step; do not add tick here to
+  // avoid double counting
   log->episode_length += (float)tick;
-  // Track wins and losses (will be summed, then averaged by n to get win/loss rate)
+  // Accumulate total moves for this episode as tick count (each tick
+  // corresponds to a move decision)
+  log->num_moves += (float)tick;
+  // Track wins and losses (will be summed, then averaged by n to get win/loss
+  // rate)
+  log->episode_return += reward;
+
   if (reward > 0) {
     log->num_won += 1.0f;
-    log->perf += 1.0f;  // Sum wins (will be divided by n to get win rate)
+    log->perf += 1.0f;
   } else {
     log->num_lost += 1.0f;
-    // perf stays same for losses (0/n contributes 0 to average)
   }
-  
-  // Record final HP values at end of episode (will be summed, then averaged by n)
+  // Record final HP values at end of episode (will be summed, then averaged by
+  // n)
   log->mean_p1_hp += mean_p1_hp;
   log->mean_p2_hp += mean_p2_hp;
   log->avg_damage_pct += avg_damage_pct;
-  
+  // Compute per-episode percent valid moves and accumulate
+  int mv_total = episode_valid_moves + episode_invalid_moves;
+  log->percent_valid_moves += (float)episode_valid_moves / (float)mv_total;
   // Increment episode counter (used for averaging all metrics in vec_log)
   log->n += 1.0f;
 }

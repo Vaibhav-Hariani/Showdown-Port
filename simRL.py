@@ -36,27 +36,19 @@ if __name__ == "__main__":
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     args["train"]["env"] = "showdown"
-    
-    with wandb.init(project="showdown", config=args["train"]) as run:
-        # Create artifact for episode observations (now stores WandB tables)
-        artifact = wandb.Artifact(
-            name="showdown_episodes",
-            type="episode_tables",
-            description="Pokemon battle episode recordings as tables from training"
-        )
-        env_args = [1024, 0, 1, 10, artifact]
+    env_args = [1024]
+    env = pufferlib.vector.make(
+        Showdown,
+        num_envs=24,
+        env_args=env_args,
+        batch_size=4,
+        backend=pufferlib.vector.multiprocessing,
+    )
 
-        env = pufferlib.vector.make(
-            Showdown,
-            num_envs=1,
-            env_args=env_args,
-            batch_size=1,
-            backend=pufferlib.vector.Serial,
-        )
-        
+    with wandb.init(project="showdown", config=args["train"]) as run:
         env.reset(seed=42)
-        policy = ShowdownModel(env.driver_env).cuda()
-        args["train"]["use_rnn"] = True
+        policy = ShowdownModel(env).cuda()
+        # args["train"]["use_rnn"] = True
         policy = ShowdownLSTM(env.driver_env, policy).cuda()
         
         trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
@@ -69,4 +61,4 @@ if __name__ == "__main__":
                 wandb.log(logs)
         trainer.print_dashboard()
         trainer.close()
-        run.log_artifact(artifact)
+        # run.log_artifact(artifact)

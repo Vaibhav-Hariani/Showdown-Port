@@ -31,6 +31,8 @@ class Showdown(pufferlib.PufferEnv):
             self.episode_observations = []
             self.episode_actions = []
             self.episode_rewards = []
+            # Capture the first episode by default so users see immediate data
+            self.artifact_episode = True
 
         self.num_games = 0
         super().__init__(buf)
@@ -55,15 +57,14 @@ class Showdown(pufferlib.PufferEnv):
     def step(self, actions):
         self.tick += 1
         self.actions[:] = actions
-        # Log observation before step if we're tracking an artifact episode
+        binding.vec_step(self.c_envs)
+        info = []
         if self.artifact_episode:
             # Store observation and action for environment 0
             self.episode_observations.append(self.observations[0].copy())
             self.episode_actions.append(int(actions[0]))
             self.episode_rewards.append(float(self.rewards[0]))
 
-        binding.vec_step(self.c_envs)
-        info = []
         if self.terminals[0] == True:
             self.num_games += 1
             self.tick = 0
@@ -71,21 +72,20 @@ class Showdown(pufferlib.PufferEnv):
             if self.num_games % self.log_interval == 0:
                 log = binding.vec_log(self.c_envs)
                 info.append(log)
-
             # End observation logging if active
             if self.artifact_episode:
                 # Log final observation and reward for env 0
                 self.episode_observations.append(self.observations[0].copy())
                 self.episode_actions.append(-1)  # No action on terminal step
                 self.episode_rewards.append(float(self.rewards[0]))
-
                 # Save to artifact collection
                 self._save_to_artifact_collection()
-
                 self.artifact_episode = False
 
+            # Schedule next artifact capture (independent of whether we just captured)
             if (self.artifact_interval and self.artifact_collection and
-               self.num_games % self.artifact_interval == 0):
+                self.num_games % self.artifact_interval == 0):
+                # Mark next episode for artifact capture
                 self.artifact_episode = True
 
         return (self.observations, self.rewards, self.terminals, self.truncations, info)
@@ -96,8 +96,8 @@ class Showdown(pufferlib.PufferEnv):
         table = wandb.Table(columns=[
             "step", "action", "reward",
             "p1_choice", "p1_value", "p2_choice", "p2_value",
-            "p1_active_id", "p1_active_hp", "p1_active_status", "p1_moves",
-            "p2_active_id", "p2_active_hp", "p2_active_status", "p2_moves"
+            "p1_active_id", "p1_active_name", "p1_active_hp", "p1_active_status", "p1_moves", "p1_move_names",
+            "p2_active_id", "p2_active_name", "p2_active_hp", "p2_active_status", "p2_moves", "p2_move_names"
         ])
 
         # Parse and add each step efficiently
@@ -115,22 +115,28 @@ class Showdown(pufferlib.PufferEnv):
                 step_idx,
                 action,
                 reward,
-                int(obs[0]),  # p1_choice raw
-                int(obs[1]),  # p1_value resolved
-                int(obs[2]),  # p2_choice raw
-                int(obs[3]),  # p2_value resolved
+                int(obs[0]),
+                int(obs[1]),
+                int(obs[2]),
+                int(obs[3]),
                 p1['id'],
+                p1['name'],
                 p1['hp'],
                 p1['status'],
                 p1['moves'],
+                p1['move_names'],
                 p2['id'],
+                p2['name'],
                 p2['hp'],
                 p2['status'],
-                p2['moves']
+                p2['moves'],
+                p2['move_names']
             )
 
         # Add table to artifact
-        self.artifact_collection.add(table, f"episode_{self.num_games:04d}")
+        # Use .table.json extension so artifact browser infers media type
+        if self.artifact_collection is not None:
+            self.artifact_collection.add(table, f"episode_{self.num_games:04d}.table.json")
 
         # Clear episode data
         self.episode_observations = []
@@ -146,12 +152,12 @@ class Showdown(pufferlib.PufferEnv):
 
 
 if __name__ == "__main__":
-    N = 1024
+    N = 24
     env = Showdown(num_envs=N)
     env.reset(seed=42)
     steps = 0
     CACHE = 1024 * N
-    actions = np.random.randint(0, 10, (CACHE, N))
+    actions = np.random.randint(6, 9, (CACHE, N))
     i = 0
     import time
 

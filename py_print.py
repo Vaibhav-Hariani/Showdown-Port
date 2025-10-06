@@ -1,4 +1,6 @@
 import numpy as np 
+from .data_labels.pokedex_labels import pokemon_name
+from .data_labels.move_labels import move_name
 class ShowdownParser:
     @staticmethod
     def unpack_status(flags: int) -> dict:
@@ -77,21 +79,17 @@ class ShowdownParser:
                         "moves": moves,
                     }
                 )
-
             players.append({"active_index": active_index, "team": team})
-
         return {"players": players}
 
     @staticmethod
     def parse_observation_fast(obs: np.ndarray, team_size: int = 6) -> dict:
-        """Optimized fast parse for interleaved ordering.
-        Assumes first pokemon of each player (rows 0 and 1 after action row) are active."""
+        obs = np.asarray(obs)
         offset = 9
         rows = obs[offset:].reshape(2 * team_size, 9)
 
         status_names = ["paralyzed", "burn", "freeze", "poison", "sleep", "confused"]
 
-        # P1 active: row 0, P2 active: row 1 in interleaved scheme
         p1_row = rows[0]
         p2_row = rows[1]
 
@@ -99,25 +97,47 @@ class ShowdownParser:
             status_flags = int(row[6]) & 0xFFFF
             status_list = [status_names[i] for i in range(6) if (status_flags >> i) & 0x1]
             status_str = ','.join(status_list) if status_list else "healthy"
-            moves_parts = []
+            move_id_parts = []
+            move_name_parts = []
             for k in range(4):
                 move_packed = int(row[1 + k]) & 0xFFFF
                 move_id = move_packed & 0xFF
                 if move_id > 0:
                     pp = (move_packed >> 8) & 0x3F
-                    moves_parts.append(f"{move_id}({pp})")
+                    move_id_parts.append(f"{move_id}({pp})")
+                    move_name_parts.append(f"{move_name(move_id)}({pp})")
+            poke_id = abs(int(row[0]))
             return {
-                'id': abs(int(row[0])),
+                'id': poke_id,
+                'name': pokemon_name(poke_id),
                 'hp': int(row[5]),
                 'status': status_str,
-                'moves': ','.join(moves_parts)
+                'moves': ','.join(move_id_parts),
+                'move_names': ','.join(move_name_parts)
             }
+
+        # Previous actions (both players)
+        p1_type = int(obs[0])
+        p1_val = int(obs[1])
+        p2_type = int(obs[2])
+        p2_val = int(obs[3])
+
+        p1_move_name = move_name(p1_val) if p1_type == 2 else None
+        p2_move_name = move_name(p2_val) if p2_type == 2 else None
 
         out = {
             'p1_active': fmt(p1_row),
             'p2_active': fmt(p2_row),
-            'prev_action_type': int(obs[0]),
-            'prev_action_value': int(obs[1]),
+            # Backward compatibility
+            'prev_action_type': p1_type,
+            'prev_action_value': p1_val,
+            # Explicit both-player fields
+            'prev_p1_type': p1_type,
+            'prev_p1_value': p1_val,
+            'prev_p1_move_name': p1_move_name,
+            'prev_p2_type': p2_type,
+            'prev_p2_value': p2_val,
+            'prev_p2_move_name': p2_move_name,
         }
         return out
     

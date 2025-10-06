@@ -159,13 +159,14 @@ inline int attack(Battle* b,
     Move m = attacker->recharge_src;
     m.movePtr(b, attacker, defender);
   }
-
-  // Check for accuracy
-  float accuracy = used_move->accuracy *
+  // TODO: add moves that avoid accuracy checks  
+  // Check for accuracy:
+  int actual_accuracy = (used_move->accuracy * 255);
+  int accuracy = actual_accuracy *
                    get_stat_modifier(attacker->stat_mods.accuracy) *
                    get_evasion_modifier(defender->stat_mods.evasion);
-  float accuracy_random = (rand() % 255);
-  if (accuracy < accuracy_random) {
+  int accuracy_random = (rand() % 256);
+  if (accuracy_random >= accuracy) {
     DLOG("%s's attack %s missed!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));

@@ -20,7 +20,8 @@ typedef struct {
   unsigned char* terminals;
   Battle* battle;
   int tick;
-  PrevChoices prev;  // consolidated previous choices
+  int episode_valid_moves;
+  int episode_invalid_moves;
 } Sim;
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
@@ -66,26 +67,24 @@ int get_highest_damage_move_index(Player* player) {
   return best_move_index;
 }
 
+// Reward function: Only returns a terminal win/loss signal.
+// +1 if player 1 wins, -1 if player 1 loses, 0 otherwise.
+// No dense shaping by HP difference.
 float reward(Sim* s) {
   Battle* b = s->battle;
-  float p1_percent_sum = 0, p2_percent_sum = 0;
+  int p1_alive = 0;
+  int p2_alive = 0;
   for (int j = 0; j < NUM_POKE; j++) {
-    float hp1 = b->p1.team[j].hp;
-    p1_percent_sum += hp1 / b->p1.team[j].max_hp;
-    float hp2 = b->p2.team[j].hp;
-    p2_percent_sum += hp2 / b->p2.team[j].max_hp;
+    p1_alive += b->p1.team[j].hp > 0 ? 1 : 0;
+    p2_alive += b->p2.team[j].hp > 0 ? 1 : 0;
   }
-  if (p1_percent_sum == 0.0f) {
-    return -1.0f;
+  if (p1_alive == 0) {
+    return -1.0f;  // All of player 1's Pokemon fainted => loss
   }
-  if (p2_percent_sum == 0.0f) {
-    return 1.0f;
+  if (p2_alive == 0) {
+    return 1.0f;  // All of player 2's Pokemon fainted => win
   }
-  // Calculate mean HP percentage for each team (always NUM_POKE Pokemon)
-  float mean_p1 = p1_percent_sum / NUM_POKE;
-  float mean_p2 = p2_percent_sum / NUM_POKE;
-  // Clamping happens in puffeRL anyway
-  return mean_p1 - mean_p2;
+  return 0.0f;  // Non-terminal
 }
 
 void team_generator(Player* p) {
@@ -131,12 +130,18 @@ static inline int select_valid_switch_choice(Player p) {
 }
 
 // Helper function to get AI player choice
-static inline int get_p2_choice(Battle* b, int mode) {
+static inline int get_p2_choice(Sim* s, int mode) {
+  Battle* b = s->battle;
   if (mode == 3 || mode == 2) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
-  return select_best_move_choice(&b->p2);
+  int action = rand() % 10;
+  while(!(valid_choice(2, b->p2, action, mode))) {
+    action = rand() % 10;
+  }
+  return action;
+  // return select_best_move_choice(&b->p2);
 }
 
 // Helper function to check if a player can act (not frozen/sleeping unless
@@ -174,13 +179,13 @@ static inline void handle_fainted_mode(Battle* b,
   }
 }
 
-static inline int battle_step(Sim* sim, int choice) {
+static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
   Battle* b = sim->battle;
   int mode = b->mode;
   int p1_choice = choice;
 
   // Get AI player choice
-  int p2_choice = get_p2_choice(b, mode);
+  int p2_choice = get_p2_choice(sim, mode);
 
   // Validate player 1's choice
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
@@ -192,32 +197,25 @@ static inline int battle_step(Sim* sim, int choice) {
     return -2;  // Error condition
   }
 
-  // Move is valid, proceed with battle
-
-  // Reset prev choices
-  sim->prev.p1_choice = 0;
-  sim->prev.p1_val = 0;
-  sim->prev.p2_choice = 0;
-  sim->prev.p2_val = 0;
   // Encode p1
-  if (p1_choice < NUM_POKE) {
-    sim->prev.p1_choice = p1_choice;
-    sim->prev.p1_val = p1_choice;
-  } else if (p1_choice >= NUM_POKE && p1_choice < NUM_POKE + 4) {
-    int mi = p1_choice - NUM_POKE;
+  if (p1_choice < 6) {
+    prev->p1_choice = 1;
+    prev->p1_val = choice;
+  } else if (p1_choice >= 6 && p1_choice < 10) {
+    int mi = p1_choice - 6;
     Move* mv = &b->p1.active_pokemon.pokemon->poke_moves[mi];
-    sim->prev.p1_choice = p1_choice;
-    sim->prev.p1_val = mv ? mv->id : -1;
+    prev->p1_choice = 2;
+    prev->p1_val = mv ? mv->id : -1;
   }
   // Encode p2
-  if (p2_choice < NUM_POKE) {
-    sim->prev.p2_choice = p2_choice;
-    sim->prev.p2_val = p2_choice;
-  } else if (p2_choice >= NUM_POKE && p2_choice < NUM_POKE + 4) {
-    int mi2 = p2_choice - NUM_POKE;
+  if (p2_choice < 6) {
+    prev->p2_choice = 1;
+    prev->p2_val = p2_choice;
+  } else if (p2_choice >= 6 && p2_choice < 10) {
+    int mi2 = p2_choice - 6;
     Move* mv2 = &b->p2.active_pokemon.pokemon->poke_moves[mi2];
-    sim->prev.p2_choice = p2_choice;
-    sim->prev.p2_val = mv2 ? mv2->id : -1;
+    prev->p2_choice = 2;
+    prev->p2_val = mv2 ? mv2->id : -1;
   }
   // (Future: can optionally log opponent choice into a ring buffer if needed)
 
@@ -253,16 +251,16 @@ void c_reset(Sim* sim) {
   }
   sim->tick = 0;
   sim->rewards[0] = 0.0f;
-  sim->prev.p1_choice = 0;
-  sim->prev.p1_val = 0;
-  sim->prev.p2_choice = 0;
-  sim->prev.p2_val = 0;
+  sim->episode_valid_moves = 0;
+  sim->episode_invalid_moves = 0;
+  // Initialize a local prev choices struct for initial packing
+  PrevChoices initial_prev = {0};
 
   team_generator(&sim->battle->p1);
   team_generator(&sim->battle->p2);
 
   initial_log(&sim->log, sim->battle);
-  pack_battle(sim->battle, sim->observations, &sim->prev);
+  pack_battle(sim->battle, sim->observations, &initial_prev);
 }
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
@@ -275,61 +273,65 @@ void c_close(Sim* sim) {
 }
 
 void c_step(Sim* sim) {
-  if(sim->terminals[0]) {
+  if (sim->terminals[0]) {
     c_reset(sim);
     // Reset terminal flag at start of step so model can observe if game ended
     sim->terminals[0] = 0;
   }
-  sim->tick++;
+  Battle* battle = sim->battle;
 
   int raw_choice = sim->actions[0];
-  int a = battle_step(sim, raw_choice);
+  // Capture active pokemon indices and HP before resolving this step
+  PrevChoices step_prev = {0};
+  int a = battle_step(sim, raw_choice, &step_prev);
   if (a == -1) {
-    // Sim inputted something invalid; this should be penalized
-    // Otherwise, the sim is incentivized to spam wrong moves to extend the game
-    // when it knows it's lost
-    sim->rewards[0] = -1.0f;
-    // Accumulate the penalty reward into episode return and score
-    sim->log.episode_return += -1.0f;
-    sim->log.score += -1.0f;
-
-    sim->prev.p1_choice = 0;
-    sim->prev.p1_val = 0;
-    sim->prev.p2_choice = 0;
-    sim->prev.p2_val = 0;
-    pack_battle(sim->battle, sim->observations, &sim->prev);
+    // Invalid move penalty (shaping only for invalid action): -0.5
+    sim->rewards[0] = -0.01f;
+    sim->log.episode_return += -0.01f;
+    sim->log.score += -0.01f;
+    sim->log.invalid_moves += 1.0f;
+    sim->episode_invalid_moves += 1;
+    // num_moves now accumulated at episode end via tick count
+    step_prev.p1_val = 0;
+    pack_battle(battle, sim->observations, &step_prev);
     return;
   }
-
-  sim->battle->mode = a;
+  sim->tick++;
+  battle->mode = a;
   if (a == 0) {
-    sim->battle->mode = end_step(sim->battle);
+    battle->mode = end_step(battle);
   }
-  // No end step if a pokemon has fainted (gen1 quirk). Simply clear the queue
-  // and move on
-  sim->battle->action_queue.q_size = 0;
+  // No end step if a pokemon has fainted (gen1 quirk)
+  battle->action_queue.q_size = 0;
+  sim->log.valid_moves += 1.0f;
+  sim->episode_valid_moves += 1;
+
+  // Detect damaging moves this tick using only active Pokemon state.
+  // A side took damage if (a) its active lost HP, or (b) active slot changed
+  // and the new active is not at full HP (entered already damaged).
+  BattlePokemon* p1_act = &battle->p1.active_pokemon;
+  BattlePokemon* p2_act = &battle->p2.active_pokemon;
+
   float r = reward(sim);
-
-  // Accumulate step reward into episode return and score
-  sim->log.episode_return += r;
-  sim->log.score += r;
-
   if (r == 1.0f || r == -1.0f) {
     // Calculate final episode stats before resetting
-    Battle* b = sim->battle;
     float p1_sum = 0, p2_sum = 0;
     for (int j = 0; j < NUM_POKE; j++) {
-      p1_sum += b->p1.team[j].hp / b->p1.team[j].max_hp;
-      p2_sum += b->p2.team[j].hp / b->p2.team[j].max_hp;
+      p1_sum += battle->p1.team[j].hp / battle->p1.team[j].max_hp;
+      p2_sum += battle->p2.team[j].hp / battle->p2.team[j].max_hp;
     }
     float mean_p1_hp = p1_sum / NUM_POKE;
     float mean_p2_hp = p2_sum / NUM_POKE;
     float avg_damage_pct = (1.0f - mean_p2_hp) / sim->tick;
-    final_update(&sim->log, r, mean_p1_hp, mean_p2_hp, avg_damage_pct, sim->tick);
+    final_update(&sim->log, r, mean_p1_hp, mean_p2_hp, avg_damage_pct, sim->tick,
+                 sim->episode_valid_moves, sim->episode_invalid_moves);
     sim->terminals[0] = 1;
+ } else {
+    // Damaging move runtime tracking removed
   }
+  // Non-terminal steps yield 0 reward
   sim->rewards[0] = r;
-  pack_battle(sim->battle, sim->observations, &sim->prev);
+  pack_battle(sim->battle, sim->observations, &step_prev);
   return;
 }
 
