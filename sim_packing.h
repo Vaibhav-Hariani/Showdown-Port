@@ -140,13 +140,6 @@ void pack_battle(Battle* b, int16_t* out, PrevChoices* prev) {
   out[2] = prev->p2_choice;
   out[3] = prev->p2_val;
 
-  // Reveal moves used on previous turn (choice 0-3) by setting move.revealed
-  if (prev->p1_choice >= 0 && prev->p1_choice < 4 && b->p1.active_pokemon_index >= 0) {
-    b->p1.team[b->p1.active_pokemon_index].poke_moves[prev->p1_choice].revealed = 1;
-  }
-  if (prev->p2_choice >= 0 && prev->p2_choice < 4 && b->p2.active_pokemon_index >= 0) {
-    b->p2.team[b->p2.active_pokemon_index].poke_moves[prev->p2_choice].revealed = 1;
-  }
   stat_mods* p1mods = &b->p1.active_pokemon.stat_mods;
   stat_mods* p2mods = &b->p2.active_pokemon.stat_mods;
   out[4] = pack_attack_def_specA_specD(p1mods);
