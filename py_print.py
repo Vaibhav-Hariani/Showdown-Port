@@ -1,6 +1,7 @@
 import numpy as np 
 from .data_labels.pokedex_labels import pokemon_name
 from .data_labels.move_labels import move_name
+
 class ShowdownParser:
     @staticmethod
     def unpack_status(flags: int) -> dict:
@@ -37,109 +38,62 @@ class ShowdownParser:
 
     @staticmethod
     def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
+        """Parse v2 (92-int) packed observation only. Returns normalized dict."""
         obs = np.asarray(flat_obs)
         if obs.ndim != 1:
             raise ValueError(f"Expected 1D observation, got shape {obs.shape}")
-        expected = (1 + 2 * team_size) * 9
-        if obs.size != expected:
-            raise ValueError(
-                f"Unexpected observation size {obs.size}; expected {expected}"
-            )
+        if obs.size != 92:
+            raise ValueError(f"Expected v2 packed observation of length 92, got {obs.size}")
+        return ShowdownParser._parse_v2(obs, team_size)
 
-        offset = 9
+
+
+    @staticmethod
+    def _parse_v2(obs: np.ndarray, team_size: int):
+        # Layout: header (8) + rows (interleaved) * 7
         players = []
-        rows = obs[offset:].reshape(2 * team_size, 9)
-        # Interleaved ordering: (p1_0, p2_0, p1_1, p2_1, ...)
+        rows = obs[8:].reshape(2 * team_size, 7)
         for p_idx in range(2):
             team = []
             active_index = None
             for j in range(team_size):
-                row_index = j * 2 + p_idx
-                row = rows[row_index]
+                row = rows[j * 2 + p_idx]
                 raw_id = int(row[0])
-                is_active = raw_id < 0
+                is_active = raw_id < 0 and raw_id != 0
                 poke_id = abs(raw_id)
                 if poke_id == 0:
-                    continue  # Skip missingNo
+                    # Hidden / unrevealed opponent slot
+                    continue
                 if is_active:
                     active_index = len(team)
-
-                moves = [ShowdownParser.unpack_move(int(row[1 + k])) for k in range(4)]
-                hp = int(row[5])
+                moves = []
+                for k in range(4):
+                    m = ShowdownParser.unpack_move(int(row[1 + k]))
+                    m['name'] = move_name(m['id']) if m['id'] else None
+                    moves.append(m)
+                hp_scaled = row[5] / 10  # 0..1000
                 status = ShowdownParser.unpack_status(int(row[6]))
-                stat_mods = ShowdownParser.unpack_stat_mods(int(row[7]), int(row[8])) if is_active else None
-
-                team.append(
-                    {
-                        "id": poke_id,
-                        "is_active": is_active,
-                        "hp": hp,
-                        "status": status,
-                        "stat_mods": stat_mods,
-                        "moves": moves,
-                    }
-                )
-            players.append({"active_index": active_index, "team": team})
-        return {"players": players}
-
-    @staticmethod
-    def parse_observation_fast(obs: np.ndarray, team_size: int = 6) -> dict:
-        obs = np.asarray(obs)
-        offset = 9
-        rows = obs[offset:].reshape(2 * team_size, 9)
-
-        status_names = ["paralyzed", "burn", "freeze", "poison", "sleep", "confused"]
-
-        p1_row = rows[0]
-        p2_row = rows[1]
-
-        def fmt(row):
-            status_flags = int(row[6]) & 0xFFFF
-            status_list = [status_names[i] for i in range(6) if (status_flags >> i) & 0x1]
-            status_str = ','.join(status_list) if status_list else "healthy"
-            move_id_parts = []
-            move_name_parts = []
-            for k in range(4):
-                move_packed = int(row[1 + k]) & 0xFFFF
-                move_id = move_packed & 0xFF
-                if move_id > 0:
-                    pp = (move_packed >> 8) & 0x3F
-                    move_id_parts.append(f"{move_id}({pp})")
-                    move_name_parts.append(f"{move_name(move_id)}({pp})")
-            poke_id = abs(int(row[0]))
-            return {
-                'id': poke_id,
-                'name': pokemon_name(poke_id),
-                'hp': int(row[5]),
-                'status': status_str,
-                'moves': ','.join(move_id_parts),
-                'move_names': ','.join(move_name_parts)
-            }
-
-        # Previous actions (both players)
-        p1_type = int(obs[0])
-        p1_val = int(obs[1])
-        p2_type = int(obs[2])
-        p2_val = int(obs[3])
-
-        p1_move_name = move_name(p1_val) if p1_type == 2 else None
-        p2_move_name = move_name(p2_val) if p2_type == 2 else None
-
-        out = {
-            'p1_active': fmt(p1_row),
-            'p2_active': fmt(p2_row),
-            # Backward compatibility
-            'prev_action_type': p1_type,
-            'prev_action_value': p1_val,
-            # Explicit both-player fields
-            'prev_p1_type': p1_type,
-            'prev_p1_value': p1_val,
-            'prev_p1_move_name': p1_move_name,
-            'prev_p2_type': p2_type,
-            'prev_p2_value': p2_val,
-            'prev_p2_move_name': p2_move_name,
+                team.append({
+                    'id': poke_id,
+                    'name': pokemon_name(poke_id),
+                    'is_active': is_active,
+                    'hp_scaled': hp_scaled,
+                    'status': status,
+                    'moves': moves,
+                })
+            players.append({'active_index': active_index, 'team': team})
+        # Active stat mods live only in header for v2
+        header = {
+            'p1_prev_choice': int(obs[0]),
+            'p1_prev_val': int(obs[1]),
+            'p2_prev_choice': int(obs[2]),
+            'p2_prev_val': int(obs[3]),
+            'p1_statmods': ShowdownParser.unpack_stat_mods(int(obs[4]), int(obs[5])),
+            'p2_statmods': ShowdownParser.unpack_stat_mods(int(obs[6]), int(obs[7])),
         }
-        return out
+        return {'version': 'v2', 'players': players, 'header': header}
+
+
     
     @staticmethod
     def format_status_fast(status: dict, status_names: list) -> str:
@@ -151,12 +105,64 @@ class ShowdownParser:
     @staticmethod
     def pretty_print(obs):
         data_dict = ShowdownParser.parse_observation(obs)
-        players = data_dict["players"]
+        header = data_dict['header']
+        players = data_dict['players']
+        print(f"Header: {header}")
         for idx, player in enumerate(players, start=1):
             print(f"Player {idx}:")
-            for i, mon in enumerate(player["team"]):
-                active_marker = "*" if i == player["active_index"] else " "
-                status_flags = [name for name, val in mon["status"].items() if val]
-                status_str = ", ".join(status_flags) if status_flags else "healthy"
-                moves_str = ", ".join([f"{m['id']}({m['pp']})" for m in mon["moves"]])
-                print(f"  {active_marker}Pokemon {mon['id']} | HP {mon['hp']} | Status: {status_str} | Moves: {moves_str}")
+            for i, mon in enumerate(player['team']):
+                active_marker = '*' if i == player['active_index'] else ' '
+                status_flags = [name for name, val in mon['status'].items() if val]
+                status_str = ','.join(status_flags) if status_flags else 'healthy'
+                hp_field = mon.get('hp', mon.get('hp_scaled'))
+                moves_str = ', '.join([f"{m['id']}({m['pp']})" for m in mon['moves'] if m['id']])
+                print(f"  {active_marker}Pokemon {mon['id']} | HP {hp_field} | Status: {status_str} | Moves: {moves_str}")
+
+    # --- Comparison Utilities ---
+    @staticmethod
+    def compare_v2(packed_a: np.ndarray, packed_b: np.ndarray, team_size: int = 6):
+        """Compare two v2 packed observations field-by-field; return dict of mismatches."""
+        a = ShowdownParser.parse_observation(packed_a, team_size)
+        b = ShowdownParser.parse_observation(packed_b, team_size)
+        mismatches = {}
+        # Compare header stat mods
+        for k in ['p1_statmods', 'p2_statmods']:
+            for stat, aval in a['header'][k].items():
+                bval = b['header'][k][stat]
+                if aval != bval:
+                    mismatches.setdefault(k, {})[stat] = (aval, bval)
+        # Compare active pokemon basic info
+        for pi in range(2):
+            ateam = a['players'][pi]['team']
+            bteam = b['players'][pi]['team']
+            limit = min(len(ateam), len(bteam))
+            for i in range(limit):
+                af = ateam[i]; bf = bteam[i]
+                # Only check visible species and active status
+                for field in ['id', 'is_active']:
+                    if af[field] != bf[field]:
+                        mismatches.setdefault(f'player{pi+1}_mon{i}', {})[field] = (af[field], bf[field])
+                # HP scaled
+                ahp = af.get('hp_scaled', af.get('hp'))
+                bhp = bf.get('hp_scaled', bf.get('hp'))
+                if ahp != bhp:
+                    mismatches.setdefault(f'player{pi+1}_mon{i}', {})['hp'] = (ahp, bhp)
+                # Moves (only revealed ones: id>0)
+                for mi in range(4):
+                    amid = af['moves'][mi]['id']
+                    bmid = bf['moves'][mi]['id']
+                    if amid != bmid:
+                        # Ignore if one side is unrevealed (0) and the other also 0
+                        if not (amid == 0 and bmid == 0):
+                            mismatches.setdefault(f'player{pi+1}_mon{i}', {})[f'move{mi}'] = (amid, bmid)
+        return mismatches
+
+    @staticmethod
+    def assert_equivalent(packed_a: np.ndarray, packed_b: np.ndarray):
+        mismatches = ShowdownParser.compare_v2(packed_a, packed_b)
+        if mismatches:
+            print("Mismatch detected:")
+            for k, v in mismatches.items():
+                print(f"  {k}: {v}")
+        else:
+            print("Observations equivalent (v2 criteria).")

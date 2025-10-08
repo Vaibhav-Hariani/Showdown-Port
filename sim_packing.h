@@ -5,7 +5,6 @@
 #include "sim_utils/move.h"
 #include "stdint.h"
 
-// Previous choices for both players
 typedef struct {
   int16_t p1_choice; // raw encoded choice (switch idx or move slot)
   int16_t p1_val;    // switch idx or resolved move id
@@ -13,18 +12,32 @@ typedef struct {
   int16_t p2_val;    // switch idx or resolved move id
 } PrevChoices;
 
+// Constants
+#define PACK_HEADER_INTS 8
+#define PACK_POKE_INTS 7
+#define PACK_TEAM_SLOTS 6
+#define PACK_TOTAL_POKEMON (PACK_TEAM_SLOTS * 2)
+#define PACK_TOTAL_INTS (PACK_HEADER_INTS + PACK_TOTAL_POKEMON * PACK_POKE_INTS)
+
 // Packing function declarations
-int16_t pack_attack_def_specA_specD(stat_mods* mods);
-int16_t pack_stat_acc_eva(stat_mods* mods);
-int16_t pack_move(Move* move);
-int16_t pack_status(Pokemon* p);
-void pack_poke(int16_t* row, Player* player, int poke_index);
-// Observation layout: [ action_row (9 ints) , (NUM_POKE*2) * 9 pokemon ints ]
-// action_row: p1_choice, p1_val, p2_choice, p2_val, pad x5
+static inline int16_t pack_attack_def_specA_specD(stat_mods* mods);
+static inline int16_t pack_stat_acc_eva(stat_mods* mods);
+static inline int16_t pack_move(Move* move, int disabled);
+static inline int16_t pack_status_and_volatiles(Player* player, int poke_index);
+static inline int16_t pack_hp_percent(Pokemon* p);
+// player_index: 1 for p1 (observer perspective), 2 for p2; used to gate hidden info
+static inline void pack_poke(int16_t* row,
+                             Player* player,
+                             int player_index,
+                             int poke_index,
+                             int is_active,
+                             int hidden);
 void pack_battle(Battle* b, int16_t* out, PrevChoices* prev);
 
+// ============================================================================
 // Implementation
-int16_t pack_attack_def_specA_specD(stat_mods* mods) {
+// ============================================================================
+static inline int16_t pack_attack_def_specA_specD(stat_mods* mods) {
   int16_t packed = 0;
   packed |= (mods->attack & 0xF) << 0;
   packed |= (mods->defense & 0xF) << 4;
@@ -33,7 +46,7 @@ int16_t pack_attack_def_specA_specD(stat_mods* mods) {
   return packed;
 }
 
-int16_t pack_stat_acc_eva(stat_mods* mods) {
+static inline int16_t pack_stat_acc_eva(stat_mods* mods) {
   int16_t packed = 0;
   packed |= (mods->speed & 0xF) << 0;
   packed |= (mods->accuracy & 0xF) << 4;
@@ -41,80 +54,127 @@ int16_t pack_stat_acc_eva(stat_mods* mods) {
   return packed;
 }
 
-// Packs move data for a single move into an int16_t
-// Format: [move_id(8 bits), pp(6 bits)] - 2 bits unused
-int16_t pack_move(Move* move) {
-  int16_t packed = 0;
-  packed |= (int16_t)(move->id & 0xFF) << 0;  // 8 bits for move ID (0-255)
-  packed |= (int16_t)(move->pp & 0x3F) << 8;  // 6 bits for PP (0-63)
-  return packed;
-}
-
-// Packs all pokemon in the battle into the provided int array.
-// Each pokemon: [id, hp, status_flags, (stat_mods if active), move1, move2,
-// move3, move4] Returns the number of ints written.
-int16_t pack_status(Pokemon* p) {
-  int16_t packed = 0;
-  packed |= (p->status.paralyzed & 0x1) << 0;
-  packed |= (p->status.burn & 0x1) << 1;
-  packed |= (p->status.freeze & 0x1) << 2;
-  packed |= (p->status.poison & 0x1) << 3;
-  packed |= (p->status.sleep & 0x1) << 4;
-
-  return packed;
-}
-
-void pack_poke(int16_t* row, Player* player, int poke_index) {
-  Pokemon* poke = &player->team[poke_index];
-
-  // Pack pokemon number first
-  row[0] = poke->id;
-
-  // Pack move data next (positions 1-4)
-  for (int k = 0; k < 4; k++) {
-    row[1 + k] = pack_move(&poke->poke_moves[k]);
+// Packs move data into int16_t per spec (see header comment)
+static inline int16_t pack_move(Move* move, int disabled) {
+  if (!move) {
+    return 0; // unseen / null
   }
+  int16_t packed = 0;
+  packed |= (int16_t)(move->id & 0xFF);          // bits 0-7 move id
+  int pp = move->pp;
+  if (pp < 0) pp = 0; if (pp > 31) pp = 31;
+  packed |= (int16_t)(pp & 0x1F) << 8;           // bits 8-12 PP
+  packed |= (int16_t)((disabled ? 1 : 0) & 0x1) << 13; // bit13 disabled
+  return packed;
+}
 
-  // Pack everything else after move data
-  row[5] = poke->hp;
-  // Also contains confusion if the pokemon is active (and confused)
-  row[6] = pack_status(poke);
+// HP percent *1000 in bits 0-9; bits 10-15 reserved (currently 0)
+static inline int16_t pack_hp_percent(Pokemon* p) {
+  if (!p || p->max_hp <= 0) return 0;
+  int hp = p->hp;
+  if (hp < 0) hp = 0;
+  if (hp > p->max_hp) hp = p->max_hp;
+  int scaled = (hp * 1000) / p->max_hp; // 0..1000
+  if (scaled > 1000) scaled = 1000;
+  int16_t packed = (int16_t)(scaled & 0x3FF); // lower 10 bits
+  return packed; // upper 6 bits zero for now
+}
 
+// Status & volatile bits; limited by what current engine tracks.
+static inline int16_t pack_status_and_volatiles(Player* player, int poke_index) {
+  Pokemon* p = &player->team[poke_index];
+  int16_t packed = 0;
+  // Core status
+  packed |= (p->status.paralyzed & 0x1) << 0; // PAR
+  packed |= (p->status.burn & 0x1) << 1;      // BRN
+  packed |= (p->status.freeze & 0x1) << 2;    // FRZ
+  packed |= (p->status.poison & 0x1) << 3;    // PSN (regular)
+  packed |= ((p->status.sleep > 0) ? 1 : 0) << 4; // SLP
+  // Toxic (badly poisoned) tracked via active battle pokemon counter
   if (poke_index == player->active_pokemon_index) {
-    row[0] *= -1;  // Mark active pokemon with negative id
-    stat_mods* mods = &player->active_pokemon.stat_mods;
-    row[7] = pack_attack_def_specA_specD(mods);
-    row[8] = pack_stat_acc_eva(mods);
-  } else {
-    row[7] = 0;
-    row[8] = 0;
+    if (player->active_pokemon.badly_poisoned_ctr > 0) {
+      packed |= 1 << 5; // TOX
+    }
+    if (player->active_pokemon.confusion_counter > 0) {
+      packed |= 1 << 6; // CONFUSED
+    }
+    if (player->active_pokemon.flinch) {
+      packed |= 1 << 14; // FLINCH
+    }
   }
+  // Bits for SEEDED / SUB / RAGE / DISABLED / PARTIALLY_TRAPPED / TRANSFORMED / FOCUS_ENERGY
+  // Not currently implemented in structs; remain 0 as placeholders.
+  return packed;
+}
+
+static inline void pack_poke(int16_t* row,
+                             Player* player,
+                             int player_index,
+                             int poke_index,
+                             int is_active,
+                             int hidden) {
+  if (hidden) {
+    for (int i = 0; i < PACK_POKE_INTS; i++) row[i] = 0;
+    return;
+  }
+
+  Pokemon* poke = &player->team[poke_index];
+  // species id (negated if active)
+  int16_t species = (int16_t)poke->id;
+  if (is_active) species = (int16_t)(-species);
+  row[0] = species;
+
+  for (int k = 0; k < 4; k++) {
+    Move* m = &poke->poke_moves[k];
+    int reveal = (player_index == 1) ? 1 : (m->revealed ? 1 : 0);
+    row[1 + k] = reveal ? pack_move(m, 0) : 0;
+  }
+  row[5] = pack_hp_percent(poke);
+  row[6] = pack_status_and_volatiles(player, poke_index);
 }
 
 void pack_battle(Battle* b, int16_t* out, PrevChoices* prev) {
+  // Header (choices + active stat mods only)
   out[0] = prev->p1_choice;
   out[1] = prev->p1_val;
   out[2] = prev->p2_choice;
   out[3] = prev->p2_val;
 
-  // Each pokemon row: [id, move1, move2, move3, move4, hp, status_flags, stat_mod1, stat_mod2]
-  // Interleaved ordering for scalability: p1_poke1, p2_poke1, p1_poke2, p2_poke2, ...
-  // Flattened after action row: (NUM_POKE * 2) rows * 9 columns.
-  
-  for (int j = 0; j < NUM_POKE; j++) {
-    for (int i = 0; i < 2; i++) {
-      Player* p = get_player(b, i + 1); // i=0 -> p1, i=1 -> p2
-      int interleave_index = j * 2 + i; // interleaved slot
-      int base_offset = 9 + interleave_index * 9; // +9 to skip action row
-      int16_t* row = out + base_offset;
-      
-      if (i == 1) { // p2 pokemon potentially hidden from p1
-        if (!(b->p1.shown_pokemon & (1u << j))) {
-          continue;
-        }
-      }
-      pack_poke(row, p, j);
-    }
+  // Reveal moves used on previous turn (choice 0-3) by setting move.revealed
+  if (prev->p1_choice >= 0 && prev->p1_choice < 4 && b->p1.active_pokemon_index >= 0) {
+    b->p1.team[b->p1.active_pokemon_index].poke_moves[prev->p1_choice].revealed = 1;
+  }
+  if (prev->p2_choice >= 0 && prev->p2_choice < 4 && b->p2.active_pokemon_index >= 0) {
+    b->p2.team[b->p2.active_pokemon_index].poke_moves[prev->p2_choice].revealed = 1;
+  }
+  stat_mods* p1mods = &b->p1.active_pokemon.stat_mods;
+  stat_mods* p2mods = &b->p2.active_pokemon.stat_mods;
+  out[4] = pack_attack_def_specA_specD(p1mods);
+  out[5] = pack_stat_acc_eva(p1mods);
+  out[6] = pack_attack_def_specA_specD(p2mods);
+  out[7] = pack_stat_acc_eva(p2mods);
+
+  // Pokémon rows (interleaved)
+  for (int slot = 0; slot < PACK_TEAM_SLOTS; slot++) {
+    int interleave_index_p1 = slot * 2 + 0;
+    int base_offset_p1 = PACK_HEADER_INTS + interleave_index_p1 * PACK_POKE_INTS;
+  pack_poke(out + base_offset_p1,
+        &b->p1,
+        1,
+        slot,
+        (slot == b->p1.active_pokemon_index),
+        0);
+
+    int hidden = 0;
+    if (!(b->p1.shown_pokemon & (1u << slot))) hidden = 1;
+    int interleave_index_p2 = slot * 2 + 1;
+    int base_offset_p2 = PACK_HEADER_INTS + interleave_index_p2 * PACK_POKE_INTS;
+    pack_poke(out + base_offset_p2,
+              &b->p2,
+              2,
+              slot,
+              (slot == b->p2.active_pokemon_index),
+              hidden);
   }
 }
 

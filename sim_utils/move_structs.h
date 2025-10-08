@@ -26,6 +26,8 @@ struct STR_MOVE {
   int pp;
   void (*movePtr)(Battle*, BattlePokemon*, BattlePokemon*);
   int priority;
+  // Flag: set to 1 once the move has been revealed/used (for opponent visibility)
+  unsigned char revealed;
 };
 
 #endif

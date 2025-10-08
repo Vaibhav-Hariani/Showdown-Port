@@ -10,12 +10,11 @@ class Showdown(pufferlib.PufferEnv):
         self, num_envs=1, render_mode=None, log_interval=10, artifact_interval=None,
         artifact_collection=None, buf=None, seed=0
     ):
-        # Observation layout now begins with an action row:
-        # [ P1_action_type, P1_action_value, P2_action_type, P2_action_value, + 5 pad] (9 ints)
-        # Followed by per-Pokemon rows: id, move1..4, hp, status_flags, stat_mod1, stat_mod2 (9 ints each)
-        # Total length = (1 + 2*6) * 9. With NUM_POKE=1 => 117
+        # Observation layout: 8 header ints + 12*7 = 84 ints (rows) = 92 total
+        # Header: [p1_prev_choice, p1_prev_val, p2_prev_choice, p2_prev_val, p1_statmods1, p1_statmods2, p2_statmods1, p2_statmods2]
+        # Each row: [species_id, move1, move2, move3, move4, hp_pack, status_bits]
         self.single_observation_space = gymnasium.spaces.Box(
-            low=-32768, high=32767, shape=(117,), dtype=np.int16
+            low=-32768, high=32767, shape=(92,), dtype=np.int16
         )
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
@@ -96,6 +95,7 @@ class Showdown(pufferlib.PufferEnv):
         table = wandb.Table(columns=[
             "step", "action", "reward",
             "p1_choice", "p1_value", "p2_choice", "p2_value",
+            "p1_statmods", "p2_statmods",
             "p1_active_id", "p1_active_name", "p1_active_hp", "p1_active_status", "p1_moves", "p1_move_names",
             "p2_active_id", "p2_active_name", "p2_active_hp", "p2_active_status", "p2_moves", "p2_move_names"
         ])
@@ -106,37 +106,36 @@ class Showdown(pufferlib.PufferEnv):
             action = self.episode_actions[step_idx]
             reward = self.episode_rewards[step_idx]
 
-            # Fast observation parsing - returns formatted strings
-            parsed = ShowdownParser.parse_observation_fast(obs)
-            p1 = parsed['p1_active']
-            p2 = parsed['p2_active']
+            # Use v2 parser for new packed obs
+            parsed = ShowdownParser.parse_observation(obs)
+            header = parsed['header']
+            p1 = parsed['players'][0]['team'][parsed['players'][0]['active_index']] if parsed['players'][0]['active_index'] is not None else {}
+            p2 = parsed['players'][1]['team'][parsed['players'][1]['active_index']] if parsed['players'][1]['active_index'] is not None else {}
 
             table.add_data(
                 step_idx,
                 action,
                 reward,
-                int(obs[0]),
-                int(obs[1]),
-                int(obs[2]),
-                int(obs[3]),
-                p1['id'],
-                p1['name'],
-                p1['hp'],
-                p1['status'],
-                p1['moves'],
-                p1['move_names'],
-                p2['id'],
-                p2['name'],
-                p2['hp'],
-                p2['status'],
-                p2['moves'],
-                p2['move_names']
+                header['p1_prev_choice'],
+                header['p1_prev_val'],
+                header['p2_prev_choice'],
+                header['p2_prev_val'],
+                header['p1_statmods'],
+                header['p2_statmods'],
+                p1.get('id', None),
+                p1.get('name', None),
+                p1.get('hp_scaled', None),
+                ShowdownParser.format_status_fast(p1.get('status', {}), ["paralyzed", "burn", "freeze", "poison", "sleep", "confused"]),
+                ', '.join([f"{m['id']}({m['pp']})" for m in p1.get('moves', []) if m['id']]) if p1 else None,
+                ', '.join([m['name'] for m in p1.get('moves', []) if m.get('name')]) if p1 else None,
+                p2.get('id', None),
+                p2.get('name', None),
+                p2.get('hp_scaled', None),
+                ShowdownParser.format_status_fast(p2.get('status', {}), ["paralyzed", "burn", "freeze", "poison", "sleep", "confused"]),
+                ', '.join([f"{m['id']}({m['pp']})" for m in p2.get('moves', []) if m['id']]) if p2 else None,
+                ', '.join([m['name'] for m in p2.get('moves', []) if m.get('name')]) if p2 else None,
             )
-
-        # Add table to artifact
-        # Use .table.json extension so artifact browser infers media type
-        if self.artifact_collection is not None:
-            self.artifact_collection.add(table, f"episode_{self.num_games:04d}.table.json")
+        self.artifact_collection.add(table, f"episode_{self.num_games:04d}.table.json")
 
         # Clear episode data
         self.episode_observations = []

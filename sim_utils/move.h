@@ -157,8 +157,12 @@ inline int attack(Battle* b,
   // Recharging
   if (pre == 10) {
     Move m = attacker->recharge_src;
+    m.revealed = 1;
     m.movePtr(b, attacker, defender);
+    return 1;
   }
+  // Mark the used move as revealed
+  used_move->revealed = 1;
   // TODO: add moves that avoid accuracy checks  
   // Check for accuracy:
   int actual_accuracy = (used_move->accuracy * 255);
