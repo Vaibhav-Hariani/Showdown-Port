@@ -39,18 +39,18 @@ void pack_battle(Battle* b, int16_t* out, PrevChoices* prev);
 // ============================================================================
 static inline int16_t pack_attack_def_specA_specD(stat_mods* mods) {
   int16_t packed = 0;
-  packed |= (mods->attack & 0xF) << 0;
-  packed |= (mods->defense & 0xF) << 4;
-  packed |= (mods->specA & 0xF) << 8;
-  packed |= (mods->specD & 0xF) << 12;
+  packed |= ((mods->attack + 6) & 0xF) << 0;
+  packed |= ((mods->defense + 6) & 0xF) << 4;
+  packed |= ((mods->specA + 6) & 0xF) << 8;
+  packed |= ((mods->specD + 6) & 0xF) << 12;
   return packed;
 }
 
 static inline int16_t pack_stat_acc_eva(stat_mods* mods) {
   int16_t packed = 0;
-  packed |= (mods->speed & 0xF) << 0;
-  packed |= (mods->accuracy & 0xF) << 4;
-  packed |= (mods->evasion & 0xF) << 8;
+  packed |= ((mods->speed + 6) & 0xF) << 0;
+  packed |= ((mods->accuracy + 6) & 0xF) << 4;
+  packed |= ((mods->evasion + 6) & 0xF) << 8;
   return packed;
 }
 
@@ -62,9 +62,9 @@ static inline int16_t pack_move(Move* move, int disabled) {
   int16_t packed = 0;
   packed |= (int16_t)(move->id & 0xFF);          // bits 0-7 move id
   int pp = move->pp;
-  if (pp < 0) pp = 0; if (pp > 31) pp = 31;
-  packed |= (int16_t)(pp & 0x1F) << 8;           // bits 8-12 PP
-  packed |= (int16_t)((disabled ? 1 : 0) & 0x1) << 13; // bit13 disabled
+  // if (pp < 0) pp = 0; if (pp > 63) pp = 63;      // Support max PP of 40, allow up to 63
+  packed |= (int16_t)(pp & 0x3F) << 8;           // bits 8-13 PP (6 bits)
+  packed |= (int16_t)((disabled ? 1 : 0) & 0x1) << 14; // bit14 disabled
   return packed;
 }
 
@@ -95,12 +95,12 @@ static inline int16_t pack_status_and_volatiles(Player* player, int poke_index) 
     if (player->active_pokemon.badly_poisoned_ctr > 0) {
       packed |= 1 << 5; // TOX
     }
-    if (player->active_pokemon.confusion_counter > 0) {
-      packed |= 1 << 6; // CONFUSED
-    }
-    if (player->active_pokemon.flinch) {
-      packed |= 1 << 14; // FLINCH
-    }
+    // if (player->active_pokemon.confusion_counter > 0) {
+    //   packed |= 1 << 6; // CONFUSED
+    // }
+    // if (player->active_pokemon.flinch) {
+    //   packed |= 1 << 14; // FLINCH
+    // }
   }
   // Bits for SEEDED / SUB / RAGE / DISABLED / PARTIALLY_TRAPPED / TRANSFORMED / FOCUS_ENERGY
   // Not currently implemented in structs; remain 0 as placeholders.
@@ -114,7 +114,8 @@ static inline void pack_poke(int16_t* row,
                              int is_active,
                              int hidden) {
   if (hidden) {
-    for (int i = 0; i < PACK_POKE_INTS; i++) row[i] = 0;
+    // for (int i = 0; i < PACK_POKE_INTS; i++) row[i] = 0;
+    row[5] = 1000;
     return;
   }
 
