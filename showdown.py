@@ -1,5 +1,6 @@
 import gymnasium
 import numpy as np
+import os
 from pufferlib.ocean.showdown import binding
 from pufferlib.ocean.showdown.py_print import ShowdownParser
 import pufferlib
@@ -198,7 +199,10 @@ def evaluate_model(run, model, config, num_games=1000):
     env.close()
     print(f"Evaluation complete: {num_wins} wins, {num_losses} losses out of {num_games} games.")
     # Save the model as a wandb artifact
-    model_path = "model_final.pt"
+    # Write into the comp_env folder so exported artifacts live with the compatibility
+    # environment (required when loading in an independent env).
+    model_path = os.path.abspath(os.path.join(os.getcwd(), "comp_env", "final_model.pt"))
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
     artifact = Artifact("final_model", type="model")
     artifact.add_file(model_path)

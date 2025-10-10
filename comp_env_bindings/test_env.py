@@ -4,7 +4,6 @@ import time
 import torch
 from gymnasium.spaces import Space, Box
 
-
 from gymnasium.utils.env_checker import check_env
 from poke_env.battle import AbstractBattle
 from poke_env.battle import Pokemon, Move, AbstractBattle
@@ -16,32 +15,10 @@ from pokedex_labels import POKEMON_NAMES
 
 from showdown_models import Showdown, ShowdownLSTM
 
-class Env(SinglesEnv):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Define observation space to match C sim: 92 int16 values
-        # 8 header ints + 12*7 = 84 ints (rows) = 92 total
-        obs_size = 92
-        low = np.full(obs_size, -32768, dtype=np.int16)
-        high = np.full(obs_size, 32767, dtype=np.int16)
-        self.observation_spaces = {
-            agent: Box(low, high, dtype=np.int16) for agent in self.possible_agents
-        }
-
-    # --- Unified Packed Embedding ---
-    def embed_battle(self, battle: AbstractBattle, packed: bool = True):
-        """Return packed int16 observation (canonical) or legacy float features.
-        packed=True  -> 92-length int16 array mirroring C sim_packing.h layout:
-            Header (8) + 12 pokemon rows (interleaved p1_slot_i, p2_slot_i) * 7
-            Header indices:
-              0..3 previous (choice, value) for p1 then p2 (here set -1 if unknown)
-              4..5 p1 active stat mods (Atk/Def/SpA/SpD, Spe/Acc/Eva)
-              6..7 p2 active stat mods (Atk/Def/SpA/SpD, Spe/Acc/Eva)
-            Row layout (7): [species_id (neg if active), move1..move4, hp_pack, status_bits]
-        packed=False -> legacy 54-float feature vector (previous representation).
-        """
+class Embed():
+    def embed_battle(self, battle: AbstractBattle):
         return self._packed_embed(battle)
-
+     
     # Helpers for packed form --------------------------------------------
     @staticmethod
     def _encode_hp_percent(mon):
@@ -84,7 +61,7 @@ class Env(SinglesEnv):
         # bits14-15 remain 0
         return val & 0x3FFF  # mask to 14 bits (bit13 included)
 
-    def _pack_statmods1(self, p):
+    def _pack_statmods1(self, p: Pokemon):
         # (Atk, Def, SpA, SpD) -> each 4 bits
         if not p:
             return 0
@@ -93,7 +70,16 @@ class Env(SinglesEnv):
         de = self._encode_boost(boosts.get("def", 0))
         spa = self._encode_boost(boosts.get("spa", 0))
         spd = self._encode_boost(boosts.get("spd", 0))
-        return atk | (de << 4) | (spa << 8) | (spd << 12)
+        val = atk | (de << 4) | (spa << 8) | (spd << 12)
+        # Ensure we return a Python int within signed int16 range while
+        # preserving the raw 16-bit pattern (two's complement). This
+        # avoids OverflowError when numpy attempts to cast large unsigned
+        # values into np.int16. Consumers can reinterpret the bits as
+        # unsigned if needed (e.g., via np.uint16).
+        val &= 0xFFFF
+        if val & 0x8000:
+            val -= 0x10000
+        return val
 
     def _pack_statmods2(self, p):
         if not p:
@@ -102,7 +88,11 @@ class Env(SinglesEnv):
         spe = self._encode_boost(boosts.get("spe", 0))
         acc = self._encode_boost(boosts.get("accuracy", 0))
         eva = self._encode_boost(boosts.get("evasion", 0))
-        return spe | (acc << 4) | (eva << 8)
+        val = spe | (acc << 4) | (eva << 8)
+        val &= 0xFFFF
+        if val & 0x8000:
+            val -= 0x10000
+        return val
 
     def _pack_status_bits(self, p):
         if not p:
@@ -148,13 +138,13 @@ class Env(SinglesEnv):
 
         def species_id(mon: Pokemon, active):
             # Use pokemon name to look up ID in POKEDEX_LABELS
-            poke_name = mon.name
+            poke_name = mon.name.lower()
             # Handle special cases that might differ between poke-env and our labels
             name_mapping = {
-                'nidoran♀': 'nidoranf',
-                'nidoran♂': 'nidoranm', 
+                'nidoran-f': 'nidoranf',
+                'nidoran-m': 'nidoranm',
                 'mr. mime': 'mrmime',
-                "farfetch'd": 'farfetchd'
+                "farfetch’d": 'farfetchd'
             }
             poke_name = name_mapping.get(poke_name, poke_name)
             sid = POKEMON_NAMES.index(poke_name)
@@ -172,9 +162,11 @@ class Env(SinglesEnv):
         # Use natural ordering from poke-env - no caching needed
         p2_team = ordered_team(battle.opponent_team)
 
-        def pack_move_py(move, revealed=True, disabled=False):
+        def pack_move_py(move: Move, disabled=False):
             # Use move name to look up ID in MOVE_LABELS
-            move_name = move.id.lower().replace('-', ' ').replace('_', ' ').title()
+            if move is None:
+                return 0
+            move_name = move.id.lower()
             move_id = MOVE_LABELS.index(move_name) & 0xFF
             pp = int(getattr(move, 'current_pp', getattr(move, 'pp', 0)))
             pp = pp & 0x3F  # 6 bits for PP (0-63)
@@ -210,11 +202,27 @@ class Env(SinglesEnv):
                 obs[base2+6] = self._pack_status_bits(mon2)
         return obs
 
-    # Reward unchanged
+    # Modify this to return zero if the game isn't over, else 1 if the model won, -1 if the model lost.
     def calc_reward(self, battle: AbstractBattle) -> float:
         return self.reward_computing_helper(
             battle, fainted_value=2.0, hp_value=1.0, victory_value=30.0
         )
+    
+
+    
+
+class Env(SinglesEnv):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Define observation space to match C sim: 92 int16 values
+        # 8 header ints + 12*7 = 84 ints (rows) = 92 total
+        obs_size = 92
+        low = np.full(obs_size, -32768, dtype=np.int16)
+        high = np.full(obs_size, 32767, dtype=np.int16)
+        self.observation_spaces = {
+            agent: Box(low, high, dtype=np.int16) for agent in self.possible_agents
+        }
+
 
 class SmartAgent(Player):
     """Simple agent that chooses the move with highest base power.
@@ -252,18 +260,32 @@ class RLAgent(Player):
     Uses the same action parsing logic as SmartAgent.
     """
     def __init__(self, model_path: str, **kwargs):
-        super().__init__(**kwargs)
-        self.env_wrapper = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
-        
+        self.env = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
+        self.embed = Embed()
         # Load the PyTorch model
-        model = Showdown(self.env_wrapper)
-        self.model = ShowdownLSTM(self.env_wrapper, model)
+        model = Showdown(None)
+        self.model = ShowdownLSTM(None, model)
         weights = torch.load(model_path, weights_only=False)
 
 
         self.model.load_state_dict(weights)
         self.model.eval()  # Set to evaluation mode
-        
+        # LSTM state used by the ShowdownLSTM forward_eval path.
+        # forward_eval expects state['lstm_h'] and state['lstm_c'] shaped (batch, hidden_size)
+        hidden_size = getattr(self.model, 'hidden_size', None)
+        if hidden_size is None:
+            # fallback to 256 if unknown
+            hidden_size = 256
+        # Start with zeros (batch size 1)
+        self._state = {
+            'lstm_h': torch.zeros(1, hidden_size),
+            'lstm_c': torch.zeros(1, hidden_size),
+            'hidden': None,
+        }
+        # Track which battle the state belongs to so we can reset on new battles
+        self._last_battle_id = None
+        super().__init__(**kwargs)
+
     # Parse model action (0-9) -> Showdown order (same as SmartAgent)
     def parse_action(self, battle: AbstractBattle, action):
         """
@@ -302,16 +324,29 @@ class RLAgent(Player):
 
     def choose_move(self, battle: AbstractBattle):
         # Get packed observation
-        packed_obs = self.env_wrapper.embed_battle(battle, packed=True)
+        packed_obs = self.embed.embed_battle(battle)
         
         # Convert to tensor and run through model
-        obs_tensor = torch.from_numpy(packed_obs).float().unsqueeze(0)  # Add batch dimension
-        
+        obs_tensor = torch.from_numpy(packed_obs).unsqueeze(0)  # Add batch dimension
+
+        # Detect new battle and reset LSTM state when a new battle starts.
+        # Prefer explicit battle tag attributes if present, else fall back to id(battle).
+        turn = battle.turn
+        if turn == 1:
+            # reset state
+            h = torch.zeros_like(self._state['lstm_h'])
+            c = torch.zeros_like(self._state['lstm_c'])
+            self._state['lstm_h'] = h
+            self._state['lstm_c'] = c
+            self._state['hidden'] = None
+        # Run model in eval/inference mode using forward_eval which uses LSTMCell
         with torch.no_grad():
-            model_output = self.model(obs_tensor)
-            
-        # Convert to numpy array and remove batch dimension
-        action_probs = model_output.squeeze(0).numpy()
+            # forward_eval returns (logits, values) and updates self._state in-place
+            logits, values = self.model.forward_eval(obs_tensor, self._state)
+            # Convert logits to action probabilities
+            probs = torch.softmax(logits, dim=-1)
+
+        action_probs = probs.squeeze(0).cpu().numpy()
         
         # Use parse_action with the probability vector
         return self.parse_action(battle, action_probs)
