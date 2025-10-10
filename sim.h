@@ -305,14 +305,8 @@ void c_step(Sim* sim) {
   battle->action_queue.q_size = 0;
   sim->log.valid_moves += 1.0f;
   sim->episode_valid_moves += 1;
-
-  // Detect damaging moves this tick using only active Pokemon state.
-  // A side took damage if (a) its active lost HP, or (b) active slot changed
-  // and the new active is not at full HP (entered already damaged).
-  BattlePokemon* p1_act = &battle->p1.active_pokemon;
-  BattlePokemon* p2_act = &battle->p2.active_pokemon;
-
   float r = reward(sim);
+  
   if (r == 1.0f || r == -1.0f) {
     // Calculate final episode stats before resetting
     float p1_sum = 0, p2_sum = 0;
@@ -326,9 +320,7 @@ void c_step(Sim* sim) {
     final_update(&sim->log, r, mean_p1_hp, mean_p2_hp, avg_damage_pct, sim->tick,
                  sim->episode_valid_moves, sim->episode_invalid_moves);
     sim->terminals[0] = 1;
- } else {
-    // Damaging move runtime tracking removed
-  }
+ }
   // Non-terminal steps yield 0 reward
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations, &step_prev);

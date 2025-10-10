@@ -3,17 +3,18 @@ import asyncio
 import time
 import torch
 from gymnasium.spaces import Space, Box
-from poke_env.battle import AbstractBattle
+
 
 from gymnasium.utils.env_checker import check_env
-from poke_env.player import RandomPlayer
-from poke_env.battle import Pokemon, Move
-from poke_env.player import Player
+from poke_env.battle import AbstractBattle
+from poke_env.battle import Pokemon, Move, AbstractBattle
+from poke_env.player import Player, RandomPlayer
 from poke_env.environment import SinglesEnv
 
 from move_labels import MOVE_LABELS
 from pokedex_labels import POKEMON_NAMES
 
+from showdown_models import Showdown, ShowdownLSTM
 
 class Env(SinglesEnv):
     def __init__(self, **kwargs):
@@ -216,45 +217,34 @@ class Env(SinglesEnv):
         )
 
 class SmartAgent(Player):
-    """Simple agent using packed embedding + parse_action mapping.
-    Expects a model output (here mocked by heuristic) producing action 0-9.
+    """Simple agent that chooses the move with highest base power.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.env_wrapper = Env(battle_format=kwargs.get("battle_format", "gen8randombattle"))
-
-        # Parse model action (0-9) -> Showdown order
-    def parse_action(self, battle: AbstractBattle, action: int):
-        
-        # 0-5 switch slots - iterate over player's team
-        if 0 <= action <= 5:
-            team_mons = list(battle.team.values())
-            try:
-                if action < len(team_mons):
-                    target_mon = team_mons[action]
-                    # Check if this Pokemon is in available_switches
-                    if target_mon in battle.available_switches:
-                        return self.create_order(target_mon)
-            except Exception as e:
-                print(f"Error occurred while parsing action {action}: {e}")
-        
-        # 6-9 move slots
-        elif 6 <= action <= 9:
-            move_idx = action - 6
-            if move_idx < len(battle.available_moves):
-                return self.create_order(battle.available_moves[move_idx])
-        
-        # Fallback to random move
-        return self.choose_random_move(battle)
 
     def choose_move(self, battle: AbstractBattle):
-        packed_obs = self.env_wrapper.embed_battle(battle, packed=True)
-        # Placeholder policy: prefer first available move; fallback to parse_action(9)
+        # Choose the move with the highest base power
         if battle.available_moves:
-            action = 0
+            best_move_idx = 0
+            best_power = -1
+            
+            for i, move in enumerate(battle.available_moves):
+                # Get base power, default to 0 for status moves
+                power = move.base_power if move.base_power else 0
+                
+                if power > best_power:
+                    best_power = power
+                    best_move_idx = i
+            
+            # Use the best move
+            return self.create_order(battle.available_moves[best_move_idx])
         else:
-            action = 9
-        return self.parse_action(battle, action)
+            # No moves available, try to switch to first available switch
+            if battle.available_switches:
+                return self.create_order(battle.available_switches[0])
+        
+        # Ultimate fallback
+        return self.choose_random_move(battle)
     
 
 class RLAgent(Player):
@@ -266,7 +256,12 @@ class RLAgent(Player):
         self.env_wrapper = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
         
         # Load the PyTorch model
-        self.model = torch.load(model_path, map_location='cpu')
+        model = Showdown(self.env_wrapper)
+        self.model = ShowdownLSTM(self.env_wrapper, model)
+        weights = torch.load(model_path, weights_only=False)
+
+
+        self.model.load_state_dict(weights)
         self.model.eval()  # Set to evaluation mode
         
     # Parse model action (0-9) -> Showdown order (same as SmartAgent)
@@ -384,8 +379,8 @@ def benchmark_agents(n_battles=100):
     
     async def run_battles():
         # Create players
-        smart_agent = SmartAgent(battle_format="gen8randombattle")
-        random_agent = RandomPlayer(battle_format="gen8randombattle")
+        smart_agent = SmartAgent(battle_format="gen1randombattle")
+        random_agent = RLAgent(model_path="/puffertank/Showdown_comp_env/bindings/comp_env_bindings/model_final.pt", battle_format="gen1randombattle")
         
         # Track results and timing
         smart_wins = 0
@@ -499,9 +494,9 @@ if __name__ == "__main__":
     # Test basic environment setup
     print("✓ Environment setup complete!")
     
-    # Collect some training data to show the pipeline
-    print("\nCollecting training data...")
-    training_data = collect_training_data(n_battles=5)
+    # # Collect some training data to show the pipeline
+    # print("\nCollecting training data...")
+    # training_data = collect_training_data(n_battles=5)
     
     # Run benchmark
     print("\nRunning agent benchmark...")
