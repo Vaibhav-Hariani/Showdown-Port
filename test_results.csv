@@ -1,0 +1,8 @@
+Suite,Test Name,Category,Status,Expected Min,Expected Max,Actual,Deviation %,Error Message
+Core Damage Calculation Tests,Neutral Special Attack,0,FAIL,90,106,36,63.27,"Damage 36 outside expected range [90-106] (with 10% tolerance: [80-116])"
+Core Damage Calculation Tests,4x Super Effective,1,FAIL,200,236,147,32.57,"Damage 147 outside expected range [200-236] (with 10% tolerance: [179-259])"
+Core Damage Calculation Tests,Type Immunity,1,PASS,0,0,0,0.00,""
+Core Damage Calculation Tests,Stat Boost (+2 Attack),2,FAIL,170,200,232,25.41,"Damage 232 outside expected range [170-200] (with 10% tolerance: [152-220])"
+Core Damage Calculation Tests,Burn Physical Reduction,3,FAIL,45,54,164,234.69,"Damage 164 outside expected range [45-54] (with 10% tolerance: [40-59])"
+Core Damage Calculation Tests,STAB Bonus,6,FAIL,90,106,74,24.49,"Damage 74 outside expected range [90-106] (with 10% tolerance: [80-116])"
+Core Damage Calculation Tests,Minimum Damage,0,PASS,1,1,1,0.00,""

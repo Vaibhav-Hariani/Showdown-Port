@@ -1,0 +1,58 @@
+name: Battle Engine Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make python3
+    
+    - name: Build test suite
+      run: make test_battle
+    
+    - name: Run tests
+      run: make test
+    
+    - name: Run Python test wrapper
+      run: python3 test_framework/run_tests.py --analyze-only
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          test_results.csv
+          test_results.json
+    
+    - name: Check test results
+      run: |
+        if [ -f test_results.csv ]; then
+          echo "Tests completed. Checking pass rate..."
+          python3 -c "
+import csv
+with open('test_results.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    results = list(reader)
+    total = len(results)
+    passed = sum(1 for r in results if r['Status'] == 'PASS')
+    print(f'Pass rate: {passed}/{total} ({passed/total*100:.1f}%)')
+    if passed < total:
+        exit(1)
+          "
+        else
+          echo "No test results found!"
+          exit 1
+        fi
