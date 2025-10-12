@@ -1,6 +1,6 @@
 move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 1,Pound,Normal,Physical,35,40,100,0,NULL
-2,Karate Chop,Fighting,Physical,25,50,100,0,NULL
+2,Karate Chop,Normal,Physical,25,50,100,0,NULL
 3,Double Slap,Normal,Physical,10,15,85,0,NULL
 4,Comet Punch,Normal,Physical,15,18,85,0,NULL
 5,Mega Punch,Normal,Physical,20,80,85,0,NULL
