@@ -58,7 +58,7 @@ if __name__ == "__main__":
                 f"     .power = {-1 if move['power'] == 'INF' else move['power']},\n"
             )
             f.write(
-                f"     .accuracy = {-1 if move['accuracy'] == 'INF' else float(move['accuracy'])/100.0},\n"
+                f"     .accuracy = {-1 if move['accuracy'] == 'INF' else float(move['accuracy']) / 100.0},\n"
             )
             f.write(f"     .priority = {move['priority']},\n")
             f.write(f"     .movePtr = {move['effect_fn']}}},\n")

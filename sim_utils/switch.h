@@ -57,6 +57,7 @@ void perform_switch_action(Action* current_action) {
   user->active_pokemon_index = target;
   user->active_pokemon.pokemon = &user->team[target];
   // Should probably remove these
+  user->active_pokemon.stats = user->active_pokemon.pokemon->stats;
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
   // Log old sleep status with current sleep status

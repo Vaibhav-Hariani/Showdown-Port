@@ -44,11 +44,23 @@ static inline int calculate_damage(BattlePokemon* attacker,
     // their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.specD);
+    if (defender->light_screen) {
+      defense_stat *= 2;  // Light Screen doubles special defense
+      if (defense_stat > 1024) {
+        defense_stat -= defense_stat % 1024;
+      }
+    }
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
     attack_stat *= get_stat_modifier(attacker->stat_mods.attack);
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
     defense_stat *= get_stat_modifier(defender->stat_mods.defense);
+    if (defender->reflect) {
+      defense_stat *= 2;  // Reflect doubles physical defense
+    }
+    if (defense_stat > 1024) {
+      defense_stat -= defense_stat % 1024;
+    }
   }
 
   int level = base_attacker->stats.level;
@@ -78,7 +90,6 @@ static inline int calculate_damage(BattlePokemon* attacker,
   return damage * random_factor;
 }
 
-// Todo:
 // Add status checks for flinching and other statuses
 //  Check for critical moves and other effects.
 // Pre-move checker: applies status effects, checks recharge/flinch, and handles
@@ -95,6 +106,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       int level = attacker->pokemon->stats.level;
       int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
       int def = attacker->pokemon->stats.base_stats[STAT_DEFENSE];
+      if (attacker->reflect) {
+        def *= 2;  // Reflect doubles physical defense
+      }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
       float random_factor = (rand() % 38 + 217) / 255.0;
       damage = (int)(damage * random_factor);
@@ -174,25 +188,58 @@ inline int attack(Battle* b,
     DLOG("%s's attack %s missed!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
+
+    // if high jump kick, apply 1 damage to the attacker
+    if (used_move->id == HIGH_JUMP_KICK_MOVE_ID) {
+      attacker->pokemon->hp = max(attacker->pokemon->hp - 1, 0);
+    }
     return 0;
   }
 
-  if (used_move->power != 0) {
+  // Gen 1 quirk - a move's power is fixed for the duration of the move
+  // e.g. firespin, bind, wrap
+  int damage = 0;
+  if (used_move->power != 0 &&
+      attacker->recharge_counter == attacker->recharge_len) {
     DLOG("%s used %s!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
 
     // Calculate damage
-    int damage = calculate_damage(attacker, defender, used_move);
-    // Not this simple with substitutes and whatnot: might need an apply_damage
-    // function.
-    defender->pokemon->hp -= damage;
-    defender->pokemon->hp =
-        max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+    damage = calculate_damage(attacker, defender, used_move);
+
+    // Apply damage with substitute logic
+
+    if (attacker->recharge_len == 0 ||
+        attacker->recharge_counter != attacker->recharge_len) {
+      if (defender->substitute_hp > 0) {
+        if (damage >= defender->substitute_hp) {
+          defender->substitute_hp = 0;
+          damage = 0;
+        } else {
+          defender->substitute_hp -= damage;
+          damage = 0;
+        }
+      } else {
+        defender->pokemon->hp -= damage;
+        defender->pokemon->hp =
+            max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+      }
+      defender->dmg_counter += damage;
+    }
   }
   // Handle move-specific logic
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender);
+  }
+
+  // Maybe make a post apply function for things like bide, bind, etc?
+  if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
+      used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
+    used_move->power = damage;
+  }
+  if (used_move->id == HYPER_BEAM_MOVE_ID) {
+    used_move->power = 0;
   }
 
   // Handle freeze thawing
@@ -210,6 +257,12 @@ int valid_move(Player* user, int move_index) {
     //  The pokemon should have been forced to switch out by now
     return 0;
   }
+  // check if move is disabled
+  if (user->active_pokemon.disabled_count > 0 &&
+      move_index == user->active_pokemon.disabled_index) {
+    DLOG("Attempt to use disabled move");
+    return 0;
+  }
   Move m = user->active_pokemon.pokemon->poke_moves[move_index];
   if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(m.id));
@@ -218,8 +271,8 @@ int valid_move(Player* user, int move_index) {
   return 1;
 }
 
-// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low), 1
-// if added.
+// Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low),
+// 1 if added.
 int add_move_to_queue(Battle* battle,
                       Player* user,
                       Player* target,
@@ -227,13 +280,17 @@ int add_move_to_queue(Battle* battle,
   // Assumes input is screened beforehand.
   BattlePokemon* battle_poke = &user->active_pokemon;
   Move* move = (battle_poke->pokemon->poke_moves) + move_index;
+  // In the case of transform, mimic.
+  if (battle_poke->moves[move_index].id != 0) {
+    move = battle_poke->moves + move_index;
+  }
   // Add to queue by modifying the action at q_size
   if (battle->action_queue.q_size < 15) {
     Action* action_ptr =
         &battle->action_queue.queue[battle->action_queue.q_size];
     memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
     action_ptr->action_type = move_action;
-    action_ptr->action_d.m = *move;
+    action_ptr->action_d.m = move;
     action_ptr->User = user;
     action_ptr->Target = target;
     action_ptr->order = 200;  // Use 200 as the order for moves

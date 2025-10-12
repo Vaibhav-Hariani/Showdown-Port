@@ -32,28 +32,26 @@ struct STR_STATS {
   // int teratype;
 } typedef poke_stats;
 
-// I have no clue how substitute is going to work but we'll figure it out
-// eventually
 // Size is 8 bits: 1 int
 struct STR_STATUS_FLAGS {
-  char paralyzed : 1;
-  char burn : 1;
-  char freeze : 1;
-  char poison : 1;
-  char sleep : 3;
+  uint8_t paralyzed : 1;
+  uint8_t burn : 1;
+  uint8_t freeze : 1;
+  uint8_t poison : 1;
+  uint8_t sleep : 3;
 };
 //+-7
 
 // Can combine these into 2 16 bit ints (attack/defense/specA/specD,
 // speed/acc/eva)
 typedef struct STR_STAT_MODS {
-  char attack : 4;
-  char defense : 4;
-  char speed : 4;
-  char specA : 4;
-  char specD : 4;
-  char accuracy : 4;
-  char evasion : 4;
+  uint8_t attack : 4;
+  uint8_t defense : 4;
+  uint8_t speed : 4;
+  uint8_t specA : 4;
+  uint8_t specD : 4;
+  uint8_t accuracy : 4;
+  uint8_t evasion : 4;
 } stat_mods;
 
 typedef struct STR_POKE {
@@ -70,18 +68,56 @@ typedef struct STR_POKE {
 
 typedef struct STR_BATTLE_POKEMON {
   Pokemon* pokemon;
+  // moves is by default NULL
+  // The existence of a move will override the reference from
+  // the base Pokemon struct
+  // This is mainly useful for transform / mimic
+  // We copy over the moves and the
+  poke_stats stats;
+  Move moves[4];
   struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
+  int substitute_hp;
   int badly_poisoned_ctr;
   int sleep_ctr;
   int recharge_counter;
   Move recharge_src;
   int recharge_len;
   int dmg_counter;
-  int flinch : 1;
-  // Todo: Add in confusion return as
-  int confusion_counter : 2;
+  uint8_t flinch : 1;
+  uint8_t confusion_counter : 2;
+  uint8_t reflect : 1;
+  uint8_t light_screen : 1;
+  uint8_t mist : 1;
+  uint8_t leech_seed : 1;
+  uint8_t disabled_count : 3;
+  uint8_t disabled_index : 2;
+  // if not null, then rage is active
+  Move* rage;
+  Move* last_used;
+
 } BattlePokemon;
+
+void reset_battle_pokemon(BattlePokemon* bp) {
+  bp->stat_mods.attack = 0;
+  bp->stat_mods.defense = 0;
+  bp->stat_mods.speed = 0;
+  bp->stat_mods.specA = 0;
+  bp->stat_mods.specD = 0;
+  bp->stat_mods.accuracy = 0;
+  bp->stat_mods.evasion = 0;
+  bp->badly_poisoned_ctr = 0;
+  bp->sleep_ctr = 0;
+  bp->recharge_counter = 0;
+  bp->recharge_len = 0;
+  bp->dmg_counter = 0;
+  bp->flinch = 0;
+  bp->confusion_counter = 0;
+  bp->reflect = 0;
+  bp->light_screen = 0;
+  bp->mist = 0;
+  bp->leech_seed = 0;
+}
 
 #endif

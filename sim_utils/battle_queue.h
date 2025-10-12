@@ -79,7 +79,7 @@ int eval_queue(Battle* b) {
     Action* current_action = &b->action_queue.queue[i];
 
     if (current_action->action_type == move_action) {
-      Move* move = &current_action->action_d.m;
+      Move* move = current_action->action_d.m;
       Player* User = current_action->User;
       Player* Target = current_action->Target;
 
@@ -127,7 +127,7 @@ inline void invalidate_queue(int completed, battlequeue* queue) {
   }
   // First pass: mark invalid actions
   for (int i = 0; i <= completed; i++) {
-    DLOG("Action has already been completed: removing.", i);
+    DLOG("Action has already been completed: removing %d.", i);
     Action* a = &queue->queue[i];
     a->origLoc = -1;
   }
