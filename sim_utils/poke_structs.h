@@ -4,6 +4,13 @@
 #include "../data_sim/poke_enum.h"
 #include "move_structs.h"
 #include "stdint.h"
+
+typedef enum {
+  SWITCH_STOP_NONE=0,
+  SWITCH_STOP_RAGE,
+  SWITCH_STOP_SOLAR_BEAM
+} SWITCH_STOPS;
+
 // Forward declarations
 typedef enum {
   STAT_HP,
@@ -85,6 +92,10 @@ typedef struct STR_BATTLE_POKEMON {
   Move recharge_src;
   int recharge_len;
   int dmg_counter;
+  SWITCH_STOPS no_switch;
+  int multi_move_len;        // Remaining turns for multi-turn moves (Bind, Wrap, etc.)
+  Move* multi_move_src;      // The multi-turn move being executed
+  uint8_t immobilized : 1;   // Target is immobilized by opponent's multi-turn move
   uint8_t flinch : 1;
   uint8_t confusion_counter : 2;
   uint8_t reflect : 1;
@@ -92,7 +103,7 @@ typedef struct STR_BATTLE_POKEMON {
   uint8_t mist : 1;
   uint8_t leech_seed : 1;
   uint8_t disabled_count : 3;
-  uint8_t disabled_index : 2;
+  MOVE_IDS disabled_move_id;  // The move ID that is disabled (not the slot index)
   // if not null, then rage is active
   Move* rage;
   Move* last_used;
@@ -112,12 +123,21 @@ void reset_battle_pokemon(BattlePokemon* bp) {
   bp->recharge_counter = 0;
   bp->recharge_len = 0;
   bp->dmg_counter = 0;
+  bp->recharge_src = (Move){0};
+  bp->no_switch = SWITCH_STOP_NONE;
+  bp->multi_move_len = 0;
+  bp->multi_move_src = NULL;
+  bp->immobilized = 0;
   bp->flinch = 0;
   bp->confusion_counter = 0;
   bp->reflect = 0;
   bp->light_screen = 0;
   bp->mist = 0;
   bp->leech_seed = 0;
+  bp->disabled_count = 0;
+  bp->disabled_move_id = NO_MOVE;
+  bp->rage = NULL;
+  bp->last_used = NULL;
 }
 
 #endif

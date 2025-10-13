@@ -60,10 +60,18 @@ static inline int16_t pack_move(Move* move, int disabled) {
     return 0; // unseen / null
   }
   int16_t packed = 0;
-  packed |= (int16_t)(move->id & 0xFF);          // bits 0-7 move id
+  int move_id = move->id & 0xFF;
   int pp = move->pp;
-  // if (pp < 0) pp = 0; if (pp > 63) pp = 63;      // Support max PP of 40, allow up to 63
-  packed |= (int16_t)(pp & 0x3F) << 8;           // bits 8-13 PP (6 bits)
+  // If the move has zero or negative PP (and isn't Struggle), report Struggle
+  if ((pp <= 0) && (move_id != STRUGGLE_MOVE_ID)) {
+    move_id = STRUGGLE_MOVE_ID;
+    pp = 0;
+  }
+  // Clamp PP to 0..63 for packing
+  if (pp < 0) pp = 0;
+  if (pp > 63) pp = 63;
+  packed |= (int16_t)(move_id & 0xFF);          // bits 0-7 move id
+  packed |= (int16_t)(pp & 0x3F) << 8;         // bits 8-13 PP (6 bits)
   packed |= (int16_t)((disabled ? 1 : 0) & 0x1) << 14; // bit14 disabled
   return packed;
 }
@@ -125,10 +133,32 @@ static inline void pack_poke(int16_t* row,
   if (is_active) species = (int16_t)(-species);
   row[0] = species;
 
+  // If all four moves have zero or negative PP, report them as Struggle
+  int all_zero_pp = 1;
+  for (int k = 0; k < 4; k++) {
+    Move* m = &poke->poke_moves[k];
+    if (m->pp > 0) {
+      all_zero_pp = 0;
+      break;
+    }
+  }
+
   for (int k = 0; k < 4; k++) {
     Move* m = &poke->poke_moves[k];
     int reveal = (player_index == 1) ? 1 : (m->revealed ? 1 : 0);
-    row[1 + k] = reveal ? pack_move(m, 0) : 0;
+    if (reveal) {
+      if (all_zero_pp) {
+        // pack a temporary move as Struggle with 0 PP so we don't mutate state
+        Move tmp = *m;
+        tmp.id = STRUGGLE_MOVE_ID;
+        tmp.pp = 0;
+        row[1 + k] = pack_move(&tmp, 0);
+      } else {
+        row[1 + k] = pack_move(m, 0);
+      }
+    } else {
+      row[1 + k] = 0;
+    }
   }
   row[5] = pack_hp_percent(poke);
   row[6] = pack_status_and_volatiles(player, poke_index);

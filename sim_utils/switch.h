@@ -1,25 +1,34 @@
 // switch.h: Handles switching logic and multiple switch types
 #ifndef SWITCH_H
 #define SWITCH_H
-#include "battle_queue.h"
-#include "log.h"
-#include "stdio.h"
-#include "string.h"
 
-// Forward declarations
-typedef struct STR_PLAYER Player;
-typedef struct STR_BATTLE Battle;
-typedef struct STR_ACTION Action;
+#include "battle_structs.h"
+#include "log.h"
+#include "string.h"
 
 int valid_switch(Player cur, int target_loc) {
   if (cur.team[target_loc].hp <= 0) {
-    DLOG("Invalid switch: Target Pokémon has fainted.");
+    DLOG("Switch Ignored: Target Pokémon has fainted.");
     return 0;
   }
   if (cur.active_pokemon_index == target_loc) {
     DLOG("Switch ignored: Pokémon already active.");
     return 0;
   }
+  if (cur.active_pokemon.pokemon != NULL &&
+      cur.active_pokemon.pokemon->hp > 0 &&
+      cur.active_pokemon.no_switch != SWITCH_STOP_NONE) {
+    const char* name = get_pokemon_name(cur.active_pokemon.pokemon->id);
+    if (cur.active_pokemon.no_switch == SWITCH_STOP_RAGE) {
+      DLOG("Switch Ignored: %s is locked into Rage!", name);
+    } else if (cur.active_pokemon.no_switch == SWITCH_STOP_SOLAR_BEAM) {
+      DLOG("Switch Ignored: %s is charging Solar Beam!", name);
+    } else {
+      DLOG("Switch Ignored: %s cannot switch right now!", name);
+    }
+    return 0;
+  }
+
   return 1;
 }
 
@@ -37,32 +46,44 @@ void add_switch(Battle* b, Player* user, int target_loc, int type) {
   cur_action->priority = 0;
 
   // These numbers are very weird: sourced from showdown directly
-  if (type == REGULAR) {
-    cur_action->order = 103;
-  } else {
-    cur_action->order = 6;
-  }
-  return;
+  cur_action->order = (type == REGULAR) ? 103 : 6;
 }
 
-// Main switch handler
-void perform_switch_action(Action* current_action) {
+void perform_switch_action(Battle* battle, Action* current_action) {
   int target = current_action->action_d.switch_target;
   Player* user = current_action->User;
-  // Mark the index of the switched-in Pokémon as shown for the User player
-  user->shown_pokemon |= (1 << target);
-  // Clear the current active pokemon getup
-  memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
+  Player* opponent = &battle->p1;
+    if (user == &battle->p1) {
+      opponent = &battle->p2;
+    }
   int old_active = user->active_pokemon_index;
+  
+  // Clear opponent's immobilized flag if the switching Pokemon was using a multi-turn move
+  if (old_active >= 0 && user->active_pokemon.multi_move_len > 0 && opponent->active_pokemon.immobilized) {
+      opponent->active_pokemon.immobilized = 0;
+      DLOG("%s was freed from its bindings!",
+           get_pokemon_name(opponent->active_pokemon.pokemon->id));
+  }
+  
+  // Clear user's immobilized flag if they were trapped (switching out frees them)
+  if (old_active >= 0 && user->active_pokemon.immobilized) {
+      user->active_pokemon.immobilized = 0;
+      // Also clear the opponent's multi-turn move
+      opponent->active_pokemon.multi_move_len = 0;
+      opponent->active_pokemon.multi_move_src = NULL;
+  }
+  
+  user->shown_pokemon |= (1 << target);
+
+  memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
   user->active_pokemon_index = target;
   user->active_pokemon.pokemon = &user->team[target];
-  // Should probably remove these
   user->active_pokemon.stats = user->active_pokemon.pokemon->stats;
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
-  // Log old sleep status with current sleep status
   user->active_pokemon.sleep_ctr = user->active_pokemon.pokemon->status.sleep;
-  if (old_active > 0) {
+  
+  if (old_active >= 0 && user->team[old_active].hp > 0) {
     DLOG("Come back %s! ", get_pokemon_name(user->team[old_active].id));
   }
   DLOG("Go %s!", get_pokemon_name(user->active_pokemon.pokemon->id));

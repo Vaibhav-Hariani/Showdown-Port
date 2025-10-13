@@ -66,6 +66,16 @@ int end_step(Battle* b) {
               dmg;  // Heal the other player
         }
       }
+      // Multi-turn move counter decrement
+      if (is_active && p->active_pokemon.multi_move_len > 0) {
+        p->active_pokemon.multi_move_len--;
+        if (p->active_pokemon.multi_move_len == 0) {
+          // Move ended, clear immobilized flag on opponent
+          Player* opponent = get_player(b, i == 1 ? 2 : 1);
+          opponent->active_pokemon.immobilized = 0;
+          p->active_pokemon.multi_move_src = NULL;
+        }
+      }
       // disabled
       if (p->active_pokemon.disabled_count > 0) {
         p->active_pokemon.disabled_count--;

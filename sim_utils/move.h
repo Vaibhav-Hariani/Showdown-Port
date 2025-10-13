@@ -14,7 +14,8 @@
 #include "utils.h"
 // for memset
 #include "string.h"
-// Source: https://bulbapedia.bulbagarden.net/wiki/Damage
+
+
 static inline int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
                                    Move* used_move) {
@@ -95,8 +96,25 @@ static inline int calculate_damage(BattlePokemon* attacker,
 // Pre-move checker: applies status effects, checks recharge/flinch, and handles
 // PP Returns 1 if move can proceed, 0 if blocked (status/recharge/flinch/PP)
 static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
+  if (attacker->immobilized) {
+    DLOG("%s is trapped and can't move!",
+      get_pokemon_name(attacker->pokemon->id));
+    return 0;
+  }
+  // Check if multi-turn move is disabled (for ongoing moves like Bind/Wrap)
+  if (attacker->disabled_count > 0 && 
+      attacker->multi_move_src != NULL &&
+      attacker->multi_move_src->id == attacker->disabled_move_id) {
+    DLOG("%s's %s is disabled!",
+         get_pokemon_name(attacker->pokemon->id),
+         get_move_name(used_move->id));
+    // Clear the multi-turn move
+    attacker->multi_move_len = 0;
+    attacker->multi_move_src = NULL;
+    return 0;
+  }
   // Check for confusion
-  int early_ret = 1;
+  int regular_return = 1;
   if (attacker->confusion_counter > 0) {
     attacker->confusion_counter--;
     DLOG("%s is confused!", get_pokemon_name(attacker->pokemon->id));
@@ -117,98 +135,124 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       DLOG("%s hurt itself in its confusion! (%d HP)",
            get_pokemon_name(attacker->pokemon->id),
            damage);
-      early_ret = 0;
+      regular_return = 0;
     }
   }
   // Check for recharge (e.g., Hyper Beam)
   if (attacker->recharge_counter > 0) {
-    DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
-    attacker->recharge_counter--;
-    // Call the function at recharge_id. Don't call the input move..
-    early_ret = 10;
+    return 10;
   }
   // Check for flinch
   if (attacker->flinch) {
     DLOG("%s flinched and couldn't move!",
          get_pokemon_name(attacker->pokemon->id));
     attacker->flinch = 0;  // Flinch is cleared after blocking move
-    early_ret = 0;
+    regular_return = 0;
   }
   // Check for sleep (Gen 1: can't act if asleep)
   if (attacker->sleep_ctr > 0) {
-    // attacker->sleep_ctr--;
-    // if (attacker->sleep_ctr == 0) {
-    //   DLOG("%s woke up!", get_pokemon_name(attacker->pokemon->id));
-    //   attacker->pokemon->status.sleep = 0;
-    // } else {
     DLOG("%s is asleep and can't move!",
          get_pokemon_name(attacker->pokemon->id));
     // }
-    early_ret = 0;
+    regular_return = 0;
   }
   if (attacker->pokemon->status.freeze) {
     DLOG("%s is frozen solid and can't move!",
          get_pokemon_name(attacker->pokemon->id));
-    early_ret = 0;
+    regular_return = 0;
   }
-  // Check for PP (except Struggle)
-  if (early_ret && used_move->id != STRUGGLE_MOVE_ID) {
-    used_move->pp--;
+  // Check for PP (except Struggle and if locked into Rage)
+  if (regular_return && used_move->id != STRUGGLE_MOVE_ID) {
+    if(attacker->rage != NULL) {
+      used_move->pp--;
+    }
   }
   // If move is valid, deduct PP (except Struggle)
-  return early_ret ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
+  return regular_return ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
 inline int attack(Battle* b,
                   BattlePokemon* attacker,
                   BattlePokemon* defender,
                   Move* used_move) {
-  // Pre-move check: status, recharge, flinch, PP
+  
+  if (attacker->rage != NULL && used_move->id != RAGE_MOVE_ID) {
+    DLOG("%s is locked into Rage!", get_pokemon_name(attacker->pokemon->id));
+    used_move = attacker->rage;
+  }
+
+  b->lastMove = NULL;
+  b->lastDamage = 0;
   int pre = pre_move_check(attacker, used_move);
   if (!pre) {
     return 0;
   }
-  // Recharging
+  int is_recharge_turn = (pre == 10);
   if (pre == 10) {
-    Move m = attacker->recharge_src;
-    m.revealed = 1;
-    m.movePtr(b, attacker, defender);
+    used_move = &attacker->recharge_src;
+    if (used_move->id == NO_MOVE) {
+      attacker->recharge_counter = 0;
+      attacker->recharge_len = 0;
+      if (attacker->no_switch == SWITCH_STOP_SOLAR_BEAM) {
+        attacker->no_switch = SWITCH_STOP_NONE;
+      }
+      return 1;
+    }
+  }
+
+  b->lastMove = used_move;
+  used_move->revealed = 1;
+  attacker->last_used = used_move;
+
+  int is_solar_beam_charge = (!is_recharge_turn &&
+                              used_move->id == SOLAR_BEAM_MOVE_ID &&
+                              attacker->recharge_counter == 0 &&
+                              attacker->recharge_len == 0);
+
+  if (is_solar_beam_charge) {
+    if (used_move->movePtr != NULL) {
+      used_move->movePtr(b, attacker, defender);
+    }
     return 1;
   }
-  // Mark the used move as revealed
-  used_move->revealed = 1;
-  // TODO: add moves that avoid accuracy checks  
-  // Check for accuracy:
+
   int actual_accuracy = (used_move->accuracy * 255);
   int accuracy = actual_accuracy *
-                   get_stat_modifier(attacker->stat_mods.accuracy) *
-                   get_evasion_modifier(defender->stat_mods.evasion);
+                 get_stat_modifier(attacker->stat_mods.accuracy) *
+                 get_evasion_modifier(defender->stat_mods.evasion);
   int accuracy_random = (rand() % 256);
   if (accuracy_random >= accuracy) {
     DLOG("%s's attack %s missed!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
 
-    // if high jump kick, apply 1 damage to the attacker
     if (used_move->id == HIGH_JUMP_KICK_MOVE_ID) {
       attacker->pokemon->hp = max(attacker->pokemon->hp - 1, 0);
+    }
+    if (used_move->id == RAGE_MOVE_ID) {
+      attacker->no_switch = SWITCH_STOP_RAGE;
+      attacker->rage = used_move;
+    }
+    if (used_move->id == SOLAR_BEAM_MOVE_ID) {
+      attacker->recharge_counter = 0;
+      attacker->recharge_len = 0;
+      attacker->recharge_src = (Move){0};
+      if (attacker->no_switch == SWITCH_STOP_SOLAR_BEAM) {
+        attacker->no_switch = SWITCH_STOP_NONE;
+      }
     }
     return 0;
   }
 
-  // Gen 1 quirk - a move's power is fixed for the duration of the move
-  // e.g. firespin, bind, wrap
   int damage = 0;
-  if (used_move->power != 0 &&
+  int skip_damage = (used_move->id == SOLAR_BEAM_MOVE_ID);
+  if (!skip_damage && used_move->power != 0 &&
       attacker->recharge_counter == attacker->recharge_len) {
     DLOG("%s used %s!",
          get_pokemon_name(attacker->pokemon->id),
          get_move_name(used_move->id));
 
-    // Calculate damage
     damage = calculate_damage(attacker, defender, used_move);
-
-    // Apply damage with substitute logic
 
     if (attacker->recharge_len == 0 ||
         attacker->recharge_counter != attacker->recharge_len) {
@@ -223,26 +267,21 @@ inline int attack(Battle* b,
       } else {
         defender->pokemon->hp -= damage;
         defender->pokemon->hp =
-            max(defender->pokemon->hp, 0);  // Ensure HP doesn't go below 0
+            max(defender->pokemon->hp, 0);
       }
       defender->dmg_counter += damage;
     }
+    b->lastDamage = damage;
   }
-  // Handle move-specific logic
+
   if (used_move->movePtr != NULL) {
     used_move->movePtr(b, attacker, defender);
   }
 
-  // Maybe make a post apply function for things like bide, bind, etc?
-  if (used_move->id == BIND_MOVE_ID || used_move->id == FIRE_SPIN_MOVE_ID ||
-      used_move->id == WRAP_MOVE_ID || used_move->id == CONSTRICT_MOVE_ID) {
-    used_move->power = damage;
-  }
   if (used_move->id == HYPER_BEAM_MOVE_ID) {
     used_move->power = 0;
   }
 
-  // Handle freeze thawing
   if (defender->pokemon->status.freeze && used_move->type == FIRE &&
       used_move->id != FIRE_SPIN_MOVE_ID) {
     attacker->pokemon->status.freeze = 0;
@@ -253,19 +292,20 @@ inline int attack(Battle* b,
 
 int valid_move(Player* user, int move_index) {
   if (user->active_pokemon_index < 0) {
-    // This is a bugged state: Should never arrive here.
-    //  The pokemon should have been forced to switch out by now
     return 0;
   }
-  // check if move is disabled
+  Move* move = get_active_move_slot(&user->active_pokemon, move_index);
+  if (move == NULL || move->id == NO_MOVE) {
+    DLOG("Attempt to use invalid move slot %d", move_index);
+    return 0;
+  }
   if (user->active_pokemon.disabled_count > 0 &&
-      move_index == user->active_pokemon.disabled_index) {
-    DLOG("Attempt to use disabled move");
+      move->id == user->active_pokemon.disabled_move_id) {
+    DLOG("Attempt to use disabled move %s", get_move_name(move->id));
     return 0;
   }
-  Move m = user->active_pokemon.pokemon->poke_moves[move_index];
-  if (m.pp <= 0 && m.id != STRUGGLE_MOVE_ID) {
-    DLOG("Move %s has no PP left!", get_move_name(m.id));
+  if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
+    DLOG("Move %s has no PP left!", get_move_name(move->id));
     return 0;
   }
   return 1;

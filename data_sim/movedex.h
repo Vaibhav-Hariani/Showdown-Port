@@ -39,10 +39,113 @@ static inline int apply_damage_with_substitute(BattlePokemon *defender,
       return 0;
     }
   }
+  
   // No substitute, damage goes directly to Pokémon
   defender->pokemon->hp -= damage;
   defender->pokemon->hp = max(defender->pokemon->hp, 0);
+  if (damage > 0 && defender->rage != NULL) {
+    if (defender->stat_mods.attack < 6) {
+      DLOG("%s's Rage intensified!",
+           get_pokemon_name(defender->pokemon->id));
+    }
+    defender->stat_mods.attack = min(defender->stat_mods.attack + 1, 6);
+  }
   return damage;
+}
+
+static inline int choose_hit_count(int min_hits, int max_hits) {
+  if (min_hits == 2 && max_hits == 5) {
+    int roll = rand() % 8;
+    if (roll < 3) return 2;
+    if (roll < 6) return 3;
+    return (roll == 6) ? 4 : 5;
+  }
+  if (max_hits <= min_hits) {
+    return min_hits;
+  }
+  return min_hits + (rand() % (max_hits - min_hits + 1));
+}
+
+static inline int apply_multi_hit_followup(Battle *battle,
+                                           BattlePokemon *attacker,
+                                           BattlePokemon *defender,
+                                           int min_hits,
+                                           int max_hits,
+                                           int *desired_hits_out) {
+  Move *move = battle->lastMove;
+  if (!move) {
+    if (desired_hits_out) {
+      *desired_hits_out = 0;
+    }
+    return 0;
+  }
+  int desired_hits = choose_hit_count(min_hits, max_hits);
+  if (desired_hits_out) {
+    *desired_hits_out = desired_hits;
+  }
+  int executed_hits = 1;  // First hit resolved in attack()
+  int total_damage = battle->lastDamage;
+
+  for (int hit = 1; hit < desired_hits; ++hit) {
+    if (defender->pokemon->hp <= 0) {
+      break;
+    }
+    int damage = calculate_damage(attacker, defender, move);
+    int substitute_hp_before = defender->substitute_hp;
+    if (damage > 0) {
+      int inflicted = apply_damage_with_substitute(defender, damage);
+      if (inflicted > 0) {
+        defender->dmg_counter += inflicted;
+        total_damage += inflicted;
+      }
+      if (substitute_hp_before > 0 && defender->substitute_hp == 0) {
+        executed_hits++;
+        break;
+      }
+    }
+    executed_hits++;
+  }
+
+  battle->lastDamage = total_damage;
+  if (executed_hits > 1) {
+    DLOG("%s hit %s %d times!",
+         get_pokemon_name(attacker->pokemon->id),
+         get_pokemon_name(defender->pokemon->id),
+         executed_hits);
+  }
+  return executed_hits;
+}
+
+// Helper function to set up immobilizing multi-turn moves (Bind, Wrap, etc.)
+static inline void setup_immobilizing_move(Battle *battle,
+                                           BattlePokemon *attacker,
+                                           BattlePokemon *defender,
+                                           Move *move,
+                                           int turns) {
+  attacker->multi_move_len = turns;
+  attacker->multi_move_src = move;
+  defender->immobilized = 1;
+  DLOG("%s will be trapped for %d turns!",
+       get_pokemon_name(defender->pokemon->id),
+       turns);
+}
+
+// Helper function to apply damage for ongoing multi-turn moves
+static inline void apply_multi_turn_damage(Battle *battle,
+                                           BattlePokemon *attacker,
+                                           BattlePokemon *defender) {
+  if (defender->pokemon->hp > 0) {
+    int dmg = defender->pokemon->max_hp / 16;
+    int inflicted = apply_damage_with_substitute(defender, dmg);
+    if (inflicted > 0) {
+      defender->dmg_counter += inflicted;
+    }
+    battle->lastDamage = inflicted;
+    DLOG("%s is hurt by %s! (%d HP)",
+         get_pokemon_name(defender->pokemon->id),
+         attacker->multi_move_src ? attacker->multi_move_src->name : "trap",
+         inflicted);
+  }
 }
 
 // ============================================================================
@@ -71,6 +174,13 @@ void apply_aurora_beam(Battle *battle,
     defender->stat_mods.attack = max(defender->stat_mods.attack - 1, -6);
     DLOG("%s's Attack fell!", get_pokemon_name(defender->pokemon->id));
   }
+}
+
+// Barrage - Multi-hit move (2-5 hits)
+void apply_barrage(Battle *battle,
+                   BattlePokemon *attacker,
+                   BattlePokemon *defender) {
+  apply_multi_hit_followup(battle, attacker, defender, 2, 5, NULL);
 }
 
 // Bide - User endures attacks for 2-3 turns, then strikes back with double
@@ -103,43 +213,14 @@ void apply_bide(Battle *battle,
 void apply_bind(Battle *battle,
                 BattlePokemon *attacker,
                 BattlePokemon *defender) {
-  // Calculate recharge counter
-  // The number of turns is
-  // 2 - 37.5%
-  // 3 - 37.5%
-  // 4 - 12.5%
-  // 5 - 12.5%
-  if (attacker->recharge_counter == 0) {
-    int rand_val = rand() % 8;
-    if (rand_val < 3) {
-      attacker->recharge_len = 2;
-      defender->recharge_len = 2;
-    } else if (rand_val < 6) {
-      attacker->recharge_len = 3;
-      defender->recharge_len = 3;
-    } else if (rand_val == 6) {
-      attacker->recharge_len = 4;
-      defender->recharge_len = 4;
-    } else {
-      attacker->recharge_len = 5;
-      defender->recharge_len = 5;
-    }
-
-    // The applied damage for the move is constant for the following turns
+  // Only set up on first use - check if multi_move_len is 0
+  if (attacker->multi_move_len == 0) {
+    int turns = choose_hit_count(2, 5);
+    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+  } else {
+    // Apply damage on subsequent turns
+    apply_multi_turn_damage(battle, attacker, defender);
   }
-
-  if (attacker->recharge_counter == attacker->recharge_len) {
-    // Bind has fully charged
-    attacker->recharge_counter = 0;
-    attacker->recharge_len = 0;
-    defender->recharge_counter = 0;
-    defender->recharge_len = 0;
-    DLOG("Bind ended!");
-    return;
-  }
-
-  attacker->recharge_counter++;
-  defender->recharge_counter++;
 }
 
 // Bite - 10% chance to make the defender flinch (Gen 1)
@@ -172,6 +253,27 @@ void apply_bubble_beam(Battle *battle,
   }
 }
 
+// Bonemerang - Hits twice
+void apply_bonemerang(Battle *battle,
+                      BattlePokemon *attacker,
+                      BattlePokemon *defender) {
+  apply_multi_hit_followup(battle, attacker, defender, 2, 2, NULL);
+}
+
+// Clamp - Traps opponent for several turns
+void apply_clamp(Battle *battle,
+                 BattlePokemon *attacker,
+                 BattlePokemon *defender) {
+  // Only set up on first use - check if multi_move_len is 0
+  if (attacker->multi_move_len == 0) {
+    int turns = choose_hit_count(2, 5);
+    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+  } else {
+    // Apply damage on subsequent turns
+    apply_multi_turn_damage(battle, attacker, defender);
+  }
+}
+
 // Constrict - 33.2% chance to lower defender's Speed by 1 stage
 void apply_constrict(Battle *battle,
                      BattlePokemon *attacker,
@@ -180,6 +282,13 @@ void apply_constrict(Battle *battle,
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
     DLOG("%s's Speed fell!", get_pokemon_name(defender->pokemon->id));
   }
+}
+
+// Comet Punch - Multi-hit move (2-5 hits)
+void apply_comet_punch(Battle *battle,
+                       BattlePokemon *attacker,
+                       BattlePokemon *defender) {
+  apply_multi_hit_followup(battle, attacker, defender, 2, 5, NULL);
 }
 
 // Conversion - Changes user's type to match defender's type
@@ -211,25 +320,41 @@ void apply_counter(Battle *battle,
 void apply_dig(Battle *battle,
                BattlePokemon *attacker,
                BattlePokemon *defender) {
-  if (attacker->recharge_counter == 0) {
-    attacker->recharge_len = 1;
-    DLOG("%s burrowed underground!", get_pokemon_name(attacker->pokemon->id));
-  } else {
-    attacker->recharge_counter = 0;
-    attacker->recharge_len = 0;
-  }
+  (void)battle;
+  (void)attacker;
+  (void)defender;
 }
 
-// Disable - Prevents the last move (?) used by opponent from being used for 1-7
+// Disable - Prevents a random opponent move for 1-7 turns (Gen 1)
 void apply_disable(Battle *battle,
                    BattlePokemon *attacker,
                    BattlePokemon *defender) {
-  DLOG("Disable effect not fully implemented yet");
-  if (defender->last_used == NULL) {
+  // In Gen 1, Disable randomly selects one of the opponent's moves
+  // Build list of valid move IDs
+  MOVE_IDS valid_moves[4];
+  int valid_count = 0;
+  
+  for (int i = 0; i < 4; i++) {
+    Move* move = &defender->pokemon->poke_moves[i];
+    if (move->id != NO_MOVE && move->pp > 0) {
+      valid_moves[valid_count++] = move->id;
+    }
+  }
+  
+  if (valid_count == 0) {
+    DLOG("Disable failed - opponent has no moves!");
     return;
   }
-  defender->disabled_index = rand() % 4;
-  defender->disabled_count = rand() % 8;  // 0-7 turns
+  
+  // Randomly select one of the valid moves
+  int selected = rand() % valid_count;
+  defender->disabled_move_id = valid_moves[selected];
+  defender->disabled_count = (rand() % 7) + 1;  // 1-7 turns
+  
+  DLOG("%s's %s was disabled for %d turns!",
+       get_pokemon_name(defender->pokemon->id),
+       get_move_name(defender->disabled_move_id),
+       defender->disabled_count);
 }
 
 // Dizzy Punch - 20% chance to confuse the defender
@@ -254,6 +379,20 @@ void apply_double_edge(Battle *battle,
        recoil);
 }
 
+// Double Kick - Hits twice
+void apply_double_kick(Battle *battle,
+                       BattlePokemon *attacker,
+                       BattlePokemon *defender) {
+  apply_multi_hit_followup(battle, attacker, defender, 2, 2, NULL);
+}
+
+// Double Slap - Multi-hit move (2-5 hits)
+void apply_double_slap(Battle *battle,
+                       BattlePokemon *attacker,
+                       BattlePokemon *defender) {
+  apply_multi_hit_followup(battle, attacker, defender, 2, 5, NULL);
+}
+
 // Explosion - User faints after using this move (250 base power)
 void apply_explosion(Battle *battle,
                      BattlePokemon *attacker,
@@ -269,6 +408,20 @@ void apply_fire_blast(Battle *battle,
   if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->pokemon->status.burn = 1;
     DLOG("%s was burned!", get_pokemon_name(defender->pokemon->id));
+  }
+}
+
+// Fire Spin - Traps opponent in flames for several turns
+void apply_fire_spin(Battle *battle,
+                     BattlePokemon *attacker,
+                     BattlePokemon *defender) {
+  // Only set up on first use - check if multi_move_len is 0
+  if (attacker->multi_move_len == 0) {
+    int turns = choose_hit_count(2, 5);
+    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+  } else {
+    // Apply damage on subsequent turns
+    apply_multi_turn_damage(battle, attacker, defender);
   }
 }
 
@@ -302,17 +455,19 @@ void apply_fissure(Battle *battle,
   defender->pokemon->hp = 0;
   DLOG("%s was knocked out by Fissure!",
        get_pokemon_name(defender->pokemon->id));
-}  // Fly - Two-turn move: flies up on turn 1 (invulnerable), attacks on turn 2
+}  
+// Fly - Two-turn move: flies up on turn 1 (invulnerable), attacks on turn 2\
+// Banned in OU
 void apply_fly(Battle *battle,
                BattlePokemon *attacker,
                BattlePokemon *defender) {
-  if (attacker->recharge_counter == 0) {
-    attacker->recharge_len = 1;
-    DLOG("%s flew up high!", get_pokemon_name(attacker->pokemon->id));
-  } else {
-    attacker->recharge_counter = 0;
-    attacker->recharge_len = 0;
-  }
+  // if (attacker->recharge_counter == 0) {
+  //   attacker->recharge_len = 1;
+  //   DLOG("%s flew up high!", get_pokemon_name(attacker->pokemon->id));
+  // } else {
+  //   attacker->recharge_counter = 0;
+  //   attacker->recharge_len = 0;
+  // }
 }
 
 // Glare - Paralyzes the defender
@@ -410,10 +565,20 @@ void apply_horn_drill(Battle *battle,
 void apply_hyper_beam(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
-  // Must recharge next turn
+  (void)defender;
+  if (battle->lastMove == &attacker->recharge_src &&
+      attacker->recharge_counter > 0) {
+    DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
+    attacker->recharge_counter = 0;
+    attacker->recharge_len = 0;
+    attacker->recharge_src = (Move){0};
+    return;
+  }
   attacker->recharge_counter = 1;
   attacker->recharge_len = 1;
-  DLOG("%s must recharge!", get_pokemon_name(attacker->pokemon->id));
+  attacker->recharge_src = *battle->lastMove;
+  attacker->recharge_src.power = 0;
+  attacker->recharge_src.accuracy = 100;
 }
 
 void apply_leech_seed(Battle *battle,
@@ -559,18 +724,15 @@ void apply_psywave(Battle *battle,
   }
 }
 
-void apply_rage(Battle *battle,
-                BattlePokemon *attacker,
-                BattlePokemon *defender) {
-  DLOG("%s is enraged!", get_pokemon_name(attacker->pokemon->id));
-  // find rage
-  for (int i = 0; i < 4; ++i) {
-    if (attacker->moves[i].id == RAGE_MOVE_ID ||
-        attacker->pokemon->poke_moves[i].id == RAGE_MOVE_ID) {
-      attacker->rage = attacker->moves + i;
-    }
-  }
-}
+// All of Rage's behavior is being implemented before the attack step, rather
+// void apply_rage(Battle *battle,
+//                 BattlePokemon *attacker,
+//                 BattlePokemon *defender) {
+//   DLOG("%s is enraged!", get_pokemon_name(attacker->pokemon->id));
+//   // find rage
+//   // attacker->rage_turns++;
+//   // attacker->no_switch = SWITCH_STOP_RAGE;
+// }
 
 // Razor Wind - Two-turn move: charges on turn 1, attacks on turn 2
 void apply_razor_wind(Battle *battle,
@@ -598,6 +760,20 @@ void apply_recover(Battle *battle,
   DLOG("%s recovered %d HP!",
        get_pokemon_name(attacker->pokemon->id),
        heal_amount);
+}
+
+// Wrap - Traps opponent for several turns
+void apply_wrap(Battle *battle,
+                BattlePokemon *attacker,
+                BattlePokemon *defender) {
+  // Only set up on first use - check if multi_move_len is 0
+  if (attacker->multi_move_len == 0) {
+    int turns = choose_hit_count(2, 5);
+    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+  } else {
+    // Apply damage on subsequent turns
+    apply_multi_turn_damage(battle, attacker, defender);
+  }
 }
 
 void apply_reflect(Battle *battle,
@@ -709,13 +885,33 @@ void apply_soft_boiled(Battle *battle,
 void apply_solar_beam(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
-  if (attacker->recharge_counter == 0) {
-    attacker->recharge_len = 1;
-    DLOG("%s is absorbing light!", get_pokemon_name(attacker->pokemon->id));
-  } else {
+  if (battle->lastMove == &attacker->recharge_src &&
+      attacker->recharge_counter > 0) {
+    DLOG("%s used Solar Beam!",
+         get_pokemon_name(attacker->pokemon->id));
+    int damage = calculate_damage(attacker, defender, &attacker->recharge_src);
+    int inflicted = apply_damage_with_substitute(defender, damage);
+    if (inflicted > 0) {
+      defender->dmg_counter += inflicted;
+      battle->lastDamage = inflicted;
+      DLOG("%s unleashed Solar Beam for %d damage!",
+           get_pokemon_name(attacker->pokemon->id),
+           inflicted);
+    } else {
+      battle->lastDamage = 0;
+    }
     attacker->recharge_counter = 0;
     attacker->recharge_len = 0;
+    attacker->recharge_src = (Move){0};
+    attacker->no_switch = SWITCH_STOP_NONE;
+    return;
   }
+
+  attacker->recharge_counter = 1;
+  attacker->recharge_len = 1;
+  attacker->recharge_src = *battle->lastMove;
+  attacker->no_switch = SWITCH_STOP_SOLAR_BEAM;
+  DLOG("%s is absorbing light!", get_pokemon_name(attacker->pokemon->id));
 }
 
 // Stomp - 30% chance to make the defender flinch

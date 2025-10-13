@@ -91,6 +91,9 @@ int eval_queue(Battle* b) {
         // Clear the currently active pokemon
         User->active_pokemon = (BattlePokemon){0};
         User->active_pokemon_index = -1;
+        
+        //Removing lock from bind/wrap if user faints
+        Target->active_pokemon.immobilized = 0;
       }
 
       // Handle active pokemon fainting
@@ -103,7 +106,7 @@ int eval_queue(Battle* b) {
       }
 
     } else {
-      perform_switch_action(current_action);
+      perform_switch_action(b, current_action);
     }
     if (b->p1.active_pokemon_index < 0 || b->p2.active_pokemon_index < 0) {
       invalidate_queue(i, &b->action_queue);
