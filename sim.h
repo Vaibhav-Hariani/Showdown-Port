@@ -12,6 +12,14 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+typedef enum {
+  ONE_V_ONE = 0,
+  TWO_V_TWO,
+  SIX_V_SIX,
+  GEN_1_OU,
+  TEAM_CONFIG_MAX
+} TeamConfig;
+
 typedef struct {
   Log log;
   int16_t* observations;
@@ -87,16 +95,65 @@ float reward(Sim* s) {
   return 0.0f;  // Non-terminal
 }
 
-void team_generator(Player* p) {
+void team_generator(Player* p, TeamConfig config) {
   // Clear the entire Pokemon table
   memset(p->team, 0, sizeof(Pokemon) * NUM_POKE);
   // Reset visibility bitfield
   p->shown_pokemon = 0;
 
   // Load NUM_POKE pokemon for the team
-  for (int i = 0; i < NUM_POKE; i++) {
-    load_pokemon(
-        &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
+  if (config == GEN_1_OU) {
+    // Fill in with a random OU team
+    // Snorlax
+    load_pokemon(&p->team[0],
+                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
+                              SURF_MOVE_ID,
+                              THUNDERBOLT_MOVE_ID,
+                              RECOVER_MOVE_ID},
+                 STARMIE);
+    load_pokemon(&p->team[1],
+                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
+                              THUNDERBOLT_MOVE_ID,
+                              ICE_BEAM_MOVE_ID,
+                              SOFT_BOILED_MOVE_ID},
+                 CHANSEY);
+    load_pokemon(&p->team[2],
+                 (MOVE_IDS[]){REFLECT_MOVE_ID,
+                              BODY_SLAM_MOVE_ID,
+                              SELF_DESTRUCT_MOVE_ID,
+                              REST_MOVE_ID},
+                 SNORLAX);
+    load_pokemon(&p->team[3],
+                 (MOVE_IDS[]){SLEEP_POWDER_MOVE_ID,
+                              PSYCHIC_MOVE_ID,
+                              EXPLOSION_MOVE_ID,
+                              STUN_SPORE_MOVE_ID},
+                 EXEGGUTOR);
+    load_pokemon(&p->team[4],
+                 (MOVE_IDS[]){BODY_SLAM_MOVE_ID,
+                              HYPER_BEAM_MOVE_ID,
+                              EARTHQUAKE_MOVE_ID,
+                              BLIZZARD_MOVE_ID},
+                 TAUROS);
+    load_pokemon(&p->team[5],
+                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
+                              PSYCHIC_MOVE_ID,
+                              SEISMIC_TOSS_MOVE_ID,
+                              RECOVER_MOVE_ID},
+                 ALAKAZAM);
+  } else {
+    int num_poke = 1;
+    if (config == ONE_V_ONE) {
+      num_poke = 1;
+    } else if (config == TWO_V_TWO) {
+      num_poke = 2;
+    } else if (config == SIX_V_SIX) {
+      num_poke = 6;
+    }
+    for (int i = 0; i < num_poke; i++) {
+      load_pokemon(
+          &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
+    }
   }
 
   // Set up active pokemon
@@ -137,7 +194,7 @@ static inline int get_p2_choice(Sim* s, int mode) {
   }
   // Regular mode: choose best damaging move
   int action = rand() % 10;
-  while(!(valid_choice(2, b->p2, action, mode))) {
+  while (!(valid_choice(2, b->p2, action, mode))) {
     action = rand() % 10;
   }
   return action;
@@ -256,8 +313,8 @@ void c_reset(Sim* sim) {
   // Initialize a local prev choices struct for initial packing
   PrevChoices initial_prev = {0};
 
-  team_generator(&sim->battle->p1);
-  team_generator(&sim->battle->p2);
+  team_generator(&sim->battle->p1, rand() % TEAM_CONFIG_MAX);
+  team_generator(&sim->battle->p2, rand() % TEAM_CONFIG_MAX);
 
   initial_log(&sim->log, sim->battle);
   pack_battle(sim->battle, sim->observations, &initial_prev);
@@ -306,7 +363,7 @@ void c_step(Sim* sim) {
   sim->log.valid_moves += 1.0f;
   sim->episode_valid_moves += 1;
   float r = reward(sim);
-  
+
   if (r == 1.0f || r == -1.0f) {
     // Calculate final episode stats before resetting
     float p1_sum = 0, p2_sum = 0;
@@ -317,10 +374,16 @@ void c_step(Sim* sim) {
     float mean_p1_hp = p1_sum / NUM_POKE;
     float mean_p2_hp = p2_sum / NUM_POKE;
     float avg_damage_pct = (1.0f - mean_p2_hp) / sim->tick;
-    final_update(&sim->log, r, mean_p1_hp, mean_p2_hp, avg_damage_pct, sim->tick,
-                 sim->episode_valid_moves, sim->episode_invalid_moves);
+    final_update(&sim->log,
+                 r,
+                 mean_p1_hp,
+                 mean_p2_hp,
+                 avg_damage_pct,
+                 sim->tick,
+                 sim->episode_valid_moves,
+                 sim->episode_invalid_moves);
     sim->terminals[0] = 1;
- }
+  }
   // Non-terminal steps yield 0 reward
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations, &step_prev);
