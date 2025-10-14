@@ -100,10 +100,17 @@ void team_generator(Player* p) {
   }
 
   // Set up active pokemon
+  // Initialize and set up active pokemon
+  memset(&p->active_pokemon, 0, sizeof(BattlePokemon));
   p->active_pokemon.pokemon = &p->team[0];
   p->active_pokemon_index = 0;
   p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
+  // Copy base Pokemon stats and moves into the active slot
+  p->active_pokemon.stats = p->active_pokemon.pokemon->stats;
+  for (int m = 0; m < 4; ++m) {
+    p->active_pokemon.moves[m] = p->active_pokemon.pokemon->poke_moves[m];
+  }
   // Mark the active pokemon as seen
   p->shown_pokemon |= (1u << p->active_pokemon_index);
 }
@@ -136,9 +143,22 @@ static inline int get_p2_choice(Sim* s, int mode) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
-  int action = rand() % 10;
+  int action = rand() % 4 + 6;
+
+  int num_failed = 10;
   while(!(valid_choice(2, b->p2, action, mode))) {
-    action = rand() % 10;
+    action = rand() % 4 + 6;
+    num_failed--;
+    if(num_failed <= 0) {
+      DLOG("Failed to properly choose move");
+      for(int i = 0; i < 10; i++) {
+        if(valid_choice(2,b->p2, i, mode)) {
+          return i;
+        }
+      }
+        //Crash the program?
+        return -1;
+    }
   }
   return action;
   // return select_best_move_choice(&b->p2);

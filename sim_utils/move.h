@@ -153,21 +153,21 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   if (attacker->sleep_ctr > 0) {
     DLOG("%s is asleep and can't move!",
          get_pokemon_name(attacker->pokemon->id));
-    // }
     regular_return = 0;
-  }
+    }
   if (attacker->pokemon->status.freeze) {
     DLOG("%s is frozen solid and can't move!",
          get_pokemon_name(attacker->pokemon->id));
     regular_return = 0;
   }
   // Check for PP (except Struggle and if locked into Rage)
-  if (regular_return && used_move->id != STRUGGLE_MOVE_ID) {
-    if(attacker->rage != NULL) {
-      used_move->pp--;
+  if (regular_return && attacker->rage == NULL && used_move->id != STRUGGLE_MOVE_ID) {
+    if(used_move->pp <= 0) {
+      //Move has no PP
+      return 0;
     }
+    used_move->pp--;
   }
-  // If move is valid, deduct PP (except Struggle)
   return regular_return ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
@@ -175,7 +175,9 @@ inline int attack(Battle* b,
                   BattlePokemon* attacker,
                   BattlePokemon* defender,
                   Move* used_move) {
-  
+  if(used_move == NULL || used_move->id == NO_MOVE) {
+    DLOG("Attempt to use invalid move");
+  }
   if (attacker->rage != NULL && used_move->id != RAGE_MOVE_ID) {
     DLOG("%s is locked into Rage!", get_pokemon_name(attacker->pokemon->id));
     used_move = attacker->rage;
@@ -294,7 +296,7 @@ int valid_move(Player* user, int move_index) {
   if (user->active_pokemon_index < 0) {
     return 0;
   }
-  Move* move = get_active_move_slot(&user->active_pokemon, move_index);
+  Move* move = &user->active_pokemon.moves[move_index];
   if (move == NULL || move->id == NO_MOVE) {
     DLOG("Attempt to use invalid move slot %d", move_index);
     return 0;

@@ -229,6 +229,7 @@ if __name__ == "__main__":
         i += 1
         if info_tmp:
             info = info_tmp
+        # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration if duration > 0 else 0
     ms_per_move = (1000.0 / sps) if sps > 0 else 0.0

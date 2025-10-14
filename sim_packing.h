@@ -12,8 +12,7 @@ typedef struct {
   int16_t p2_val;    // switch idx or resolved move id
 } PrevChoices;
 
-// Constants
-#define PACK_HEADER_INTS 8
+#define PACK_HEADER_INTS 4
 #define PACK_POKE_INTS 7
 #define PACK_TEAM_SLOTS 6
 #define PACK_TOTAL_POKEMON (PACK_TEAM_SLOTS * 2)
@@ -165,18 +164,13 @@ static inline void pack_poke(int16_t* row,
 }
 
 void pack_battle(Battle* b, int16_t* out, PrevChoices* prev) {
-  // Header (choices + active stat mods only)
-  out[0] = prev->p1_choice;
-  out[1] = prev->p1_val;
-  out[2] = prev->p2_choice;
-  out[3] = prev->p2_val;
-
+  // Header: only active stat mods for both players (no previous-choice fields)
   stat_mods* p1mods = &b->p1.active_pokemon.stat_mods;
   stat_mods* p2mods = &b->p2.active_pokemon.stat_mods;
-  out[4] = pack_attack_def_specA_specD(p1mods);
-  out[5] = pack_stat_acc_eva(p1mods);
-  out[6] = pack_attack_def_specA_specD(p2mods);
-  out[7] = pack_stat_acc_eva(p2mods);
+  out[0] = pack_attack_def_specA_specD(p1mods);
+  out[1] = pack_stat_acc_eva(p1mods);
+  out[2] = pack_attack_def_specA_specD(p2mods);
+  out[3] = pack_stat_acc_eva(p2mods);
 
   // Pokémon rows (interleaved)
   for (int slot = 0; slot < PACK_TEAM_SLOTS; slot++) {
