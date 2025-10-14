@@ -206,15 +206,12 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
 
   // Get AI player choice
   int p2_choice = get_p2_choice(sim, mode);
-
   // Validate player 1's choice
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
     return -1;
   }
-
-  // Validate player 2's choice (should never fail due to get_p2_choice logic)
-  if (!valid_choice(2, b->p2, p2_choice, mode)) {
-    return -2;  // Error condition
+  if(p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
+    return -2;
   }
 
   // Encode p1
@@ -304,6 +301,12 @@ void c_step(Sim* sim) {
   // Capture active pokemon indices and HP before resolving this step
   PrevChoices step_prev = {0};
   int a = battle_step(sim, raw_choice, &step_prev);
+
+  if(a == -2) {
+    //opponent ran out of valid moves
+    sim->rewards[0] = 0.0f;
+    sim->terminals[0] = 1;
+  }
   if (a == -1) {
     // Invalid move penalty (shaping only for invalid action): -0.5
     sim->rewards[0] = -0.01f;

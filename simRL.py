@@ -49,23 +49,28 @@ if __name__ == "__main__":
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     args["train"]["env"] = "showdown"
-    env_args = [1024]
-    env = pufferlib.vector.make(
-        Showdown,
-        num_envs=24,
-        env_args=env_args,
-        batch_size=4,
-        backend=pufferlib.vector.Multiprocessing,
-    )
+    args["train"]["minibatch_size"] = 64
+    args["train"]["use_rnn"] = False
+    # env_args = [1024]
+    # env = pufferlib.vector.make(
+    #     Showdown,
+    #     num_envs=24,
+    #     env_args=env_args,
+    #     batch_size=24,  # Match num_envs to avoid batch synchronization issues
+    #     backend=pufferlib.vector.Multiprocessing,
+    # )
+    # env.reset(seed=42)
+    N = 1
+    env = Showdown(num_envs=N)
+
+    policy = ShowdownModel(env).cuda()
+    # policy = ShowdownLSTM(env.driver_env, policy).cuda() 
 
     with wandb.init(project="showdown", config=args["train"]) as run:
-        env.reset(seed=42)
-        policy = ShowdownModel(env).cuda()
         # args["train"]["use_rnn"] = True
-        policy = ShowdownLSTM(env.driver_env, policy).cuda() 
         trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
         
-        for epoch in range(10):
+        for epoch in range(100):
             # Run evaluation and training
             trainer.evaluate()
             logs = trainer.train()

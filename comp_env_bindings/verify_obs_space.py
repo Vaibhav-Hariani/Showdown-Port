@@ -43,8 +43,8 @@ def verify_pufferlib_obs_space():
         print("\n✅ PufferLib observation space size is CORRECT!")
     else:
         print(f"\n❌ ERROR: Size mismatch! Expected 55, got {total_size}")
-    
-    return total_size == 59
+
+    return total_size == 55
 
 def verify_test_env_obs_space():
     """Verify test_env.py observation space size"""

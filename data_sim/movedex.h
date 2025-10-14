@@ -24,29 +24,26 @@
 static inline int apply_damage_with_substitute(BattlePokemon *defender,
                                                int damage) {
   if (defender->substitute_hp > 0) {
+    int remaining_hp = defender->substitute_hp - damage;
+    defender->substitute_hp = max(remaining_hp, 0);
     // Damage goes to substitute first
     if (damage >= defender->substitute_hp) {
-      int overflow = damage - defender->substitute_hp;
       DLOG("%s's substitute broke!", get_pokemon_name(defender->pokemon->id));
-      defender->substitute_hp = 0;
       // In Gen 1, overflow damage doesn't carry through
-      return 0;
     } else {
-      defender->substitute_hp -= damage;
       DLOG("%s's substitute took the hit! (%d HP remaining)",
            get_pokemon_name(defender->pokemon->id),
            defender->substitute_hp);
-      return 0;
     }
+    return 0;
   }
-  
+
   // No substitute, damage goes directly to Pokémon
   defender->pokemon->hp -= damage;
   defender->pokemon->hp = max(defender->pokemon->hp, 0);
   if (damage > 0 && defender->rage != NULL) {
     if (defender->stat_mods.attack < 6) {
-      DLOG("%s's Rage intensified!",
-           get_pokemon_name(defender->pokemon->id));
+      DLOG("%s's Rage intensified!", get_pokemon_name(defender->pokemon->id));
     }
     defender->stat_mods.attack = min(defender->stat_mods.attack + 1, 6);
   }
@@ -216,7 +213,8 @@ void apply_bind(Battle *battle,
   // Only set up on first use - check if multi_move_len is 0
   if (attacker->multi_move_len == 0) {
     int turns = choose_hit_count(2, 5);
-    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+    setup_immobilizing_move(
+        battle, attacker, defender, battle->lastMove, turns);
   } else {
     // Apply damage on subsequent turns
     apply_multi_turn_damage(battle, attacker, defender);
@@ -267,7 +265,8 @@ void apply_clamp(Battle *battle,
   // Only set up on first use - check if multi_move_len is 0
   if (attacker->multi_move_len == 0) {
     int turns = choose_hit_count(2, 5);
-    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+    setup_immobilizing_move(
+        battle, attacker, defender, battle->lastMove, turns);
   } else {
     // Apply damage on subsequent turns
     apply_multi_turn_damage(battle, attacker, defender);
@@ -333,24 +332,24 @@ void apply_disable(Battle *battle,
   // Build list of valid move IDs
   MOVE_IDS valid_moves[4];
   int valid_count = 0;
-  
+
   for (int i = 0; i < 4; i++) {
-    Move* move = &defender->pokemon->poke_moves[i];
+    Move *move = &defender->pokemon->poke_moves[i];
     if (move->id != NO_MOVE && move->pp > 0) {
       valid_moves[valid_count++] = move->id;
     }
   }
-  
+
   if (valid_count == 0) {
     DLOG("Disable failed - opponent has no moves!");
     return;
   }
-  
+
   // Randomly select one of the valid moves
   int selected = rand() % valid_count;
   defender->disabled_move_id = valid_moves[selected];
   defender->disabled_count = (rand() % 7) + 1;  // 1-7 turns
-  
+
   DLOG("%s's %s was disabled for %d turns!",
        get_pokemon_name(defender->pokemon->id),
        get_move_name(defender->disabled_move_id),
@@ -418,7 +417,8 @@ void apply_fire_spin(Battle *battle,
   // Only set up on first use - check if multi_move_len is 0
   if (attacker->multi_move_len == 0) {
     int turns = choose_hit_count(2, 5);
-    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+    setup_immobilizing_move(
+        battle, attacker, defender, battle->lastMove, turns);
   } else {
     // Apply damage on subsequent turns
     apply_multi_turn_damage(battle, attacker, defender);
@@ -455,7 +455,7 @@ void apply_fissure(Battle *battle,
   defender->pokemon->hp = 0;
   DLOG("%s was knocked out by Fissure!",
        get_pokemon_name(defender->pokemon->id));
-}  
+}
 // Fly - Two-turn move: flies up on turn 1 (invulnerable), attacks on turn 2\
 // Banned in OU
 void apply_fly(Battle *battle,
@@ -646,6 +646,10 @@ void apply_mirror_move(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
   DLOG("Mirror Move used");
+  if(defender->last_used == NULL) {
+    DLOG("But it failed! No valid targets!");
+    return;
+  }
   attack(battle, attacker, defender, defender->last_used);
 }
 
@@ -769,7 +773,8 @@ void apply_wrap(Battle *battle,
   // Only set up on first use - check if multi_move_len is 0
   if (attacker->multi_move_len == 0) {
     int turns = choose_hit_count(2, 5);
-    setup_immobilizing_move(battle, attacker, defender, battle->lastMove, turns);
+    setup_immobilizing_move(
+        battle, attacker, defender, battle->lastMove, turns);
   } else {
     // Apply damage on subsequent turns
     apply_multi_turn_damage(battle, attacker, defender);
@@ -887,8 +892,7 @@ void apply_solar_beam(Battle *battle,
                       BattlePokemon *defender) {
   if (battle->lastMove == &attacker->recharge_src &&
       attacker->recharge_counter > 0) {
-    DLOG("%s used Solar Beam!",
-         get_pokemon_name(attacker->pokemon->id));
+    DLOG("%s used Solar Beam!", get_pokemon_name(attacker->pokemon->id));
     int damage = calculate_damage(attacker, defender, &attacker->recharge_src);
     int inflicted = apply_damage_with_substitute(defender, damage);
     if (inflicted > 0) {
