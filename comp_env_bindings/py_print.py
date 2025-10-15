@@ -38,21 +38,23 @@ class ShowdownParser:
 
     @staticmethod
     def parse_observation(flat_obs: np.ndarray, team_size: int = 6) -> dict:
-        """Parse v2 (92-int) packed observation only. Returns normalized dict."""
+        """Parse packed observation in the current compact layout (88-int).
+        Returns normalized dict.
+        """
         obs = np.asarray(flat_obs)
         if obs.ndim != 1:
             raise ValueError(f"Expected 1D observation, got shape {obs.shape}")
-        if obs.size != 92:
-            raise ValueError(f"Expected v2 packed observation of length 92, got {obs.size}")
-        return ShowdownParser._parse_v2(obs, team_size)
+        if obs.size != 88:
+            raise ValueError(f"Expected packed observation of length 88, got {obs.size}")
+        return ShowdownParser._parse_v3(obs, team_size)
 
 
 
     @staticmethod
-    def _parse_v2(obs: np.ndarray, team_size: int):
-        # Layout: header (8) + rows (interleaved) * 7
+    def _parse_v3(obs: np.ndarray, team_size: int):
+        # Layout: header (4 stat words) + rows (interleaved) * 7
         players = []
-        rows = obs[8:].reshape(2 * team_size, 7)
+        rows = obs[4:].reshape(2 * team_size, 7)
         for p_idx in range(2):
             team = []
             active_index = None
@@ -82,16 +84,12 @@ class ShowdownParser:
                     'moves': moves,
                 })
             players.append({'active_index': active_index, 'team': team})
-        # Active stat mods live only in header for v2
+        # Active stat mods live in header (4 words) for v3
         header = {
-            'p1_prev_choice': int(obs[0]),
-            'p1_prev_val': int(obs[1]),
-            'p2_prev_choice': int(obs[2]),
-            'p2_prev_val': int(obs[3]),
-            'p1_statmods': ShowdownParser.unpack_stat_mods(int(obs[4]), int(obs[5])),
-            'p2_statmods': ShowdownParser.unpack_stat_mods(int(obs[6]), int(obs[7])),
+            'p1_statmods': ShowdownParser.unpack_stat_mods(int(obs[0]), int(obs[1])),
+            'p2_statmods': ShowdownParser.unpack_stat_mods(int(obs[2]), int(obs[3])),
         }
-        return {'version': 'v2', 'players': players, 'header': header}
+        return {'version': 'v3', 'players': players, 'header': header}
 
 
     

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../data_sim/generated_movedex.h"
 #include "../data_sim/stat_modifiers.h"
 #include "battle_structs.h"
 #include "move_structs.h"
@@ -15,8 +16,7 @@
 // for memset
 #include "string.h"
 
-
-static inline int calculate_damage(BattlePokemon* attacker,
+int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
                                    Move* used_move) {
   // Base power of the move
@@ -98,12 +98,11 @@ static inline int calculate_damage(BattlePokemon* attacker,
 static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   if (attacker->immobilized) {
     DLOG("%s is trapped and can't move!",
-      get_pokemon_name(attacker->pokemon->id));
+         get_pokemon_name(attacker->pokemon->id));
     return 0;
   }
   // Check if multi-turn move is disabled (for ongoing moves like Bind/Wrap)
-  if (attacker->disabled_count > 0 && 
-      attacker->multi_move_src != NULL &&
+  if (attacker->disabled_count > 0 && attacker->multi_move_src != NULL &&
       attacker->multi_move_src->id == attacker->disabled_move_id) {
     DLOG("%s's %s is disabled!",
          get_pokemon_name(attacker->pokemon->id),
@@ -153,7 +152,6 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   if (attacker->sleep_ctr > 0) {
     DLOG("%s is asleep and can't move!",
          get_pokemon_name(attacker->pokemon->id));
-    // }
     regular_return = 0;
   }
   if (attacker->pokemon->status.freeze) {
@@ -162,12 +160,23 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     regular_return = 0;
   }
   // Check for PP (except Struggle and if locked into Rage)
-  if (regular_return && used_move->id != STRUGGLE_MOVE_ID) {
-    if(attacker->rage != NULL) {
+  //printf("VALUES %d %p %p\n", regular_return, attacker, used_move);
+  //printf("RAGE %p\n", attacker->rage); 
+  //printf("STRUGGLE %d\n", used_move->id == STRUGGLE_MOVE_ID);
+  if (regular_return && attacker->rage == NULL &&
+      used_move->id != STRUGGLE_MOVE_ID) {
+    // Do not block here for PP exhaustion; attack() will handle replacing
+    // no-PP moves with Struggle so that we can still proceed when all
+    // moves are out of PP. If move has PP, consume one.
+    if (used_move->pp > 0) {
       used_move->pp--;
+    } else {
+      DLOG("%s has no PP left for %s!",
+           get_pokemon_name(attacker->pokemon->id),
+           get_move_name(used_move->id));
+      regular_return = 0;
     }
   }
-  // If move is valid, deduct PP (except Struggle)
   return regular_return ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
@@ -175,14 +184,26 @@ inline int attack(Battle* b,
                   BattlePokemon* attacker,
                   BattlePokemon* defender,
                   Move* used_move) {
-  
+  if (used_move == NULL) {
+    DLOG("Attempt to use invalid move");
+  }
   if (attacker->rage != NULL && used_move->id != RAGE_MOVE_ID) {
     DLOG("%s is locked into Rage!", get_pokemon_name(attacker->pokemon->id));
     used_move = attacker->rage;
   }
 
+  // If the selected move has no PP (and is not Struggle), replace it with
+  // a temporary Struggle move so the attack proceeds as Struggle.
+  if (used_move->pp <= 0 && used_move->id != STRUGGLE_MOVE_ID) {
+    used_move = &attacker->pokemon->struggle;
+    b->lastMove = used_move;
+    used_move->revealed = 1;
+    attacker->last_used = used_move;
+  }
+
   b->lastMove = NULL;
   b->lastDamage = 0;
+
   int pre = pre_move_check(attacker, used_move);
   if (!pre) {
     return 0;
@@ -204,10 +225,9 @@ inline int attack(Battle* b,
   used_move->revealed = 1;
   attacker->last_used = used_move;
 
-  int is_solar_beam_charge = (!is_recharge_turn &&
-                              used_move->id == SOLAR_BEAM_MOVE_ID &&
-                              attacker->recharge_counter == 0 &&
-                              attacker->recharge_len == 0);
+  int is_solar_beam_charge =
+      (!is_recharge_turn && used_move->id == SOLAR_BEAM_MOVE_ID &&
+       attacker->recharge_counter == 0 && attacker->recharge_len == 0);
 
   if (is_solar_beam_charge) {
     if (used_move->movePtr != NULL) {
@@ -266,8 +286,7 @@ inline int attack(Battle* b,
         }
       } else {
         defender->pokemon->hp -= damage;
-        defender->pokemon->hp =
-            max(defender->pokemon->hp, 0);
+        defender->pokemon->hp = max(defender->pokemon->hp, 0);
       }
       defender->dmg_counter += damage;
     }
@@ -294,7 +313,7 @@ int valid_move(Player* user, int move_index) {
   if (user->active_pokemon_index < 0) {
     return 0;
   }
-  Move* move = get_active_move_slot(&user->active_pokemon, move_index);
+  Move* move = &user->active_pokemon.moves[move_index];
   if (move == NULL || move->id == NO_MOVE) {
     DLOG("Attempt to use invalid move slot %d", move_index);
     return 0;
@@ -304,12 +323,25 @@ int valid_move(Player* user, int move_index) {
     DLOG("Attempt to use disabled move %s", get_move_name(move->id));
     return 0;
   }
+  // If the move has no PP, normally it's invalid – but if the player has
+  // no other moves with PP remaining, allow the move so the engine can
+  // resolve it as Struggle. We only reject explicit no-PP choices when at
+  // least one valid move exists.
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(move->id));
-    return 0;
-  }
+    for (int i = 0; i < 4; i++) {
+      Move* m = &user->active_pokemon.moves[i];
+      if (m && m->id != NO_MOVE && m->pp > 0) {
+        return 0;
+      }
+    }
+    DLOG("No valid moves... %s used Struggle!",
+           get_pokemon_name(user->active_pokemon.pokemon->id));
+      return 1;
+    }
+
   return 1;
-}
+  }
 
 // Adds a move to the battleQueue. Returns 0 if move is invalid (PP too low),
 // 1 if added.

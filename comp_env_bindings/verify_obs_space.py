@@ -12,9 +12,10 @@ def verify_pufferlib_obs_space():
     print("=" * 60)
     
     # Action row
-    action_row_size = 9
+    # After removing the previous-choice/value fields, the action row keeps 5 padding slots
+    action_row_size = 5
     print(f"Action row size: {action_row_size}")
-    print("  - p1_choice, p1_val, p2_choice, p2_val, +5 padding")
+    print("  - 5 padding")
     
     # Pokemon data
     NUM_POKE = 1
@@ -36,14 +37,14 @@ def verify_pufferlib_obs_space():
     
     total_size = action_row_size + pokemon_data_size
     print(f"\n{'Total observation size:':<30} {total_size}")
-    print(f"{'Expected in showdown.py:':<30} 59")
+    print(f"{'Expected in showdown.py:':<30} 55")
     
-    if total_size == 59:
+    if total_size == 55:
         print("\n✅ PufferLib observation space size is CORRECT!")
     else:
-        print(f"\n❌ ERROR: Size mismatch! Expected 59, got {total_size}")
-    
-    return total_size == 59
+        print(f"\n❌ ERROR: Size mismatch! Expected 55, got {total_size}")
+
+    return total_size == 55
 
 def verify_test_env_obs_space():
     """Verify test_env.py observation space size"""

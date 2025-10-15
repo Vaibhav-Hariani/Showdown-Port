@@ -119,22 +119,21 @@ class Embed():
         return bits
 
     def _packed_embed(self, battle: AbstractBattle):
-        # New compact layout: total length 92 (mirrors C packing)
+        # New compact layout: total length 88 (mirrors C packing with previous-choice fields removed)
         # Deviations vs C implementation:
         #   - Previous choices (indices 0..3) unavailable in poke-env -> set to -1.
         #   - Opponent confusion / flinch bits not populated (poke-env lacks direct counters).
         #   - Disabled flag logic not implemented (always 0 as in current C path).
         #   - Hidden opponent species gating: opponent team dict only contains revealed mons.
         #   - Move revelation: we infer via mv.was_used; C sets Move.revealed also from prev choices.
-        obs = np.zeros(92, dtype=np.int16)
-        # Unknown previous choices in poke-env context
-        obs[0:4] = -1
+        obs = np.zeros(88, dtype=np.int16)
         p1a = battle.active_pokemon
         p2a = battle.opponent_active_pokemon
-        obs[4] = self._pack_statmods1(p1a)
-        obs[5] = self._pack_statmods2(p1a)
-        obs[6] = self._pack_statmods1(p2a)
-        obs[7] = self._pack_statmods2(p2a)
+        # statmods for p1 and p2 stored at indices 0..3
+        obs[0] = self._pack_statmods1(p1a)
+        obs[1] = self._pack_statmods2(p1a)
+        obs[2] = self._pack_statmods1(p2a)
+        obs[3] = self._pack_statmods2(p2a)
 
         def species_id(mon: Pokemon, active):
             # Use pokemon name to look up ID in POKEDEX_LABELS
@@ -176,7 +175,7 @@ class Embed():
             return val
 
         for slot in range(6):
-            base = 8 + (slot*2)*7
+            base = 4 + (slot*2)*7
             mon = p1_team[slot]
             if mon:
                 obs[base+0] = species_id(mon, mon is p1a)
@@ -186,7 +185,7 @@ class Embed():
                     obs[base+1+mi] = pack_move_py(mv)
                 obs[base+5] = self._encode_hp_percent(mon)
                 obs[base+6] = self._pack_status_bits(mon)
-            base2 = 8 + (slot*2+1)*7
+            base2 = 4 + (slot*2+1)*7
             mon2 = p2_team[slot]
             if mon2:
                 # Species id always present once mon object exists (considered revealed)
@@ -214,9 +213,9 @@ class Embed():
 class Env(SinglesEnv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Define observation space to match C sim: 92 int16 values
-        # 8 header ints + 12*7 = 84 ints (rows) = 92 total
-        obs_size = 92
+        # Define observation space to match C sim: 88 int16 values (choices removed)
+        # 4 header stat ints + 12*7 = 84 ints (rows) = 88 total
+        obs_size = 88
         low = np.full(obs_size, -32768, dtype=np.int16)
         high = np.full(obs_size, 32767, dtype=np.int16)
         self.observation_spaces = {

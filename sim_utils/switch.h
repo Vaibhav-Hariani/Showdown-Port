@@ -82,6 +82,10 @@ void perform_switch_action(Battle* battle, Action* current_action) {
   user->active_pokemon.type1 = user->active_pokemon.pokemon->type1;
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
   user->active_pokemon.sleep_ctr = user->active_pokemon.pokemon->status.sleep;
+  // Copy base Pokemon's moves into the active_pokemon moves array
+  for (int i = 0; i < 4; ++i) {
+    user->active_pokemon.moves[i] = user->active_pokemon.pokemon->poke_moves[i];
+  }
   
   if (old_active >= 0 && user->team[old_active].hp > 0) {
     DLOG("Come back %s! ", get_pokemon_name(user->team[old_active].id));

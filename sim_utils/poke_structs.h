@@ -52,13 +52,16 @@ struct STR_STATUS_FLAGS {
 // Can combine these into 2 16 bit ints (attack/defense/specA/specD,
 // speed/acc/eva)
 typedef struct STR_STAT_MODS {
-  uint8_t attack : 4;
-  uint8_t defense : 4;
-  uint8_t speed : 4;
-  uint8_t specA : 4;
-  uint8_t specD : 4;
-  uint8_t accuracy : 4;
-  uint8_t evasion : 4;
+  /* Use signed 4-bit bitfields so modifiers in range -6..+6 are represented
+     correctly. Using unsigned bitfields caused negative assignments to wrap
+     (e.g. -1 -> 15). */
+  signed attack : 4;
+  signed defense : 4;
+  signed speed : 4;
+  signed specA : 4;
+  signed specD : 4;
+  signed accuracy : 4;
+  signed evasion : 4;
 } stat_mods;
 
 typedef struct STR_POKE {
@@ -71,6 +74,7 @@ typedef struct STR_POKE {
   int16_t max_hp;
   TYPE type1;
   TYPE type2;
+  Move struggle;
 } Pokemon;
 
 typedef struct STR_BATTLE_POKEMON {

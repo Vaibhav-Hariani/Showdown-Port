@@ -121,14 +121,20 @@ void team_generator(Player* p, TeamConfig config) {
           &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
     }
 
-    // Set up active pokemon
-    p->active_pokemon.pokemon = &p->team[0];
-    p->active_pokemon_index = 0;
-    p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
-    p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
-    // Mark the active pokemon as seen
-    p->shown_pokemon |= (1u << p->active_pokemon_index);
+  // Set up active pokemon
+  // Initialize and set up active pokemon
+  memset(&p->active_pokemon, 0, sizeof(BattlePokemon));
+  p->active_pokemon.pokemon = &p->team[0];
+  p->active_pokemon_index = 0;
+  p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
+  p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
+  // Copy base Pokemon stats and moves into the active slot
+  p->active_pokemon.stats = p->active_pokemon.pokemon->stats;
+  for (int m = 0; m < 4; ++m) {
+    p->active_pokemon.moves[m] = p->active_pokemon.pokemon->poke_moves[m];
   }
+  // Mark the active pokemon as seen
+  p->shown_pokemon |= (1u << p->active_pokemon_index);
 }
 
 // Helper function to get AI player choice
@@ -159,9 +165,22 @@ static inline int get_p2_choice(Sim* s, int mode) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
-  int action = rand() % 10;
-  while (!(valid_choice(2, b->p2, action, mode))) {
-    action = rand() % 10;
+  int action = rand() % 4 + 6;
+
+  int num_failed = 10;
+  while(!(valid_choice(2, b->p2, action, mode))) {
+    action = rand() % 4 + 6;
+    num_failed--;
+    if(num_failed <= 0) {
+      DLOG("Failed to properly choose move");
+      for(int i = 0; i < 10; i++) {
+        if(valid_choice(2,b->p2, i, mode)) {
+          return i;
+        }
+      }
+        //Crash the program?
+        return -1;
+    }
   }
   return action;
   // return select_best_move_choice(&b->p2);
@@ -209,15 +228,12 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
 
   // Get AI player choice
   int p2_choice = get_p2_choice(sim, mode);
-
   // Validate player 1's choice
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
     return -1;
   }
-
-  // Validate player 2's choice (should never fail due to get_p2_choice logic)
-  if (!valid_choice(2, b->p2, p2_choice, mode)) {
-    return -2;  // Error condition
+  if(p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
+    return -2;
   }
 
   // Encode p1
@@ -228,7 +244,7 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
     int mi = p1_choice - 6;
     Move* mv = &b->p1.active_pokemon.pokemon->poke_moves[mi];
     prev->p1_choice = 2;
-    prev->p1_val = mv ? mv->id : -1;
+    prev->p1_val = mv ? (int)mv->id : -1;
   }
   // Encode p2
   if (p2_choice < 6) {
@@ -238,7 +254,7 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
     int mi2 = p2_choice - 6;
     Move* mv2 = &b->p2.active_pokemon.pokemon->poke_moves[mi2];
     prev->p2_choice = 2;
-    prev->p2_val = mv2 ? mv2->id : -1;
+    prev->p2_val = mv2 ? (int)mv2->id : -1;
   }
   // (Future: can optionally log opponent choice into a ring buffer if needed)
 
@@ -308,6 +324,12 @@ void c_step(Sim* sim) {
   // Capture active pokemon indices and HP before resolving this step
   PrevChoices step_prev = {0};
   int a = battle_step(sim, raw_choice, &step_prev);
+
+  if(a == -2) {
+    //opponent ran out of valid moves
+    sim->rewards[0] = 0.0f;
+    sim->terminals[0] = 1;
+  }
   if (a == -1) {
     // Invalid move penalty (shaping only for invalid action): -0.5
     sim->rewards[0] = -0.01f;

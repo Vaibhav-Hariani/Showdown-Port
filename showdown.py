@@ -10,11 +10,11 @@ from wandb import Table, Artifact
 class Showdown(pufferlib.PufferEnv):
     def __init__(
             self, num_envs=1, render_mode=None, log_interval=10, buf=None, seed=0):
-        # Observation layout v2: header (8 ints: p1_prev_choice, p1_prev_val, p2_prev_choice, p2_prev_val, p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
+        # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
         # Followed by interleaved team data: 2 players * 6 pokemon * 7 ints each (id, move1, move2, move3, move4, hp_scaled, status_flags)
-        # Total length = 8 + 84 = 92
+        # Total length = 4 + 84 = 88
         self.single_observation_space = gymnasium.spaces.Box(
-            low=-32768, high=32767, shape=(92,), dtype=np.int16
+            low=-32768, high=32767, shape=(88,), dtype=np.int16
         )
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
@@ -148,6 +148,7 @@ def evaluate_model(run, model, config, num_games=1000):
     """Evaluate a model (either from wandb artifact path or policy object) by running it in serial for num_games and logging win/lose stats. Returns (num_wins, num_losses)."""
     import torch
     device = config['device']
+    print('DEVICE', device)
     model.eval()
     env_args = [1024]
     env = pufferlib.vector.make(
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     env = Showdown(num_envs=N)
     env.reset(seed=42)
     steps = 0
-    CACHE = 1024 * N
+    CACHE = int(1e6 * N)
     actions = np.random.randint(6, 9, (CACHE, N))
     i = 0
     import time
@@ -229,6 +230,7 @@ if __name__ == "__main__":
         i += 1
         if info_tmp:
             info = info_tmp
+        # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration if duration > 0 else 0
     ms_per_move = (1000.0 / sps) if sps > 0 else 0.0

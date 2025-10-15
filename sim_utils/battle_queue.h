@@ -82,6 +82,9 @@ int eval_queue(Battle* b) {
       Move* move = current_action->action_d.m;
       Player* User = current_action->User;
       Player* Target = current_action->Target;
+      if(move == NULL) {
+        DLOG("Invalid move in queue at position %d", i);
+      }
 
       attack(b, &User->active_pokemon, &Target->active_pokemon, move);
 
