@@ -2,6 +2,8 @@
 #define SIM_H
 
 #include "data_sim/typing.h"
+#include "data_sim/ou_teams.h"
+
 #include "sim_logging.h"
 #include "sim_packing.h"
 #include "sim_utils/battle.h"
@@ -11,6 +13,15 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "stdlib.h"
+
+
+typedef enum {
+  ONE_V_ONE = 0,
+  TWO_V_TWO,
+  SIX_V_SIX,
+  GEN_1_OU,
+  TEAM_CONFIG_MAX
+} TeamConfig;
 
 typedef struct {
   Log log;
@@ -87,17 +98,28 @@ float reward(Sim* s) {
   return 0.0f;  // Non-terminal
 }
 
-void team_generator(Player* p) {
+void team_generator(Player* p, TeamConfig config) {
   // Clear the entire Pokemon table
   memset(p->team, 0, sizeof(Pokemon) * NUM_POKE);
   // Reset visibility bitfield
   p->shown_pokemon = 0;
 
   // Load NUM_POKE pokemon for the team
-  for (int i = 0; i < NUM_POKE; i++) {
-    load_pokemon(
-        &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
-  }
+  if (config == GEN_1_OU) {
+    load_team_from_ou(p, -1);  // Load a random OU team
+  } else {
+    int num_poke = 1;
+    if (config == ONE_V_ONE) {
+      num_poke = 1;
+    } else if (config == TWO_V_TWO) {
+      num_poke = 2;
+    } else if (config == SIX_V_SIX) {
+      num_poke = 6;
+    }
+    for (int i = 0; i < num_poke; i++) {
+      load_pokemon(
+          &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
+    }
 
   // Set up active pokemon
   // Initialize and set up active pokemon
@@ -272,9 +294,10 @@ void c_reset(Sim* sim) {
   sim->episode_invalid_moves = 0;
   // Initialize a local prev choices struct for initial packing
   PrevChoices initial_prev = {0};
-
-  team_generator(&sim->battle->p1);
-  team_generator(&sim->battle->p2);
+  
+  TeamConfig config = rand() % TEAM_CONFIG_MAX;
+  team_generator(&sim->battle->p1, config);
+  team_generator(&sim->battle->p2, config);
 
   initial_log(&sim->log, sim->battle);
   pack_battle(sim->battle, sim->observations, &initial_prev);
@@ -329,7 +352,7 @@ void c_step(Sim* sim) {
   sim->log.valid_moves += 1.0f;
   sim->episode_valid_moves += 1;
   float r = reward(sim);
-  
+
   if (r == 1.0f || r == -1.0f) {
     // Calculate final episode stats before resetting
     float p1_sum = 0, p2_sum = 0;
@@ -340,10 +363,16 @@ void c_step(Sim* sim) {
     float mean_p1_hp = p1_sum / NUM_POKE;
     float mean_p2_hp = p2_sum / NUM_POKE;
     float avg_damage_pct = (1.0f - mean_p2_hp) / sim->tick;
-    final_update(&sim->log, r, mean_p1_hp, mean_p2_hp, avg_damage_pct, sim->tick,
-                 sim->episode_valid_moves, sim->episode_invalid_moves);
+    final_update(&sim->log,
+                 r,
+                 mean_p1_hp,
+                 mean_p2_hp,
+                 avg_damage_pct,
+                 sim->tick,
+                 sim->episode_valid_moves,
+                 sim->episode_invalid_moves);
     sim->terminals[0] = 1;
- }
+  }
   // Non-terminal steps yield 0 reward
   sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations, &step_prev);
