@@ -119,6 +119,14 @@ const team_member ou_teams[][6] = {
         {CHANSEY, {SING_MOVE_ID, SEISMIC_TOSS_MOVE_ID, THUNDER_WAVE_MOVE_ID, SOFT_BOILED_MOVE_ID}},
         {SNORLAX, {BODY_SLAM_MOVE_ID, EARTHQUAKE_MOVE_ID, HYPER_BEAM_MOVE_ID, SELF_DESTRUCT_MOVE_ID}},
         {TAUROS, {BODY_SLAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID, HYPER_BEAM_MOVE_ID}}
+    },
+    {
+        {STARMIE, {PSYCHIC_MOVE_ID, THUNDER_WAVE_MOVE_ID, RECOVER_MOVE_ID, SURF_MOVE_ID}},
+        {EXEGGUTOR, {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, EXPLOSION_MOVE_ID, STUN_SPORE_MOVE_ID}},
+        {ALAKAZAM, {PSYCHIC_MOVE_ID, SEISMIC_TOSS_MOVE_ID, RECOVER_MOVE_ID, REFLECT_MOVE_ID}},
+        {CHANSEY, {SEISMIC_TOSS_MOVE_ID, SOFT_BOILED_MOVE_ID, TOXIC_MOVE_ID, ICE_BEAM_MOVE_ID}},
+        {SNORLAX, {BODY_SLAM_MOVE_ID, REST_MOVE_ID, ICE_BEAM_MOVE_ID, SELF_DESTRUCT_MOVE_ID}},
+        {TAUROS, {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}}
     }
 };
 
@@ -134,7 +142,7 @@ void load_team_from_ou(Player* p, int team_index) {
 
   // Load 6 pokemon for the team
   for (int i = 0; i < 6; i++) {
-    load_pokemon(&p->team[i], ou_teams[team_index][i].moves, ou_teams[team_index][i].id);
+    load_pokemon(&p->team[i], (MOVE_IDS*)ou_teams[team_index][i].moves, ou_teams[team_index][i].id);
   }
 }
 
