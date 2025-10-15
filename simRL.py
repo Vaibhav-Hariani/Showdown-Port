@@ -43,35 +43,30 @@ def test_model(n=12):
 
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
-    # Initialize WandB first
     args = pufferl.load_config("showdown")
     args["wandb"] = True
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     args["train"]["env"] = "showdown"
-    args["train"]["minibatch_size"] = 64
     args["train"]["use_rnn"] = False
-    # args["train"]["device"] = "cpu"
-    # env_args = [1024]
-    # env = pufferlib.vector.make(
-    #     Showdown,
-    #     num_envs=24,
-    #     env_args=env_args,
-    #     batch_size=24,  # Match num_envs to avoid batch synchronization issues
-    #     backend=pufferlib.vector.Multiprocessing,
-    # )
-    # env.reset(seed=42)
-    N = 1
-    env = Showdown(num_envs=N)
+    env_args = [1024]
+    env = pufferlib.vector.make(
+        Showdown,
+        num_envs=24,
+        env_args=env_args,
+        batch_size=4,
+        backend=pufferlib.vector.Multiprocessing,
+    )
+    env.reset(seed=42)
 
     policy = ShowdownModel(env).cuda()
-    # policy = ShowdownLSTM(env.driver_env, policy).cuda() 
+    policy = ShowdownLSTM(env.driver_env, policy).cuda() 
+    policy.load_state_dict(torch.load("/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/6v6_generalist.pt"))
 
     with wandb.init(project="showdown", config=args["train"]) as run:
-        # args["train"]["use_rnn"] = True
-        trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-        
-        for epoch in range(100):
+        args["train"]["use_rnn"] = True
+        trainer = pufferl.PuffeRL(args["train"], env, policy=policy) 
+        for epoch in range(10):
             # Run evaluation and training
             trainer.evaluate()
             logs = trainer.train()

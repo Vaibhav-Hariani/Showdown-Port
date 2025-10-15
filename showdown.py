@@ -66,12 +66,11 @@ class Showdown(pufferlib.PufferEnv):
 def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, game_count):
     """Log an episode to wandb as an artifact with win/lose label."""
     final_reward = episode_rewards[-1]
-    label = "win" if final_reward > 0 else "lose"
+    label = f"win #{game_count}" if final_reward > 0 else f"lose #{game_count}"
     
-    # Create table
+    # Create table (19 columns expected by the logging consumer)
     table = Table(columns=[
         "step", "action", "reward",
-        "p1_choice", "p1_value", "p2_choice", "p2_value",
         "p1_active_id", "p1_active_name", "p1_active_hp", "p1_active_status", "p1_moves", "p1_move_names",
         "p2_active_id", "p2_active_name", "p2_active_hp", "p2_active_status", "p2_moves", "p2_move_names"
     ])
@@ -81,9 +80,7 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
         action_step = episode_actions[step_idx]
         reward_step = episode_rewards[step_idx]
 
-        parsed = ShowdownParser.parse_observation(obs_step)
-        p1 = parsed['players'][0]
-        p2 = parsed['players'][1]
+        parsed = ShowdownParser.parse_observation(obs_step, team_size=6)  # Updated to handle new observation space
         p1_dict = {
             'id': None,
             'name': None,
@@ -95,35 +92,37 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
 
         p2_dict = p1_dict.copy()
 
-        if (p1['active_index'] is not None):
-            p1_active_data = p1['team'][p1['active_index']]
-            p1_dict = {
-                'id': p1_active_data['id'],
-                'name': p1_active_data['name'],
-                'hp': p1_active_data['hp_scaled'],
-                'status': ','.join([k for k, v in p1_active_data['status'].items() if v]) or 'healthy',
-                'moves': ','.join([f"{m['id']}({m['pp']})" for m in p1_active_data['moves']]),
-                'move_names': ','.join([m['name'] for m in p1_active_data['moves'] if m['name']])
-            }
-        if (p2['active_index'] is not None):
-            p2_active_data = p2['team'][p2['active_index']]
-            p2_dict = {
-                'id': p2_active_data['id'],
-                'name': p2_active_data['name'],
-                'hp': p2_active_data['hp_scaled'],
-                'status': ','.join([k for k, v in p2_active_data['status'].items() if v]) or 'healthy',
-                'moves': ','.join([f"{m['id']}({m['pp']})" for m in p2_active_data['moves']]),
-                'move_names': ','.join([m['name'] for m in p2_active_data['moves'] if m['name']])
-            }
+        # Parser now returns players[].active_pokemon (or None) and header statmods
+        p1_info = parsed.get('players', [None, None])[0]
+        p2_info = parsed.get('players', [None, None])[1]
+
+        p1_active = None
+        p2_active = None
+        if p1_info:
+            p1_active = p1_info.get('active_pokemon')
+        if p2_info:
+            p2_active = p2_info.get('active_pokemon')
+
+        def _format_active(active):
+            if not active:
+                return dict(id=None, name=None, hp=0, status='fainted', moves='', move_names='')
+            pid = active.get('id')
+            name = active.get('name')
+            hp = active.get('hp_scaled')
+            status = active.get('status') or {}
+            status_str = ','.join([k for k, v in status.items() if v]) or 'healthy'
+            moves_list = active.get('moves') or []
+            moves_str = ','.join([f"{m.get('id')}({m.get('pp')})" for m in moves_list])
+            move_names = ','.join([m.get('name') for m in moves_list if m.get('name')])
+            return dict(id=pid, name=name, hp=hp, status=status_str, moves=moves_str, move_names=move_names)
+
+        p1_dict = _format_active(p1_active)
+        p2_dict = _format_active(p2_active)
 
         table.add_data(
             step_idx,
             action_step,
             reward_step,
-            int(obs_step[0]),
-            int(obs_step[1]),
-            int(obs_step[2]),
-            int(obs_step[3]),
             p1_dict['id'],
             p1_dict['name'],
             p1_dict['hp'],
@@ -137,7 +136,8 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
             p2_dict['moves'],
             p2_dict['move_names']
         )
-        run.log({label: table})
+    # Log the completed table once per episode
+    run.log({label: table})
 
     # # Create artifact and add table
     # artifact = Artifact(f"game_{game_count}_{label}", type="episode_data")
@@ -148,7 +148,6 @@ def evaluate_model(run, model, config, num_games=1000):
     """Evaluate a model (either from wandb artifact path or policy object) by running it in serial for num_games and logging win/lose stats. Returns (num_wins, num_losses)."""
     import torch
     device = config['device']
-    print('DEVICE', device)
     model.eval()
     env_args = [1024]
     env = pufferlib.vector.make(
@@ -194,8 +193,8 @@ def evaluate_model(run, model, config, num_games=1000):
                 loss = int(episode_rewards[-1] <= 0)
                 num_wins += win
                 num_losses += loss
-                # Log individual run data to wandb
-                run.log({"game": game_count, "win": win, "loss": loss, "final_reward": episode_rewards[-1]})
+                # Log episode_obs to wandb
+                log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, game_count)
                 obs, _ = env.reset()
     env.close()
     print(f"Evaluation complete: {num_wins} wins, {num_losses} losses out of {num_games} games.")

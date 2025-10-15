@@ -3,7 +3,7 @@
 
 #include "poke_enum.h"
 #include "typing.h"
-
+#include "../sim_utils/poke_structs.h"
 // Used to define base pokemon data, pre-IVS/EVs/DVs/Modifiers
 
 typedef struct {

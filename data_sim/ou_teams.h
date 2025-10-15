@@ -1,9 +1,7 @@
 #include "generated_move_enum.h"
 #include "pokedex.h"
 #include "poke_enum.h"
-#include "movedex.h"
-#include "sim_utils/battle.h"
-#include "sim_utils/pokegen.h"
+#include "../sim_utils/pokegen.h"
 #include <string.h>
 #include <stdlib.h>
 

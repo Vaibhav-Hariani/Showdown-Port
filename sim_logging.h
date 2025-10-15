@@ -33,8 +33,8 @@ typedef struct {
   float mean_p1_hp;
   float mean_p2_hp;
   // Move effectiveness tracking
-  float super_effective_moves;
-  float stab_moves;
+  // float super_effective_moves;
+  // float stab_moves;
   float n;
 } Log;
 
@@ -68,7 +68,7 @@ void initial_log(Log* log, Battle* battle) {
 
   // Calculate type matchup advantage and team strength
   float score = 0.0f;
-  int avg_poke_power = 0;
+  float avg_poke_power = 0;
   // For each Pokemon on Player 1's team (all NUM_POKE Pokemon are valid)
   for (int p1_idx = 0; p1_idx < NUM_POKE; p1_idx++) {
     Pokemon* p1_poke = &battle->p1.team[p1_idx];
@@ -106,7 +106,7 @@ void initial_log(Log* log, Battle* battle) {
   }
 
   // Update log with calculated values
-  avg_poke_power /= (NUM_POKE * 4);
+  avg_poke_power /= (float) NUM_POKE * 4;
   log->team_strength += avg_poke_power;
   log->matchup_advantage += score;
   // Damaging move metrics disabled

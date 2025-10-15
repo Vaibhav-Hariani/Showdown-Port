@@ -4,7 +4,7 @@
 #include "../data_sim/poke_enum.h"
 #include "move_structs.h"
 #include "stdint.h"
-
+#include "stddef.h"
 typedef enum {
   SWITCH_STOP_NONE=0,
   SWITCH_STOP_RAGE,

@@ -6,6 +6,6 @@
 *.o
 *.out
 *.so
-
+*.pt
 resources
 __pycache__/

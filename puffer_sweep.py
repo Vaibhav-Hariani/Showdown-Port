@@ -18,9 +18,9 @@ if __name__ == "__main__":
     args["package"] = 'ocean'
     args["policy"]["hidden_size"] = 256
     args["policy"]["depth"] = 12
-    args["vec"]["num_envs"] = 12
+    args["vec"]["num_envs"] = 24
     args["env"] = {"num_envs": 1024}
-    args["tag"] = "showdown_6v6"
+    args["tag"] = "showdown_6v6_teamgen"
     args["policy_name"] = "Showdown"
     args["rnn_name"] = "ShowdownLSTM"
     args["train"]["use_rnn"] = True

@@ -1,9 +1,8 @@
 #ifndef SIM_H
 #define SIM_H
 
-#include "data_sim/typing.h"
 #include "data_sim/ou_teams.h"
-
+#include "data_sim/typing.h"
 #include "sim_logging.h"
 #include "sim_packing.h"
 #include "sim_utils/battle.h"
@@ -13,7 +12,6 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "stdlib.h"
-
 
 typedef enum {
   ONE_V_ONE = 0,
@@ -120,7 +118,7 @@ void team_generator(Player* p, TeamConfig config) {
       load_pokemon(
           &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
     }
-
+  }
   // Set up active pokemon
   // Initialize and set up active pokemon
   memset(&p->active_pokemon, 0, sizeof(BattlePokemon));
@@ -168,18 +166,18 @@ static inline int get_p2_choice(Sim* s, int mode) {
   int action = rand() % 4 + 6;
 
   int num_failed = 10;
-  while(!(valid_choice(2, b->p2, action, mode))) {
+  while (!(valid_choice(2, b->p2, action, mode))) {
     action = rand() % 4 + 6;
     num_failed--;
-    if(num_failed <= 0) {
+    if (num_failed <= 0) {
       DLOG("Failed to properly choose move");
-      for(int i = 0; i < 10; i++) {
-        if(valid_choice(2,b->p2, i, mode)) {
+      for (int i = 0; i < 10; i++) {
+        if (valid_choice(2, b->p2, i, mode)) {
           return i;
         }
       }
-        //Crash the program?
-        return -1;
+      // Crash the program?
+      return -1;
     }
   }
   return action;
@@ -232,7 +230,7 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
   if (!valid_choice(1, b->p1, p1_choice, mode)) {
     return -1;
   }
-  if(p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
+  if (p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
     return -2;
   }
 
@@ -294,7 +292,7 @@ void c_reset(Sim* sim) {
   sim->episode_invalid_moves = 0;
   // Initialize a local prev choices struct for initial packing
   PrevChoices initial_prev = {0};
-  
+
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
   team_generator(&sim->battle->p1, config);
   team_generator(&sim->battle->p2, config);
@@ -325,8 +323,8 @@ void c_step(Sim* sim) {
   PrevChoices step_prev = {0};
   int a = battle_step(sim, raw_choice, &step_prev);
 
-  if(a == -2) {
-    //opponent ran out of valid moves
+  if (a == -2) {
+    // opponent ran out of valid moves
     sim->rewards[0] = 0.0f;
     sim->terminals[0] = 1;
   }
@@ -357,8 +355,8 @@ void c_step(Sim* sim) {
     // Calculate final episode stats before resetting
     float p1_sum = 0, p2_sum = 0;
     for (int j = 0; j < NUM_POKE; j++) {
-      p1_sum += battle->p1.team[j].hp / battle->p1.team[j].max_hp;
-      p2_sum += battle->p2.team[j].hp / battle->p2.team[j].max_hp;
+      p1_sum += (float) (battle->p1.team[j].hp) / (float) (battle->p1.team[j].max_hp);
+      p2_sum += (float) (battle->p2.team[j].hp) / (float) (battle->p2.team[j].max_hp);
     }
     float mean_p1_hp = p1_sum / NUM_POKE;
     float mean_p2_hp = p2_sum / NUM_POKE;
