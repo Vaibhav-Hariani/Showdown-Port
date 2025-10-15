@@ -5,8 +5,7 @@ Since we cannot access the URLs, we'll use well-known RBY OU teams
 from the competitive metagame.
 """
 
-import sys
-sys.path.append('/home/runner/work/Showdown-Port/Showdown-Port')
+import os
 
 # Common RBY OU teams based on the metagame
 # Format: list of dicts with pokemon name and moves
@@ -121,27 +120,6 @@ SAMPLE_TEAMS = [
     ],
 ]
 
-# Map Pokemon and move names to their enum values
-POKEMON_MAP = {
-    "TAUROS": "TAUROS",
-    "CHANSEY": "CHANSEY",
-    "EXEGGUTOR": "EXEGGUTOR",
-    "SNORLAX": "SNORLAX",
-    "ALAKAZAM": "ALAKAZAM",
-    "STARMIE": "STARMIE",
-    "JYNX": "JYNX",
-    "RHYDON": "RHYDON",
-    "GENGAR": "GENGAR",
-    "ZAPDOS": "ZAPDOS",
-    "LAPRAS": "LAPRAS",
-    "GOLEM": "GOLEM",
-    "CLOYSTER": "CLOYSTER",
-    "SLOWBRO": "SLOWBRO",
-    "ELECTRODE": "ELECTRODE",
-    "JOLTEON": "JOLTEON",
-    "PERSIAN": "PERSIAN",
-}
-
 def generate_header_file():
     """Generate the C header file with sample teams."""
     
@@ -176,7 +154,8 @@ def generate_header_file():
         output.append("    .pokemon = {")
         for poke_idx, pokemon in enumerate(team):
             species = pokemon["name"]
-            moves = pokemon["moves"]
+            # Create a copy of moves list to avoid modifying original
+            moves = pokemon["moves"].copy()
             # Pad moves to 4 if less
             while len(moves) < 4:
                 moves.append("NO_MOVE")
@@ -204,8 +183,11 @@ def main():
     """Main function."""
     header_content = generate_header_file()
     
-    # Write to the data_sim directory
-    output_path = "/home/runner/work/Showdown-Port/Showdown-Port/data_sim/sample_gen1_ou_teams.h"
+    # Write to the data_sim directory using relative path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, '..', 'data_sim', 'sample_gen1_ou_teams.h')
+    output_path = os.path.normpath(output_path)
+    
     with open(output_path, "w") as f:
         f.write(header_content)
     
