@@ -17,8 +17,8 @@ typedef struct {
   TeamPokemon pokemon[6];
 } Team;
 
-// Total number of sample teams: 6
-#define NUM_SAMPLE_TEAMS 6
+// Total number of sample teams: 12
+#define NUM_SAMPLE_TEAMS 12
 
 static const Team SAMPLE_GEN1_OU_TEAMS[] = {
   // Team 1
@@ -192,6 +192,180 @@ static const Team SAMPLE_GEN1_OU_TEAMS[] = {
       {
         .species = TAUROS,
         .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      }
+    }
+  },
+  // Team 7
+  {
+    .pokemon = {
+      {
+        .species = ALAKAZAM,
+        .moves = {PSYCHIC_MOVE_ID, REFLECT_MOVE_ID, RECOVER_MOVE_ID, THUNDER_WAVE_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, SOFT_BOILED_MOVE_ID, SEISMIC_TOSS_MOVE_ID, THUNDER_WAVE_MOVE_ID}
+      },
+      {
+        .species = SNORLAX,
+        .moves = {BODY_SLAM_MOVE_ID, EARTHQUAKE_MOVE_ID, REST_MOVE_ID, SELF_DESTRUCT_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, EXPLOSION_MOVE_ID, STUN_SPORE_MOVE_ID}
+      },
+      {
+        .species = GOLEM,
+        .moves = {EARTHQUAKE_MOVE_ID, ROCK_SLIDE_MOVE_ID, BODY_SLAM_MOVE_ID, EXPLOSION_MOVE_ID}
+      }
+    }
+  },
+  // Team 8
+  {
+    .pokemon = {
+      {
+        .species = CLOYSTER,
+        .moves = {CLAMP_MOVE_ID, BLIZZARD_MOVE_ID, SURF_MOVE_ID, EXPLOSION_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, STUN_SPORE_MOVE_ID, EXPLOSION_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, THUNDER_WAVE_MOVE_ID, SOFT_BOILED_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = ALAKAZAM,
+        .moves = {PSYCHIC_MOVE_ID, THUNDER_WAVE_MOVE_ID, RECOVER_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = RHYDON,
+        .moves = {EARTHQUAKE_MOVE_ID, ROCK_SLIDE_MOVE_ID, BODY_SLAM_MOVE_ID, SUBSTITUTE_MOVE_ID}
+      }
+    }
+  },
+  // Team 9
+  {
+    .pokemon = {
+      {
+        .species = SLOWBRO,
+        .moves = {AMNESIA_MOVE_ID, SURF_MOVE_ID, REST_MOVE_ID, THUNDER_WAVE_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, EXPLOSION_MOVE_ID, STUN_SPORE_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, SOFT_BOILED_MOVE_ID, SEISMIC_TOSS_MOVE_ID, THUNDER_WAVE_MOVE_ID}
+      },
+      {
+        .species = ALAKAZAM,
+        .moves = {PSYCHIC_MOVE_ID, RECOVER_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = STARMIE,
+        .moves = {SURF_MOVE_ID, BLIZZARD_MOVE_ID, THUNDER_WAVE_MOVE_ID, RECOVER_MOVE_ID}
+      }
+    }
+  },
+  // Team 10
+  {
+    .pokemon = {
+      {
+        .species = ELECTRODE,
+        .moves = {THUNDERBOLT_MOVE_ID, THUNDER_WAVE_MOVE_ID, EXPLOSION_MOVE_ID, THUNDER_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = SNORLAX,
+        .moves = {BODY_SLAM_MOVE_ID, EARTHQUAKE_MOVE_ID, HYPER_BEAM_MOVE_ID, REST_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, STUN_SPORE_MOVE_ID, EXPLOSION_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, SOFT_BOILED_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = ALAKAZAM,
+        .moves = {PSYCHIC_MOVE_ID, RECOVER_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      }
+    }
+  },
+  // Team 11
+  {
+    .pokemon = {
+      {
+        .species = JOLTEON,
+        .moves = {THUNDERBOLT_MOVE_ID, THUNDER_WAVE_MOVE_ID, PIN_MISSILE_MOVE_ID, DOUBLE_KICK_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, SOFT_BOILED_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, EXPLOSION_MOVE_ID, STUN_SPORE_MOVE_ID}
+      },
+      {
+        .species = SNORLAX,
+        .moves = {BODY_SLAM_MOVE_ID, EARTHQUAKE_MOVE_ID, REST_MOVE_ID, AMNESIA_MOVE_ID}
+      },
+      {
+        .species = STARMIE,
+        .moves = {SURF_MOVE_ID, BLIZZARD_MOVE_ID, THUNDER_WAVE_MOVE_ID, RECOVER_MOVE_ID}
+      }
+    }
+  },
+  // Team 12
+  {
+    .pokemon = {
+      {
+        .species = PERSIAN,
+        .moves = {SLASH_MOVE_ID, HYPER_BEAM_MOVE_ID, BUBBLE_BEAM_MOVE_ID, THUNDERBOLT_MOVE_ID}
+      },
+      {
+        .species = TAUROS,
+        .moves = {BODY_SLAM_MOVE_ID, HYPER_BEAM_MOVE_ID, EARTHQUAKE_MOVE_ID, BLIZZARD_MOVE_ID}
+      },
+      {
+        .species = CHANSEY,
+        .moves = {ICE_BEAM_MOVE_ID, SOFT_BOILED_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = EXEGGUTOR,
+        .moves = {PSYCHIC_MOVE_ID, SLEEP_POWDER_MOVE_ID, STUN_SPORE_MOVE_ID, EXPLOSION_MOVE_ID}
+      },
+      {
+        .species = ALAKAZAM,
+        .moves = {PSYCHIC_MOVE_ID, RECOVER_MOVE_ID, THUNDER_WAVE_MOVE_ID, SEISMIC_TOSS_MOVE_ID}
+      },
+      {
+        .species = RHYDON,
+        .moves = {EARTHQUAKE_MOVE_ID, ROCK_SLIDE_MOVE_ID, BODY_SLAM_MOVE_ID, SUBSTITUTE_MOVE_ID}
       }
     }
   }
