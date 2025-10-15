@@ -699,3 +699,59 @@ IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
 - Earthquake
 - Blizzard
 - Hyper Beam
+
+===
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Thunder Wave
+- Recover
+- Surf
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Explosion
+- Stun Spore
+
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Recover
+- Reflect
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Seismic Toss
+- Soft-Boiled
+- Toxic
+- Ice Beam
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Rest
+- Ice Beam
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Hyper Beam
+- Earthquake
+- Blizzard
