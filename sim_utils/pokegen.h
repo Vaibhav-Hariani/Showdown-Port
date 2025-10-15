@@ -44,18 +44,17 @@ void generate_moveset(MOVE_IDS out_moves[4],
 }
 // take an input pokemon object, and load it with moves, DV's/EV's (optionally)
 // Can expand to take in more data
-void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int opt_id) {
+void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, POKEDEX_IDS poke_id) {
   // int* evs,
   // int* ivs,
   // int* opt_level
   // 1. Lookup base stats/types
 
-  POKEDEX_IDS pokedex_id = opt_id;
-  while (pokedex_id == MISSINGNO) {
-    pokedex_id = rand() % NUM_POKEMON;
+  while (poke_id == MISSINGNO) {
+    poke_id = rand() % NUM_POKEMON;
   }
-  const poke_ref* base = &POKEMON_BASE[pokedex_id];
-  ret->id = pokedex_id;
+  const poke_ref* base = &POKEMON_BASE[poke_id];
+  ret->id = poke_id;
   ret->type1 = base->primary_type;
   ret->type2 = base->secondary_type;
 
@@ -87,8 +86,8 @@ void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int opt_id) {
     }
   } else {
     // Generate moveset from learnset
-    const MOVE_IDS* learnset = LEARNSETS[pokedex_id];
-    int learnset_len = LEARNSET_LENGTHS[pokedex_id];
+    const MOVE_IDS* learnset = LEARNSETS[poke_id];
+    int learnset_len = LEARNSET_LENGTHS[poke_id];
     MOVE_IDS moves[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
     generate_moveset(moves, learnset, learnset_len);
     for (int i = 0; i < 4; i++) {

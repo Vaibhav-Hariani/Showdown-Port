@@ -2,6 +2,8 @@
 #define SIM_H
 
 #include "data_sim/typing.h"
+#include "data_sim/ou_teams.h"
+
 #include "sim_logging.h"
 #include "sim_packing.h"
 #include "sim_utils/battle.h"
@@ -11,6 +13,7 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "stdlib.h"
+
 
 typedef enum {
   ONE_V_ONE = 0,
@@ -103,44 +106,7 @@ void team_generator(Player* p, TeamConfig config) {
 
   // Load NUM_POKE pokemon for the team
   if (config == GEN_1_OU) {
-    // Fill in with a random OU team
-    // Snorlax
-    load_pokemon(&p->team[0],
-                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
-                              SURF_MOVE_ID,
-                              THUNDERBOLT_MOVE_ID,
-                              RECOVER_MOVE_ID},
-                 STARMIE);
-    load_pokemon(&p->team[1],
-                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
-                              THUNDERBOLT_MOVE_ID,
-                              ICE_BEAM_MOVE_ID,
-                              SOFT_BOILED_MOVE_ID},
-                 CHANSEY);
-    load_pokemon(&p->team[2],
-                 (MOVE_IDS[]){REFLECT_MOVE_ID,
-                              BODY_SLAM_MOVE_ID,
-                              SELF_DESTRUCT_MOVE_ID,
-                              REST_MOVE_ID},
-                 SNORLAX);
-    load_pokemon(&p->team[3],
-                 (MOVE_IDS[]){SLEEP_POWDER_MOVE_ID,
-                              PSYCHIC_MOVE_ID,
-                              EXPLOSION_MOVE_ID,
-                              STUN_SPORE_MOVE_ID},
-                 EXEGGUTOR);
-    load_pokemon(&p->team[4],
-                 (MOVE_IDS[]){BODY_SLAM_MOVE_ID,
-                              HYPER_BEAM_MOVE_ID,
-                              EARTHQUAKE_MOVE_ID,
-                              BLIZZARD_MOVE_ID},
-                 TAUROS);
-    load_pokemon(&p->team[5],
-                 (MOVE_IDS[]){THUNDER_WAVE_MOVE_ID,
-                              PSYCHIC_MOVE_ID,
-                              SEISMIC_TOSS_MOVE_ID,
-                              RECOVER_MOVE_ID},
-                 ALAKAZAM);
+    load_team_from_ou(p, -1);  // Load a random OU team
   } else {
     int num_poke = 1;
     if (config == ONE_V_ONE) {
@@ -154,15 +120,15 @@ void team_generator(Player* p, TeamConfig config) {
       load_pokemon(
           &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
     }
-  }
 
-  // Set up active pokemon
-  p->active_pokemon.pokemon = &p->team[0];
-  p->active_pokemon_index = 0;
-  p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
-  p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
-  // Mark the active pokemon as seen
-  p->shown_pokemon |= (1u << p->active_pokemon_index);
+    // Set up active pokemon
+    p->active_pokemon.pokemon = &p->team[0];
+    p->active_pokemon_index = 0;
+    p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
+    p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
+    // Mark the active pokemon as seen
+    p->shown_pokemon |= (1u << p->active_pokemon_index);
+  }
 }
 
 // Helper function to get AI player choice
@@ -312,9 +278,10 @@ void c_reset(Sim* sim) {
   sim->episode_invalid_moves = 0;
   // Initialize a local prev choices struct for initial packing
   PrevChoices initial_prev = {0};
-
-  team_generator(&sim->battle->p1, rand() % TEAM_CONFIG_MAX);
-  team_generator(&sim->battle->p2, rand() % TEAM_CONFIG_MAX);
+  
+  TeamConfig config = rand() % TEAM_CONFIG_MAX;
+  team_generator(&sim->battle->p1, config);
+  team_generator(&sim->battle->p2, config);
 
   initial_log(&sim->log, sim->battle);
   pack_battle(sim->battle, sim->observations, &initial_prev);
