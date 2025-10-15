@@ -74,6 +74,7 @@ typedef struct STR_POKE {
   int16_t max_hp;
   TYPE type1;
   TYPE type2;
+  Move struggle;
 } Pokemon;
 
 typedef struct STR_BATTLE_POKEMON {

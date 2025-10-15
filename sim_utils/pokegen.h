@@ -20,13 +20,13 @@ void generate_moveset(MOVE_IDS out_moves[4],
                       int learnset_len) {
   // choose 4 random moves from a learnset
   // and store it in out_moves
-  int selected[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
+  MOVE_IDS selected[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   int num_selected = 0;
   while (num_selected < 4 && num_selected < learnset_len) {
     int random_index = rand() % learnset_len;
     MOVE_IDS move = learnset[random_index];
     // check if move is already selected
-    int already_selected = 0;
+    MOVE_IDS already_selected = 0;
     for (int i = 0; i < num_selected; i++) {
       if (selected[i] == move) {
         already_selected = 1;
@@ -96,6 +96,8 @@ void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int opt_id) {
       ret->poke_moves[i] = MOVES[id];
     }
   }
+  // 3a. Struggle copy
+  memcpy(&ret->struggle, MOVES+STRUGGLE_MOVE_ID, sizeof(Move));
   // 5. Status
   // Zero out status flags
   memset(&ret->status, 0, sizeof(ret->status));

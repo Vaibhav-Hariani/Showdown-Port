@@ -51,6 +51,7 @@ if __name__ == "__main__":
     args["train"]["env"] = "showdown"
     args["train"]["minibatch_size"] = 64
     args["train"]["use_rnn"] = False
+    # args["train"]["device"] = "cpu"
     # env_args = [1024]
     # env = pufferlib.vector.make(
     #     Showdown,

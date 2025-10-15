@@ -148,6 +148,7 @@ def evaluate_model(run, model, config, num_games=1000):
     """Evaluate a model (either from wandb artifact path or policy object) by running it in serial for num_games and logging win/lose stats. Returns (num_wins, num_losses)."""
     import torch
     device = config['device']
+    print('DEVICE', device)
     model.eval()
     env_args = [1024]
     env = pufferlib.vector.make(

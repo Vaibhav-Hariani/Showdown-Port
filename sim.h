@@ -222,7 +222,7 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
     int mi = p1_choice - 6;
     Move* mv = &b->p1.active_pokemon.pokemon->poke_moves[mi];
     prev->p1_choice = 2;
-    prev->p1_val = mv ? mv->id : -1;
+    prev->p1_val = mv ? (int)mv->id : -1;
   }
   // Encode p2
   if (p2_choice < 6) {
@@ -232,7 +232,7 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
     int mi2 = p2_choice - 6;
     Move* mv2 = &b->p2.active_pokemon.pokemon->poke_moves[mi2];
     prev->p2_choice = 2;
-    prev->p2_val = mv2 ? mv2->id : -1;
+    prev->p2_val = mv2 ? (int)mv2->id : -1;
   }
   // (Future: can optionally log opponent choice into a ring buffer if needed)
 

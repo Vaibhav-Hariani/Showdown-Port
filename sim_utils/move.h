@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../data_sim/generated_movedex.h"
 #include "../data_sim/stat_modifiers.h"
 #include "battle_structs.h"
 #include "move_structs.h"
@@ -15,7 +16,7 @@
 // for memset
 #include "string.h"
 
-static inline int calculate_damage(BattlePokemon* attacker,
+int calculate_damage(BattlePokemon* attacker,
                                    BattlePokemon* defender,
                                    Move* used_move) {
   // Base power of the move
@@ -159,6 +160,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     regular_return = 0;
   }
   // Check for PP (except Struggle and if locked into Rage)
+  //printf("VALUES %d %p %p\n", regular_return, attacker, used_move);
+  //printf("RAGE %p\n", attacker->rage); 
+  //printf("STRUGGLE %d\n", used_move->id == STRUGGLE_MOVE_ID);
   if (regular_return && attacker->rage == NULL &&
       used_move->id != STRUGGLE_MOVE_ID) {
     // Do not block here for PP exhaustion; attack() will handle replacing
@@ -191,10 +195,7 @@ inline int attack(Battle* b,
   // If the selected move has no PP (and is not Struggle), replace it with
   // a temporary Struggle move so the attack proceeds as Struggle.
   if (used_move->pp <= 0 && used_move->id != STRUGGLE_MOVE_ID) {
-    Move tmp = *used_move;
-    tmp.id = STRUGGLE_MOVE_ID;
-    tmp.pp = 0;
-    used_move = &tmp;
+    used_move = &attacker->pokemon->struggle;
     b->lastMove = used_move;
     used_move->revealed = 1;
     attacker->last_used = used_move;
@@ -328,7 +329,6 @@ int valid_move(Player* user, int move_index) {
   // least one valid move exists.
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(move->id));
-    int any = 0;
     for (int i = 0; i < 4; i++) {
       Move* m = &user->active_pokemon.moves[i];
       if (m && m->id != NO_MOVE && m->pp > 0) {

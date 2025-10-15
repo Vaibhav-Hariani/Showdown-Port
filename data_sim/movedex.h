@@ -456,7 +456,7 @@ void apply_fissure(Battle *battle,
   DLOG("%s was knocked out by Fissure!",
        get_pokemon_name(defender->pokemon->id));
 }
-// Fly - Two-turn move: flies up on turn 1 (invulnerable), attacks on turn 2\
+// Fly - Two-turn move: flies up on turn 1 (invulnerable), attacks on turn 2
 // Banned in OU
 void apply_fly(Battle *battle,
                BattlePokemon *attacker,
@@ -638,7 +638,7 @@ void apply_mimic(Battle *battle,
 void apply_minimize(Battle *battle,
                     BattlePokemon *attacker,
                     BattlePokemon *defender) {
-  attacker->stat_mods.evasion = max(attacker->stat_mods.evasion + 1, 6);
+  attacker->stat_mods.evasion = min(attacker->stat_mods.evasion + 1, 6);
   DLOG("%s's evasion rose!", get_pokemon_name(attacker->pokemon->id));
 }
 
