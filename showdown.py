@@ -1,9 +1,11 @@
 import gymnasium
 import numpy as np
 import os
+import torch
 from pufferlib.ocean.showdown import binding
 from pufferlib.ocean.showdown.py_print import ShowdownParser
 import pufferlib
+import pufferlib.pytorch
 from wandb import Table, Artifact
 
 
@@ -63,12 +65,23 @@ class Showdown(pufferlib.PufferEnv):
         binding.vec_close(self.c_envs)
 
 
-def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, game_count):
-    """Log an episode to wandb as an artifact with win/lose label."""
+def log_episode(episode_obs, episode_actions, episode_rewards, game_count):
+    """
+    Create a wandb table for an episode.
+
+    Args:
+        episode_obs: List of observations for the episode
+        episode_actions: List of actions taken
+        episode_rewards: List of rewards received
+        game_count: Game number for labeling
+
+    Returns:
+        tuple: (label, table) where label is the table name and table is the wandb Table object
+    """
     final_reward = episode_rewards[-1]
     label = f"win #{game_count}" if final_reward > 0 else f"lose #{game_count}"
-    
-    # Create table (19 columns expected by the logging consumer)
+
+    # Create table (15 columns)
     table = Table(columns=[
         "step", "action", "reward",
         "p1_active_id", "p1_active_name", "p1_active_hp", "p1_active_status", "p1_moves", "p1_move_names",
@@ -80,7 +93,7 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
         action_step = episode_actions[step_idx]
         reward_step = episode_rewards[step_idx]
 
-        parsed = ShowdownParser.parse_observation(obs_step, team_size=6)  # Updated to handle new observation space
+        parsed = ShowdownParser.parse_observation(obs_step, team_size=6)
         p1_dict = {
             'id': None,
             'name': None,
@@ -110,10 +123,13 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
             name = active.get('name')
             hp = active.get('hp_scaled')
             status = active.get('status') or {}
-            status_str = ','.join([k for k, v in status.items() if v]) or 'healthy'
+            status_str = ','.join(
+                [k for k, v in status.items() if v]) or 'healthy'
             moves_list = active.get('moves') or []
-            moves_str = ','.join([f"{m.get('id')}({m.get('pp')})" for m in moves_list])
-            move_names = ','.join([m.get('name') for m in moves_list if m.get('name')])
+            moves_str = ','.join(
+                [f"{m.get('id')}({m.get('pp')})" for m in moves_list])
+            move_names = ','.join([m.get('name')
+                                  for m in moves_list if m.get('name')])
             return dict(id=pid, name=name, hp=hp, status=status_str, moves=moves_str, move_names=move_names)
 
         p1_dict = _format_active(p1_active)
@@ -136,78 +152,103 @@ def log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, gam
             p2_dict['moves'],
             p2_dict['move_names']
         )
-    # Log the completed table once per episode
-    run.log({label: table})
 
-    # # Create artifact and add table
-    # artifact = Artifact(f"game_{game_count}_{label}", type="episode_data")
-    # artifact.add(table, f"game_{game_count}_table")
+    return label, table
 
 
-def evaluate_model(run, model, config, num_games=1000):
-    """Evaluate a model (either from wandb artifact path or policy object) by running it in serial for num_games and logging win/lose stats. Returns (num_wins, num_losses)."""
-    import torch
-    device = config['device']
-    model.eval()
-    env_args = [1024]
-    env = pufferlib.vector.make(
-        Showdown,
-        num_envs=1,
-        env_args=env_args,
-        batch_size=1,
-        backend=pufferlib.vector.Serial,
-    )
-    obs, _ = env.reset()
-    game_count = 0
-    num_wins = 0
-    num_losses = 0
-    while game_count < num_games:
-        if config['use_rnn']:
-            state = dict(
-                lstm_h=torch.zeros(
-                    obs.shape[0], model.hidden_size, device=device),
-                lstm_c=torch.zeros(
-                    obs.shape[0], model.hidden_size, device=device),
-            )
-        else:
-            state = {}
-        episode_obs = []
-        episode_actions = []
-        episode_rewards = []
-        done = False
-        while not done:
-            obs_tensor = torch.as_tensor(obs).to(device)
-            with torch.no_grad():
-                logits, value = model.forward_eval(obs_tensor, state)
-                action, logprob, _ = pufferlib.pytorch.sample_logits(logits)
-            action = action.cpu().numpy().reshape(env.action_space.shape)
-            obs, reward, terminal, truncation, info = env.step(action)
-            episode_obs.append(obs[0].copy())
-            episode_actions.append(int(action[0]))
-            episode_rewards.append(float(reward[0]))
-            if terminal[0]:
-                done = True
-                game_count += 1
-                # Only count win/loss, do not log episode artifacts
-                win = int(episode_rewards[-1] > 0)
-                loss = int(episode_rewards[-1] <= 0)
-                num_wins += win
-                num_losses += loss
-                # Log episode_obs to wandb
-                log_episode_to_wandb(run, episode_obs, episode_actions, episode_rewards, game_count)
-                obs, _ = env.reset()
+def eval(policy, config, n_games=10):
+    device = config['device'] 
+    use_rnn = config['use_rnn']
+
+    env = Showdown(num_envs=1, log_interval=n_games+1)
+    ob, _ = env.reset()
+
+    # Setup LSTM state if needed
+    state = {}
+    if use_rnn: 
+        policy_hidden_size = policy.hidden_size
+        state = dict(
+            lstm_h=torch.zeros(1, policy_hidden_size, device=device),
+            lstm_c=torch.zeros(1, policy_hidden_size, device=device),
+        )
+
+    # Statistics tracking
+    games_completed = 0
+    wins = 0
+    losses = 0
+    ties = 0
+    game_len = 0
+    game_rewards = []
+
+    # Episode tracking for wandb tables
+    episode_obs = []
+    episode_actions = []
+    episode_rewards = []
+    tables_dict = {}
+    
+    policy.eval()
+    # Run until we complete N games
+    while games_completed < n_games:
+        game_len += 1
+        print(f"Evaluating game {games_completed}: On step {game_len}", end='\r')
+        # Track observation
+        episode_obs.append(ob[0].copy())
+
+        with torch.no_grad():
+            ob_tensor = torch.as_tensor(ob).to(device)
+            logits, value = policy.forward_eval(ob_tensor, state)
+            action, logprob, _ = pufferlib.pytorch.sample_logits(logits)
+
+        # Track action
+        action_cpu = int(action.cpu().numpy()[0])
+        episode_actions.append(action_cpu)
+
+        # Step environment
+        ob, reward, done, truncated, info = env.step(action_cpu)
+
+        # Track reward
+        episode_rewards.append(float(reward[0]))
+
+        # Check for game completion
+        if done[0] or truncated[0]:
+            # Extract final reward
+            
+            final_reward = float(reward[0])
+            game_rewards.append(final_reward)
+
+            # Count wins/losses/ties
+            if final_reward > 0:
+                wins += 1
+            elif final_reward < 0:
+                losses += 1
+            else:
+                ties += 1
+            games_completed += 1
+            # Create wandb table for this episode
+            label, table = log_episode(
+                episode_obs, episode_actions, episode_rewards, games_completed)
+            tables_dict[label] = table
+
+            # Reset episode tracking
+            game_len = 0
+            episode_obs = []
+            episode_actions = []
+            episode_rewards = []
+            # Reset LSTM state if needed
+            if use_rnn:
+                state['lstm_h'].zero_()
+                state['lstm_c'].zero_()
+
+    # Cleanup
     env.close()
-    print(f"Evaluation complete: {num_wins} wins, {num_losses} losses out of {num_games} games.")
-    # Save the model as a wandb artifact
-    # Write into the comp_env folder so exported artifacts live with the compatibility
-    # environment (required when loading in an independent env).
-    model_path = os.path.abspath(os.path.join(os.getcwd(), "comp_env", "final_model.pt"))
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    torch.save(model.state_dict(), model_path)
-    artifact = Artifact("final_model", type="model")
-    artifact.add_file(model_path)
-    run.log_artifact(artifact)
-    return num_wins, num_losses
+
+    # Compute statistics
+    total_games = wins + losses + ties
+    avg_reward = np.mean(game_rewards) if game_rewards else 0.0
+
+    print(
+        f"Of {total_games} games, {wins} wins, {losses} losses, {avg_reward} reward")
+    return tables_dict
 
 
 if __name__ == "__main__":
@@ -236,6 +277,7 @@ if __name__ == "__main__":
     sps_str = f"{sps:,.0f}"
     ms_str = f"{ms_per_move:,.3f}"
     print(f"\n Showdown SPS: {sps_str}  |  ms/move: {ms_str}")
+
     # If you want to run evaluation here, add a call to evaluate_model and print the result.
     # Example (requires a model, run, config):
     # wins, losses = evaluate_model(run, model, config)

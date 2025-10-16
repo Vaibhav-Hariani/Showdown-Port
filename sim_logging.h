@@ -20,15 +20,18 @@ typedef struct {
 } Log;
 
 // Log everything in a single function
-void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves) {
-  float moves = (float)(valid_moves + invalid_moves);
-  log->num_moves += moves;
-  log->episode_length += moves;
+void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks) {
+  
+  log->n += 1.0f;
+  log->num_moves += ticks;
+  log->episode_length += ticks;
+  log->percent_valid_moves += (float) valid_moves / (float) ticks;
+  
   log->episode_return += (reward + 0.01 * invalid_moves);
-  if (reward > 0) {
+  if (reward == 1.0f) {
     log->num_won += 1.0f;
     log->perf += 1.0f;
-  } else {
+  } else if (reward == -1.0f) {
     float opp_hp = 0.0;
     for(int i = 0; i < NUM_POKE; i++) {
       opp_hp += b->p2.team[i].hp;
@@ -36,10 +39,8 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
     log->opponent_final_hp += opp_hp;
     log->num_lost += 1.0f;
   }
-  // matchup advantage is going to be slow-ish for 2 teams of 6: Removing
-  // metric entirely
-  log->percent_valid_moves += (float)valid_moves / (float)(valid_moves);
-  log->n += 1.0f;
+  
+  return;
 }
 #endif
 

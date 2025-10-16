@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     args["vec"]["num_envs"] = 24
     args["env"] = {"num_envs": 1024}
-    args["tag"] = "showdown_6v6_mini"
+    args["tag"] = "showdown_6v6_shallow"
     args["policy_name"] = "Showdown"
     args["rnn_name"] = "ShowdownLSTM"
     args["train"]["use_rnn"] = True

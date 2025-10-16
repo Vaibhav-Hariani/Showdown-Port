@@ -170,13 +170,15 @@ static inline int get_p2_choice(Sim* s, int mode) {
     action = rand() % 4 + 6;
     num_failed--;
     if (num_failed <= 0) {
-      DLOG("Failed to properly choose move");
+      DLOG("Failed to properly choose move - checking all actions");
+      // Try all possible actions (switches and moves)
       for (int i = 0; i < 10; i++) {
         if (valid_choice(2, b->p2, i, mode)) {
           return i;
         }
       }
-      // Crash the program?
+      // No valid moves available - signal this to the caller
+      DLOG("No valid moves found for opponent");
       return -1;
     }
   }
@@ -290,7 +292,7 @@ void c_reset(Sim* sim) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
     // Initialize all log metrics to zero
   } else {
-    log_episode(&sim->log, sim->battle, sim->rewards[0], sim->episode_valid_moves, sim->episode_invalid_moves);
+    log_episode(&sim->log, sim->battle, sim->rewards[0], sim->episode_valid_moves, sim->episode_invalid_moves, sim->tick);
     reset_sim(sim);
   }
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
@@ -310,48 +312,51 @@ void c_close(Sim* sim) {
 }
 
 void c_step(Sim* sim) {
+  //Reset, return battle state, and reset
   if (sim->terminals[0]) {
     c_reset(sim);
     // Reset terminal flag at start of step so model can observe if game ended
     sim->terminals[0] = 0;
+    pack_battle(sim->battle, sim->observations);
+    return;
   }
+  
+  sim->tick++;
   Battle* battle = sim->battle;
-
+  
   int raw_choice = sim->actions[0];
   // Capture active pokemon indices and HP before resolving this step
   PrevChoices step_prev = {0};
   int a = battle_step(sim, raw_choice, &step_prev);
-
   if (a == -2) {
-    // opponent ran out of valid moves
+    // opponent ran out of valid moves - treat as terminal
     sim->rewards[0] = 0.0f;
     sim->terminals[0] = 1;
+    // pack_battle(battle, sim->observations);
+    return;
   }
   if (a == -1) {
-    // Invalid move penalty (shaping only for invalid action): -0.5
+    // Invalid move penalty (shaping only for invalid action): -0.01
     sim->rewards[0] = -0.01f;
-    sim->episode_invalid_moves++;
-    // num_moves now accumulated at episode end via tick count
-    step_prev.p1_val = 0;
+    sim->episode_invalid_moves += 1;
     pack_battle(battle, sim->observations);
     return;
   }
 
-  sim->episode_valid_moves++;
-  sim->tick++;
+  sim->episode_valid_moves += 1;
   battle->mode = a;
   if (a == 0) {
     battle->mode = end_step(battle);
   }
   // No end step if a pokemon has fainted (gen1 quirk)
   battle->action_queue.q_size = 0;
+  
+  // Check for terminal state AFTER processing actions
   float r = reward(sim);
-
+  sim->rewards[0] = r;
   if (r == 1.0f || r == -1.0f) {
     sim->terminals[0] = 1;
   }
-  // Non-terminal steps yield 0 reward
-  sim->rewards[0] = r;
   pack_battle(sim->battle, sim->observations);
   return;
 }
