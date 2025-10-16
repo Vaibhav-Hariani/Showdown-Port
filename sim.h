@@ -269,13 +269,19 @@ static inline int battle_step(Sim* sim, int choice, PrevChoices* prev) {
   return mode;
 }
 
-void clear_battle(Battle* b) {
+void reset_sim(Sim* s) {
+  Battle* b = s->battle;
   // Dealing with players is already handled by the team generator
   b->action_queue.q_size = 0;
   b->turn_num = 0;
   b->lastMove = NULL;
   b->lastDamage = 0;
   b->mode = 0;
+
+  s->tick = 0;
+  s->rewards[0] = 0.0f;
+  s->episode_valid_moves = 0;
+  s->episode_invalid_moves = 0;
   return;
 }
 
@@ -284,21 +290,14 @@ void c_reset(Sim* sim) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
     // Initialize all log metrics to zero
   } else {
-    clear_battle(sim->battle);
+    log_episode(&sim->log, sim->battle, sim->rewards[0], sim->episode_valid_moves, sim->episode_invalid_moves);
+    reset_sim(sim);
   }
-  sim->tick = 0;
-  sim->rewards[0] = 0.0f;
-  sim->episode_valid_moves = 0;
-  sim->episode_invalid_moves = 0;
-  // Initialize a local prev choices struct for initial packing
-  PrevChoices initial_prev = {0};
-
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
   team_generator(&sim->battle->p1, config);
   team_generator(&sim->battle->p2, config);
 
-  initial_log(&sim->log, sim->battle);
-  pack_battle(sim->battle, sim->observations, &initial_prev);
+  pack_battle(sim->battle, sim->observations);
 }
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
@@ -331,15 +330,14 @@ void c_step(Sim* sim) {
   if (a == -1) {
     // Invalid move penalty (shaping only for invalid action): -0.5
     sim->rewards[0] = -0.01f;
-    sim->log.episode_return += -0.01f;
-    sim->log.score += -0.01f;
-    sim->log.invalid_moves += 1.0f;
-    sim->episode_invalid_moves += 1;
+    sim->episode_invalid_moves++;
     // num_moves now accumulated at episode end via tick count
     step_prev.p1_val = 0;
-    pack_battle(battle, sim->observations, &step_prev);
+    pack_battle(battle, sim->observations);
     return;
   }
+
+  sim->episode_valid_moves++;
   sim->tick++;
   battle->mode = a;
   if (a == 0) {
@@ -347,33 +345,14 @@ void c_step(Sim* sim) {
   }
   // No end step if a pokemon has fainted (gen1 quirk)
   battle->action_queue.q_size = 0;
-  sim->log.valid_moves += 1.0f;
-  sim->episode_valid_moves += 1;
   float r = reward(sim);
 
   if (r == 1.0f || r == -1.0f) {
-    // Calculate final episode stats before resetting
-    float p1_sum = 0, p2_sum = 0;
-    for (int j = 0; j < NUM_POKE; j++) {
-      p1_sum += (float) (battle->p1.team[j].hp) / (float) (battle->p1.team[j].max_hp);
-      p2_sum += (float) (battle->p2.team[j].hp) / (float) (battle->p2.team[j].max_hp);
-    }
-    float mean_p1_hp = p1_sum / NUM_POKE;
-    float mean_p2_hp = p2_sum / NUM_POKE;
-    float avg_damage_pct = (1.0f - mean_p2_hp) / sim->tick;
-    final_update(&sim->log,
-                 r,
-                 mean_p1_hp,
-                 mean_p2_hp,
-                 avg_damage_pct,
-                 sim->tick,
-                 sim->episode_valid_moves,
-                 sim->episode_invalid_moves);
     sim->terminals[0] = 1;
   }
   // Non-terminal steps yield 0 reward
   sim->rewards[0] = r;
-  pack_battle(sim->battle, sim->observations, &step_prev);
+  pack_battle(sim->battle, sim->observations);
   return;
 }
 

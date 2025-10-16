@@ -11,15 +11,11 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
 
 static int my_log(PyObject* dict, Log* log) {
   // Original Showdown metrics
-  assign_to_dict(dict, "num_games", log->n);
   assign_to_dict(dict, "num_moves", log->num_moves);
   assign_to_dict(dict, "num_won", log->num_won);
   assign_to_dict(dict, "num_lost", log->num_lost);
   assign_to_dict(dict, "percent_valid_moves", log->percent_valid_moves);
-  assign_to_dict(dict, "avg_damage_pct", log->avg_damage_pct);
-  assign_to_dict(dict, "average_move_damage", log->team_strength);
-  assign_to_dict(dict, "matchup_advantage", log->matchup_advantage);
-  assign_to_dict(dict, "avg_opponent_poke_hp", log->opponent_avg_hp);
+  assign_to_dict(dict, "opponent_final_hp", log->opponent_final_hp);
 
   // Added Squared metrics
   assign_to_dict(dict, "perf", log->perf);
@@ -27,9 +23,6 @@ static int my_log(PyObject* dict, Log* log) {
   assign_to_dict(dict, "episode_return", log->episode_return);
   assign_to_dict(dict, "episode_length", log->episode_length);
   
-  // Reward calculation parameters
-  assign_to_dict(dict, "mean_p1_hp", log->mean_p1_hp);
-  assign_to_dict(dict, "mean_p2_hp", log->mean_p2_hp);
   
   return 0;
 }

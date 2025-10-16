@@ -53,26 +53,29 @@ void perform_switch_action(Battle* battle, Action* current_action) {
   int target = current_action->action_d.switch_target;
   Player* user = current_action->User;
   Player* opponent = &battle->p1;
-    if (user == &battle->p1) {
-      opponent = &battle->p2;
-    }
+  if (user == &battle->p1) {
+    opponent = &battle->p2;
+  }
   int old_active = user->active_pokemon_index;
-  
-  // Clear opponent's immobilized flag if the switching Pokemon was using a multi-turn move
-  if (old_active >= 0 && user->active_pokemon.multi_move_len > 0 && opponent->active_pokemon.immobilized) {
-      opponent->active_pokemon.immobilized = 0;
-      DLOG("%s was freed from its bindings!",
-           get_pokemon_name(opponent->active_pokemon.pokemon->id));
+
+  // Clear opponent's immobilized flag if the switching Pokemon was using a
+  // multi-turn move
+  if (old_active >= 0 && user->active_pokemon.multi_move_len > 0 &&
+      opponent->active_pokemon.immobilized) {
+    opponent->active_pokemon.immobilized = 0;
+    DLOG("%s was freed from its bindings!",
+         get_pokemon_name(opponent->active_pokemon.pokemon->id));
   }
-  
-  // Clear user's immobilized flag if they were trapped (switching out frees them)
+
+  // Clear user's immobilized flag if they were trapped (switching out frees
+  // them)
   if (old_active >= 0 && user->active_pokemon.immobilized) {
-      user->active_pokemon.immobilized = 0;
-      // Also clear the opponent's multi-turn move
-      opponent->active_pokemon.multi_move_len = 0;
-      opponent->active_pokemon.multi_move_src = NULL;
+    user->active_pokemon.immobilized = 0;
+    // Also clear the opponent's multi-turn move
+    opponent->active_pokemon.multi_move_len = 0;
+    opponent->active_pokemon.multi_move_src = NULL;
   }
-  
+
   user->shown_pokemon |= (1 << target);
 
   memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
@@ -86,7 +89,7 @@ void perform_switch_action(Battle* battle, Action* current_action) {
   for (int i = 0; i < 4; ++i) {
     user->active_pokemon.moves[i] = user->active_pokemon.pokemon->poke_moves[i];
   }
-  
+
   if (old_active >= 0 && user->team[old_active].hp > 0) {
     DLOG("Come back %s! ", get_pokemon_name(user->team[old_active].id));
   }

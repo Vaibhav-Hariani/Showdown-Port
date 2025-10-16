@@ -61,8 +61,7 @@ if __name__ == "__main__":
 
     policy = ShowdownModel(env).cuda()
     policy = ShowdownLSTM(env.driver_env, policy).cuda() 
-    policy.load_state_dict(torch.load("/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/6v6_generalist.pt"))
-
+    
     with wandb.init(project="showdown", config=args["train"]) as run:
         args["train"]["use_rnn"] = True
         trainer = pufferl.PuffeRL(args["train"], env, policy=policy) 

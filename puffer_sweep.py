@@ -13,14 +13,13 @@ import wandb
 wandb.login()
 
 if __name__ == "__main__":
-    args = pufferl.load_config("default")
+    args = pufferl.load_config("showdown")
     args["wandb"] = True
     args["package"] = 'ocean'
-    args["policy"]["hidden_size"] = 256
-    args["policy"]["depth"] = 12
+
     args["vec"]["num_envs"] = 24
     args["env"] = {"num_envs": 1024}
-    args["tag"] = "showdown_6v6_teamgen"
+    args["tag"] = "showdown_6v6_mini"
     args["policy_name"] = "Showdown"
     args["rnn_name"] = "ShowdownLSTM"
     args["train"]["use_rnn"] = True
