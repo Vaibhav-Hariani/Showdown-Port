@@ -23,6 +23,8 @@ static int my_log(PyObject* dict, Log* log) {
   assign_to_dict(dict, "episode_return", log->episode_return);
   assign_to_dict(dict, "episode_length", log->episode_length);
   assign_to_dict(dict, "n", log->n);
+  assign_to_dict(dict, "6v6_wr", log->six_wins);
+  assign_to_dict(dict, "OU_wr", log->gen1_wins);
   
   return 0;
 }

@@ -11,7 +11,7 @@ from wandb import Table, Artifact
 
 class Showdown(pufferlib.PufferEnv):
     def __init__(
-            self, num_envs=1, render_mode=None, log_interval=10, buf=None, seed=0):
+            self, num_envs=1, render_mode=None, log_interval=1, buf=None, seed=0):
         # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
         # Followed by interleaved team data: 2 players * 6 pokemon * 7 ints each (id, move1, move2, move3, move4, hp_scaled, status_flags)
         # Total length = 4 + 84 = 88
@@ -252,7 +252,7 @@ def eval(policy, config, n_games=10):
 
 
 if __name__ == "__main__":
-    N = 24
+    N = 1
     env = Showdown(num_envs=N)
     env.reset(seed=42)
     steps = 0

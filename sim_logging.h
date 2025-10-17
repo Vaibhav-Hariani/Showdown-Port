@@ -17,10 +17,13 @@ typedef struct {
   float episode_return;
   float episode_length;
   float n;
+  // Game-specific counters (internal)
+  float gen1_wins;
+  float six_wins;
 } Log;
 
 // Log everything in a single function
-void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks) {
+void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks, int gametype) {
   
   log->n += 1.0f;
   log->num_moves += ticks;
@@ -28,6 +31,15 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
   log->percent_valid_moves += (float) valid_moves / (float) ticks;
   
   log->episode_return += (reward + 0.01 * invalid_moves);
+  // // Increment gametype-specific counters for visualization
+  if (gametype == 0) {
+      // log->six_games += 1;
+      //Approximate scaling as every other game is going to be a six game: this is a mini hack
+      if (reward == 1.0f) {log->six_wins += 2.0f;}
+  } else if (gametype == 1) {
+      // log->gen1_games += 1;
+      if (reward == 1.0f) {log->gen1_wins += 2.0f;}
+  }
   if (reward == 1.0f) {
     log->num_won += 1.0f;
     log->perf += 1.0f;

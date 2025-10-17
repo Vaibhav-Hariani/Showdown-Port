@@ -138,17 +138,21 @@ static inline void pack_poke(int16_t* row,
 
   // If all four moves have zero or negative PP, report them as Struggle
   int all_zero_pp = 1;
+  // For active pokemon, check PP in active_pokemon.moves array
+  Move* move_array = is_active ? player->active_pokemon.moves : poke->poke_moves;
   for (int k = 0; k < 4; k++) {
-    Move* m = &poke->poke_moves[k];
+    Move* m = &move_array[k];
     if (m->pp > 0) {
       all_zero_pp = 0;
       break;
     }
   }
-
+  
+  // Pack moves: use active_pokemon.moves if this is the active pokemon
+  int reveal = (player_index == 1);
   for (int k = 0; k < 4; k++) {
-    Move* m = &poke->poke_moves[k];
-    int reveal = (player_index == 1) ? 1 : (m->revealed ? 1 : 0);
+    Move* m = &move_array[k];
+    reveal = reveal || (m->revealed);
     if (reveal) {
       if (all_zero_pp) {
         // pack a temporary move as Struggle with 0 PP so we don't mutate state

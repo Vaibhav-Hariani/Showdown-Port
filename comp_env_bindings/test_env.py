@@ -7,13 +7,15 @@ from gymnasium.spaces import Space, Box
 from gymnasium.utils.env_checker import check_env
 from poke_env.battle import AbstractBattle
 from poke_env.battle import Pokemon, Move, AbstractBattle
-from poke_env.player import Player, RandomPlayer
+from poke_env.player import Player, RandomPlayer, SimpleHeuristicsPlayer
+from poke_env.teambuilder import Teambuilder
 from poke_env.environment import SinglesEnv
 
 from move_labels import MOVE_LABELS
 from pokedex_labels import POKEMON_NAMES
+from ou_teams import get_random_ou_team, OU_TEAMS
 
-from showdown_models import Showdown, ShowdownLSTM
+from pufferlib.ocean.showdown_models import Showdown, ShowdownLSTM
 
 class Embed():
     def embed_battle(self, battle: AbstractBattle):
@@ -208,8 +210,6 @@ class Embed():
         )
     
 
-    
-
 class Env(SinglesEnv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -223,64 +223,103 @@ class Env(SinglesEnv):
         }
 
 
-class SmartAgent(Player):
-    """Simple agent that chooses the move with highest base power.
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+# class SmartAgent(Player):
+#     """Simple agent that chooses the move with highest base power.
+#     """
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
 
-    def choose_move(self, battle: AbstractBattle):
-        # Choose the move with the highest base power
-        if battle.available_moves:
-            best_move_idx = 0
-            best_power = -1
+#     def choose_move(self, battle: AbstractBattle):
+#         # Choose the move with the highest base power
+#         if battle.available_moves:
+#             best_move_idx = 0
+#             best_power = -1
             
-            for i, move in enumerate(battle.available_moves):
-                # Get base power, default to 0 for status moves
-                power = move.base_power if move.base_power else 0
+#             for i, move in enumerate(battle.available_moves):
+#                 # Get base power, default to 0 for status moves
+#                 power = move.base_power if move.base_power else 0
                 
-                if power > best_power:
-                    best_power = power
-                    best_move_idx = i
+#                 if power > best_power:
+#                     best_power = power
+#                     best_move_idx = i
             
-            # Use the best move
-            return self.create_order(battle.available_moves[best_move_idx])
-        else:
-            # No moves available, try to switch to first available switch
-            if battle.available_switches:
-                return self.create_order(battle.available_switches[0])
+#             # Use the best move
+#             return self.create_order(battle.available_moves[best_move_idx])
+#         else:
+#             # No moves available, try to switch to first available switch
+#             if battle.available_switches:
+#                 return self.create_order(battle.available_switches[0])
         
-        # Ultimate fallback
-        return self.choose_random_move(battle)
+#         # Ultimate fallback
+#         return self.choose_random_move(battle)
     
+
+class OUTeambuilder(Teambuilder):
+    """Teambuilder that randomly selects from predefined RBY OU teams."""
+    
+    def __init__(self):
+        super().__init__()
+        # Convert all OU teams to showdown format and parse them
+        self.packed_teams = []
+        
+        for team_data in OU_TEAMS:
+            # Convert team_data format to showdown format string
+            showdown_team = self._convert_to_showdown_format(team_data)
+            # Parse and pack the team
+            parsed_team = self.parse_showdown_team(showdown_team)
+            packed_team = self.join_team(parsed_team)
+            self.packed_teams.append(packed_team)
+    
+    def _convert_to_showdown_format(self, team_data):
+        """Convert OU team format to showdown format string."""
+        pokemon_strings = []
+        for pokemon in team_data:
+            species = pokemon['species']
+            moves = pokemon['moves']
+            # Basic showdown format for Gen 1
+            # Species @ Item (gen1 has no items, so just species)
+            # - Move1
+            # - Move2
+            # - Move3
+            # - Move4
+            pokemon_str = f"{species}\n"
+            for move in moves:
+                pokemon_str += f"- {move}\n"
+            pokemon_strings.append(pokemon_str)
+        
+        return "\n".join(pokemon_strings)
+    
+    def yield_team(self):
+        """Return a random packed team."""
+        import random
+        return random.choice(self.packed_teams)
+
 
 class RLAgent(Player):
     """RL agent that loads a PyTorch model and uses its output vector for action selection.
     Uses the same action parsing logic as SmartAgent.
+    Includes a teambuilder that selects random teams from the OU teams list.
     """
-    def __init__(self, model_path: str, **kwargs):
+    def __init__(self, model_path: str, device='cuda', use_ou_teams=False, **kwargs):
         self.env = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
-        self.embed = Embed()
+        self.embed = Embed()        
+        
+        # If use_ou_teams is True and no team provided, create OUTeambuilder
+        if use_ou_teams and 'team' not in kwargs:
+            kwargs['team'] = OUTeambuilder()
+        
         # Load the PyTorch model
-        model = Showdown(None)
-        self.model = ShowdownLSTM(None, model)
+        model = Showdown(None, hidden_size=512)
+        self.model = ShowdownLSTM(None, policy=model, input_size=512, hidden_size=512)
         weights = torch.load(model_path, weights_only=False)
 
-
         self.model.load_state_dict(weights)
+        self.model.to(device)  # Move model to device
         self.model.eval()  # Set to evaluation mode
-        # LSTM state used by the ShowdownLSTM forward_eval path.
-        # forward_eval expects state['lstm_h'] and state['lstm_c'] shaped (batch, hidden_size)
-        hidden_size = getattr(self.model, 'hidden_size', None)
-        if hidden_size is None:
-            # fallback to 256 if unknown
-            hidden_size = 256
-        # Start with zeros (batch size 1)
-        self._state = {
-            'lstm_h': torch.zeros(1, hidden_size),
-            'lstm_c': torch.zeros(1, hidden_size),
-            'hidden': None,
-        }
+        
+        # Initialize eval state using the new method with specified device
+        self.model.init_eval_state(device=device, batch_size=1)
+        
         # Track which battle the state belongs to so we can reset on new battles
         self._last_battle_id = None
         super().__init__(**kwargs)
@@ -325,86 +364,22 @@ class RLAgent(Player):
         # Get packed observation
         packed_obs = self.embed.embed_battle(battle)
         
-        # Convert to tensor and run through model
-        obs_tensor = torch.from_numpy(packed_obs).unsqueeze(0)  # Add batch dimension
-
-        # Detect new battle and reset LSTM state when a new battle starts.
-        # Prefer explicit battle tag attributes if present, else fall back to id(battle).
+        # Detect new battle and reset LSTM state when a new battle starts
         turn = battle.turn
         if turn == 1:
-            # reset state
-            h = torch.zeros_like(self._state['lstm_h'])
-            c = torch.zeros_like(self._state['lstm_c'])
-            self._state['lstm_h'] = h
-            self._state['lstm_c'] = c
-            self._state['hidden'] = None
-        # Run model in eval/inference mode using forward_eval which uses LSTMCell
-        with torch.no_grad():
-            # forward_eval returns (logits, values) and updates self._state in-place
-            logits, values = self.model.forward_eval(obs_tensor, self._state)
-            # Convert logits to action probabilities
-            probs = torch.softmax(logits, dim=-1)
-
-        action_probs = probs.squeeze(0).cpu().numpy()
+            self.model.reset_eval_state()
+        
+        # Use the new get_action method from ShowdownLSTM
+        # It handles observation conversion, forward pass, and state updates
+        action_idx, _ = self.model.get_action(packed_obs, deterministic=False)
+        
+        # Convert action index to action probabilities for parse_action
+        # Create a one-hot-like distribution favoring the selected action
+        action_probs = np.zeros(10, dtype=np.float32)
+        action_probs[action_idx] = 1.0
         
         # Use parse_action with the probability vector
         return self.parse_action(battle, action_probs)
-
-
-def collect_training_data(n_battles=10):
-    """Collect training data showing state embeddings and actions taken"""
-    print(f"Collecting training data from {n_battles} battles...")
-    
-    async def collect_data():
-        smart_agent = RandomPlayer(battle_format="gen1randombattle")
-        random_agent = RandomPlayer(battle_format="gen1randombattle")
-        
-        training_data = []
-        
-        try:
-            for i in range(n_battles):
-                await smart_agent.battle_against(random_agent, n_battles=1)
-                
-                # Get the most recent battle
-                if smart_agent.battles:
-                    battle_tag = list(smart_agent.battles.keys())[-1]
-                    battle = smart_agent.battles[battle_tag]
-                    
-                    # For each turn in the battle, we could collect:
-                    # - The state embedding from embed_battle()
-                    # - The action taken
-                    # - The reward received
-                    
-                    # Get final state
-                    final_state = smart_agent.env.embed_battle(battle)
-                    final_reward = smart_agent.env.calc_reward(battle)
-                    
-                    training_data.append({
-                        'state': final_state,
-                        'reward': final_reward,
-                        'won': battle.won
-                    })
-                    
-                if (i + 1) % 5 == 0:
-                    print(f"Collected data from {i + 1}/{n_battles} battles")
-                    
-        except Exception as e:
-            print(f"Error collecting data: {e}")
-        
-        return training_data
-    
-    data = asyncio.run(collect_data())
-    
-    # Show some sample data
-    if data:
-        print(f"\n=== TRAINING DATA SAMPLE ===")
-        print(f"Collected {len(data)} battle records")
-        print(f"State shape: {data[0]['state'].shape}")
-        print(f"Sample state: {data[0]['state']}")
-        print(f"Sample reward: {data[0]['reward']}")
-        print(f"Sample result: {'Win' if data[0]['won'] else 'Loss'}")
-    
-    return data
 
 
 def benchmark_agents(n_battles=100):
@@ -413,110 +388,68 @@ def benchmark_agents(n_battles=100):
     
     async def run_battles():
         # Create players
-        smart_agent = SmartAgent(battle_format="gen1randombattle")
-        random_agent = RLAgent(model_path="/puffertank/Showdown_comp_env/bindings/comp_env_bindings/model_final.pt", battle_format="gen1randombattle")
-        
+        smart_agent = SimpleHeuristicsPlayer(battle_format="gen1ou", team=OUTeambuilder())
+        base_path = "/puffertank/Showdown_comp_env/bindings/comp_env_bindings/"
+        model_path = "trained_balmy_moon.pt"
+        rl_agent = RLAgent(model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
+
         # Track results and timing
         smart_wins = 0
-        random_wins = 0
+        rl_wins = 0
         battle_times = []
         battle_moves = []
-        
         # Start overall timing
         start_time = time.time()
         
-        try:
-            for i in range(n_battles):
-                # Time each individual battle
-                battle_start = time.time()
+        for i in range(n_battles):
+            # Time each individual battle
+            battle_start = time.time()
+            
+            # Play battle
+            await rl_agent.battle_against(smart_agent, n_battles=1)
+            
+            battle_end = time.time()
+            battle_duration = battle_end - battle_start
+            battle_times.append(battle_duration)
+            
+            # Check results from the most recent battle
+            if rl_agent.battles:
+                battle_tag = list(rl_agent.battles.keys())[-1]  # Get the most recent battle
+                battle = rl_agent.battles[battle_tag]
+
+                # Track number of moves in this battle
+                num_moves = battle.turn if hasattr(battle, 'turn') else 0
+                battle_moves.append(num_moves)
                 
-                # Play battle
-                await smart_agent.battle_against(random_agent, n_battles=1)
-                
-                battle_end = time.time()
-                battle_duration = battle_end - battle_start
-                battle_times.append(battle_duration)
-                
-                # Check results from the most recent battle
-                if smart_agent.battles:
-                    battle_tag = list(smart_agent.battles.keys())[-1]  # Get the most recent battle
-                    battle = smart_agent.battles[battle_tag]
+                if battle.won:
+                    rl_wins += 1
+                else:
+                    smart_wins += 1
                     
-                    # Track number of moves in this battle
-                    num_moves = battle.turn if hasattr(battle, 'turn') else 0
-                    battle_moves.append(num_moves)
-                    
-                    if battle.won:
-                        smart_wins += 1
-                    else:
-                        random_wins += 1
-                        
-                    if (i + 1) % 10 == 0:
-                        elapsed = time.time() - start_time
-                        avg_time_per_battle = elapsed / (i + 1)
-                        avg_moves = np.mean(battle_moves) if battle_moves else 0
-                        estimated_total = avg_time_per_battle * n_battles
-                        remaining = estimated_total - elapsed
-                        print(f"Completed {i + 1}/{n_battles} battles | "
-                              f"Elapsed: {elapsed:.1f}s | "
-                              f"Avg: {avg_time_per_battle:.2f}s/battle | "
-                              f"Avg moves: {avg_moves:.1f} | "
-                              f"ETA: {remaining:.1f}s")
-                        
-        except Exception as e:
-            print(f"Error during battles: {e}")
-        finally:
-            # Clean up - Players don't need explicit closing
-            pass
+                if (i + 1) % 10 == 0:
+                    avg_moves = np.mean(battle_moves) if battle_moves else 0
+                    print(f"Completed {i + 1}/{n_battles} battles", end = '\r')
         
         # Calculate timing statistics
         total_time = time.time() - start_time
         avg_battle_time = np.mean(battle_times) if battle_times else 0
         min_battle_time = np.min(battle_times) if battle_times else 0
         max_battle_time = np.max(battle_times) if battle_times else 0
-        std_battle_time = np.std(battle_times) if battle_times else 0
         
         # Calculate move statistics
         avg_moves = np.mean(battle_moves) if battle_moves else 0
-        min_moves = np.min(battle_moves) if battle_moves else 0
-        max_moves = np.max(battle_moves) if battle_moves else 0
-        std_moves = np.std(battle_moves) if battle_moves else 0
-        total_moves = np.sum(battle_moves) if battle_moves else 0
         
         # Print results with timing data
         print(f"\n=== BENCHMARK RESULTS ===")
         print(f"Smart Agent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
-        print(f"Random Agent wins: {random_wins}/{n_battles} ({random_wins/n_battles*100:.1f}%)")
-        if n_battles > 0:
-            print(f"Win rate improvement: {(smart_wins/n_battles - 0.5)*100:.1f} percentage points over random")
+        print(f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
         
         print(f"\n=== TIMING STATISTICS ===")
         print(f"Total time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
-        print(f"Average time per battle: {avg_battle_time:.2f} ± {std_battle_time:.2f} seconds")
         print(f"Fastest battle: {min_battle_time:.2f} seconds")
-        print(f"Slowest battle: {max_battle_time:.2f} seconds")
-        print(f"Battles per minute: {60/avg_battle_time:.1f}")
-        
-        print(f"\n=== MOVE STATISTICS ===")
-        print(f"Total moves across all battles: {total_moves}")
-        print(f"Average moves per battle: {avg_moves:.1f} ± {std_moves:.1f}")
-        print(f"Shortest battle: {min_moves} moves")
-        print(f"Longest battle: {max_moves} moves")
-        print(f"Moves per minute: {total_moves/total_time*60:.1f}")
-        print(f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")
-        
-        # Estimate time for different battle counts
-        print(f"\n=== TIME ESTIMATES ===")
-        for battle_count in [50, 100, 500, 1000]:
-            estimated_time = avg_battle_time * battle_count
-            if estimated_time < 60:
-                print(f"{battle_count} battles: ~{estimated_time:.1f} seconds")
-            elif estimated_time < 3600:
-                print(f"{battle_count} battles: ~{estimated_time/60:.1f} minutes")
-            else:
-                print(f"{battle_count} battles: ~{estimated_time/3600:.1f} hours")
-        
-        return smart_wins, random_wins
+        print(f"Slowest battle: {max_battle_time:.2f} seconds")        
+        print(f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")        
+        return smart_wins, rl_wins
     
     # Run the async battles
     return asyncio.run(run_battles())
@@ -534,4 +467,4 @@ if __name__ == "__main__":
     
     # Run benchmark
     print("\nRunning agent benchmark...")
-    benchmark_agents(n_battles=100)  # Run 100 battles to see timing data
+    benchmark_agents(n_battles=500)  # Run 100 battles to see timing data

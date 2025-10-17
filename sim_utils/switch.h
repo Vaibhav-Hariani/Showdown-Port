@@ -78,6 +78,13 @@ void perform_switch_action(Battle* battle, Action* current_action) {
 
   user->shown_pokemon |= (1 << target);
 
+  // Before clearing the old active pokemon, copy revealed flags back to base pokemon
+  if (old_active >= 0) {
+    for (int i = 0; i < 4; ++i) {
+      user->team[old_active].poke_moves[i].revealed = user->active_pokemon.moves[i].revealed;
+    }
+  }
+
   memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
   user->active_pokemon_index = target;
   user->active_pokemon.pokemon = &user->team[target];
