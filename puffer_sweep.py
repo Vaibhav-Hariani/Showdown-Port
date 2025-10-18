@@ -17,9 +17,7 @@ if __name__ == "__main__":
     args["wandb"] = True
     args["package"] = 'ocean'
 
-    args["vec"]["num_envs"] = 24
-    args["env"] = {"num_envs": 1024}
-    args["tag"] = "showdown_6v6_smart_opponent"
+    args["tag"] = "showdown_final_sweep"
     args["policy_name"] = "Showdown"
     args["rnn_name"] = "ShowdownLSTM"
     args["train"]["use_rnn"] = True

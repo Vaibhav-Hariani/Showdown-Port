@@ -20,11 +20,10 @@ if __name__ == "__main__":
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     args["train"]["env"] = "showdown"
-
     env_args = [1024, 2]
     env = pufferlib.vector.make(
         Showdown,
-        num_envs=24,
+        num_envs=4,
         env_args=env_args,
         batch_size=4,
         backend=pufferlib.vector.Multiprocessing,
@@ -35,23 +34,18 @@ if __name__ == "__main__":
     args["train"]["use_rnn"] = True
     policy = ShowdownLSTM(env.driver_env, policy,input_size=512,hidden_size=512).cuda()
     base_path = f'/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/'
-    model_name = "checkpoint_311"
+    model_name = "woven_field"
     best_wr = 0
 
     policy.load_state_dict(torch.load(f'{base_path}{model_name}.pt'))
     # with torch.no_grad():
     with wandb.init(project="showdown", config=args["train"]) as run:
         trainer = pufferl.PuffeRL(args["train"], env, policy=policy) 
-        for epoch in range(1000):
-            # Run evaluation and training
+        for epoch in range(100):
             trainer.evaluate()
             logs = trainer.train()
             if logs:
                 wandb.log(logs)
-            #     wr = logs.get("environment/num_won", 0)
-            #     if wr > best_wr:
-            #         best_wr = wr
-            #         torch.save(policy.state_dict(), f'{base_path}checkpoint_{epoch}.pt')
         trainer.print_dashboard()
         trainer.close()
         # generate wandb artifacts to step through model

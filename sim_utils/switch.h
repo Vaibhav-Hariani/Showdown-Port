@@ -24,16 +24,9 @@ int valid_switch(Player cur, int target_loc) {
       cur.active_pokemon.pokemon->hp > 0 &&
       cur.active_pokemon.no_switch != SWITCH_STOP_NONE) {
     const char* name = get_pokemon_name(cur.active_pokemon.pokemon->id);
-    if (cur.active_pokemon.no_switch == SWITCH_STOP_RAGE) {
-      DLOG("Switch Ignored: %s is locked into Rage!", name);
-    } else if (cur.active_pokemon.no_switch == SWITCH_STOP_SOLAR_BEAM) {
-      DLOG("Switch Ignored: %s is charging Solar Beam!", name);
-    } else {
-      DLOG("Switch Ignored: %s cannot switch right now!", name);
-    }
+    DLOG("Switch Ignored: %s locked in!", name);
     return 0;
   }
-
   return 1;
 }
 

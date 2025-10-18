@@ -10,6 +10,7 @@ from poke_env.battle import Pokemon, Move, AbstractBattle
 from poke_env.player import Player, RandomPlayer, SimpleHeuristicsPlayer
 from poke_env.teambuilder import Teambuilder
 from poke_env.environment import SinglesEnv
+from poke_env.ps_client.server_configuration import ServerConfiguration, ShowdownServerConfiguration
 
 from move_labels import MOVE_LABELS
 from pokedex_labels import POKEMON_NAMES
@@ -17,10 +18,11 @@ from ou_teams import get_random_ou_team, OU_TEAMS
 
 from pufferlib.ocean.showdown_models import Showdown, ShowdownLSTM
 
+
 class Embed():
     def embed_battle(self, battle: AbstractBattle):
         return self._packed_embed(battle)
-     
+
     # Helpers for packed form --------------------------------------------
     @staticmethod
     def _encode_hp_percent(mon):
@@ -55,8 +57,10 @@ class Embed():
             return 0
         move_id = (move.id or 0) & 0xFF
         pp = int(getattr(move, "current_pp", getattr(move, "pp", 0)))
-        if pp < 0: pp = 0
-        if pp > 31: pp = 31
+        if pp < 0:
+            pp = 0
+        if pp > 31:
+            pp = 31
         val = move_id | (pp << 8)
         if disabled:
             val |= (1 << 13)
@@ -159,7 +163,7 @@ class Embed():
             return mons + [None]*(6-len(mons))
 
         p1_team = ordered_team(battle.team)
-        
+
         # Use natural ordering from poke-env - no caching needed
         p2_team = ordered_team(battle.opponent_team)
 
@@ -181,7 +185,8 @@ class Embed():
             mon = p1_team[slot]
             if mon:
                 obs[base+0] = species_id(mon, mon is p1a)
-                moves = list(mon.moves.values()) if hasattr(mon,'moves') else []
+                moves = list(mon.moves.values()) if hasattr(
+                    mon, 'moves') else []
                 for mi in range(4):
                     mv = moves[mi] if mi < len(moves) else None
                     obs[base+1+mi] = pack_move_py(mv)
@@ -192,7 +197,7 @@ class Embed():
             if mon2:
                 # Species id always present once mon object exists (considered revealed)
                 obs[base2+0] = species_id(mon2, mon2 is p2a)
-                if hasattr(mon2,'moves'):
+                if hasattr(mon2, 'moves'):
                     moves2 = list(mon2.moves.values())
                     for mi in range(4):
                         mv = moves2[mi] if mi < len(moves2) else None
@@ -208,7 +213,7 @@ class Embed():
         return self.reward_computing_helper(
             battle, fainted_value=2.0, hp_value=1.0, victory_value=30.0
         )
-    
+
 
 class Env(SinglesEnv):
     def __init__(self, **kwargs):
@@ -223,45 +228,14 @@ class Env(SinglesEnv):
         }
 
 
-# class SmartAgent(Player):
-#     """Simple agent that chooses the move with highest base power.
-#     """
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-
-#     def choose_move(self, battle: AbstractBattle):
-#         # Choose the move with the highest base power
-#         if battle.available_moves:
-#             best_move_idx = 0
-#             best_power = -1
-            
-#             for i, move in enumerate(battle.available_moves):
-#                 # Get base power, default to 0 for status moves
-#                 power = move.base_power if move.base_power else 0
-                
-#                 if power > best_power:
-#                     best_power = power
-#                     best_move_idx = i
-            
-#             # Use the best move
-#             return self.create_order(battle.available_moves[best_move_idx])
-#         else:
-#             # No moves available, try to switch to first available switch
-#             if battle.available_switches:
-#                 return self.create_order(battle.available_switches[0])
-        
-#         # Ultimate fallback
-#         return self.choose_random_move(battle)
-    
-
 class OUTeambuilder(Teambuilder):
     """Teambuilder that randomly selects from predefined RBY OU teams."""
-    
+
     def __init__(self):
         super().__init__()
         # Convert all OU teams to showdown format and parse them
         self.packed_teams = []
-        
+
         for team_data in OU_TEAMS:
             # Convert team_data format to showdown format string
             showdown_team = self._convert_to_showdown_format(team_data)
@@ -269,7 +243,7 @@ class OUTeambuilder(Teambuilder):
             parsed_team = self.parse_showdown_team(showdown_team)
             packed_team = self.join_team(parsed_team)
             self.packed_teams.append(packed_team)
-    
+
     def _convert_to_showdown_format(self, team_data):
         """Convert OU team format to showdown format string."""
         pokemon_strings = []
@@ -286,9 +260,9 @@ class OUTeambuilder(Teambuilder):
             for move in moves:
                 pokemon_str += f"- {move}\n"
             pokemon_strings.append(pokemon_str)
-        
+
         return "\n".join(pokemon_strings)
-    
+
     def yield_team(self):
         """Return a random packed team."""
         import random
@@ -300,26 +274,29 @@ class RLAgent(Player):
     Uses the same action parsing logic as SmartAgent.
     Includes a teambuilder that selects random teams from the OU teams list.
     """
+
     def __init__(self, model_path: str, device='cuda', use_ou_teams=False, **kwargs):
-        self.env = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
-        self.embed = Embed()        
-        
+        self.env = Env(battle_format=kwargs.get(
+            "battle_format", "gen1randombattle"))
+        self.embed = Embed()
+
         # If use_ou_teams is True and no team provided, create OUTeambuilder
         if use_ou_teams and 'team' not in kwargs:
             kwargs['team'] = OUTeambuilder()
-        
+
         # Load the PyTorch model
         model = Showdown(None, hidden_size=512)
-        self.model = ShowdownLSTM(None, policy=model, input_size=512, hidden_size=512)
+        self.model = ShowdownLSTM(
+            None, policy=model, input_size=512, hidden_size=512)
         weights = torch.load(model_path, weights_only=False)
 
         self.model.load_state_dict(weights)
         self.model.to(device)  # Move model to device
         self.model.eval()  # Set to evaluation mode
-        
+
         # Initialize eval state using the new method with specified device
         self.model.init_eval_state(device=device, batch_size=1)
-        
+
         # Track which battle the state belongs to so we can reset on new battles
         self._last_battle_id = None
         super().__init__(**kwargs)
@@ -328,20 +305,20 @@ class RLAgent(Player):
     def parse_action(self, battle: AbstractBattle, action):
         """
         Convert action vector to Pokemon Showdown order.
-        
+
         Args:
             action: Probability vector of length 10 from model output
         """
-     
+
         # Sort actions by probability (highest first)
         action_probs = [(i, prob) for i, prob in enumerate(action)]
         action_probs.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Try each action in order of preference
         for action_idx, prob in action_probs:
             if prob <= 0:
                 continue
-                
+
             # 0-5 switch slots
             if 0 <= action_idx <= 5:
                 team_mons = list(battle.team.values())
@@ -349,35 +326,35 @@ class RLAgent(Player):
                     target_mon = team_mons[action_idx]
                     # Check if this Pokemon is in available_switches
                     if target_mon in battle.available_switches:
-                        return self.create_order(target_mon) 
-                                    
+                        return self.create_order(target_mon)
+
             # 6-9 move slots
             elif 6 <= action_idx <= 9:
                 move_idx = action_idx - 6
                 if move_idx < len(battle.available_moves):
                     return self.create_order(battle.available_moves[move_idx])
-        
+
         # Fallback to random move
         return self.choose_random_move(battle)
 
     def choose_move(self, battle: AbstractBattle):
         # Get packed observation
         packed_obs = self.embed.embed_battle(battle)
-        
+
         # Detect new battle and reset LSTM state when a new battle starts
         turn = battle.turn
         if turn == 1:
             self.model.reset_eval_state()
-        
+
         # Use the new get_action method from ShowdownLSTM
         # It handles observation conversion, forward pass, and state updates
         action_idx, _ = self.model.get_action(packed_obs, deterministic=False)
-        
+
         # Convert action index to action probabilities for parse_action
         # Create a one-hot-like distribution favoring the selected action
         action_probs = np.zeros(10, dtype=np.float32)
         action_probs[action_idx] = 1.0
-        
+
         # Use parse_action with the probability vector
         return self.parse_action(battle, action_probs)
 
@@ -385,13 +362,15 @@ class RLAgent(Player):
 def benchmark_agents(n_battles=100):
     """Run multiple battles and collect statistics with timing data"""
     print(f"Starting benchmark with {n_battles} battles...")
-    
+
     async def run_battles():
         # Create players
-        smart_agent = SimpleHeuristicsPlayer(battle_format="gen1ou", team=OUTeambuilder())
+        smart_agent = SimpleHeuristicsPlayer(
+            battle_format="gen1ou", team=OUTeambuilder())
         base_path = "/puffertank/Showdown_comp_env/bindings/comp_env_bindings/"
-        model_path = "trained_balmy_moon.pt"
-        rl_agent = RLAgent(model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
+        model_path = "woven_field.pt"
+        rl_agent = RLAgent(
+            model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
 
         # Track results and timing
         smart_wins = 0
@@ -400,71 +379,133 @@ def benchmark_agents(n_battles=100):
         battle_moves = []
         # Start overall timing
         start_time = time.time()
-        
+
         for i in range(n_battles):
             # Time each individual battle
             battle_start = time.time()
-            
+
             # Play battle
             await rl_agent.battle_against(smart_agent, n_battles=1)
-            
+
             battle_end = time.time()
             battle_duration = battle_end - battle_start
             battle_times.append(battle_duration)
-            
+
             # Check results from the most recent battle
             if rl_agent.battles:
-                battle_tag = list(rl_agent.battles.keys())[-1]  # Get the most recent battle
+                # Get the most recent battle
+                battle_tag = list(rl_agent.battles.keys())[-1]
                 battle = rl_agent.battles[battle_tag]
 
                 # Track number of moves in this battle
                 num_moves = battle.turn if hasattr(battle, 'turn') else 0
                 battle_moves.append(num_moves)
-                
+
                 if battle.won:
                     rl_wins += 1
                 else:
                     smart_wins += 1
-                    
+
                 if (i + 1) % 10 == 0:
                     avg_moves = np.mean(battle_moves) if battle_moves else 0
-                    print(f"Completed {i + 1}/{n_battles} battles", end = '\r')
-        
+                    print(f"Completed {i + 1}/{n_battles} battles", end='\r')
+
         # Calculate timing statistics
         total_time = time.time() - start_time
         avg_battle_time = np.mean(battle_times) if battle_times else 0
         min_battle_time = np.min(battle_times) if battle_times else 0
         max_battle_time = np.max(battle_times) if battle_times else 0
-        
+
         # Calculate move statistics
         avg_moves = np.mean(battle_moves) if battle_moves else 0
-        
+
         # Print results with timing data
         print(f"\n=== BENCHMARK RESULTS ===")
-        print(f"Smart Agent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
-        print(f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
-        
+        print(
+            f"Smart Agent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
+        print(
+            f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
+
         print(f"\n=== TIMING STATISTICS ===")
-        print(f"Total time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+        print(
+            f"Total time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
         print(f"Fastest battle: {min_battle_time:.2f} seconds")
-        print(f"Slowest battle: {max_battle_time:.2f} seconds")        
-        print(f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")        
+        print(f"Slowest battle: {max_battle_time:.2f} seconds")
+        print(
+            f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")
         return smart_wins, rl_wins
-    
+
     # Run the async battles
     return asyncio.run(run_battles())
 
 
+async def run_server_battles():
+    """Connect to server and continuously accept battles"""
+    # Server configuration (websocket + authentication endpoint)
+    server_base = "http://pokeagentshowdown.com.insecure.psim.us"
+    # poke-env expects a ServerConfiguration namedtuple (websocket_url, authentication_url)
+    from poke_env.ps_client.server_configuration import ServerConfiguration
+    from poke_env.ps_client.account_configuration import AccountConfiguration
+
+    PokeAgentServerConfiguration = ServerConfiguration(
+        "ws://pokeagentshowdown.com:8000/showdown/websocket",
+        "https://play.pokemonshowdown.com/action.php?",
+    )
+
+    # Account username to use on the server
+    username = "PAC-Puffer"
+    password = 'aadQhyAC%5$F3!t'
+    account = AccountConfiguration(username, password)
+
+    # Load the model
+    base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+    model_path = "final_choice_selfplay.pt"
+
+    print(f"Loading model from {base_path}{model_path}...")
+
+    rl_agent = RLAgent(
+        model_path=f"{base_path}{model_path}",
+        use_ou_teams=True,
+        battle_format="gen1ou",
+        server_configuration=PokeAgentServerConfiguration,
+        account_configuration=account,
+        accept_open_team_sheet=True,
+        start_listening=True,
+    )
+
+    print(f"✓ Connected to {server_base} as {username}")
+    print("✓ Model loaded successfully")
+    print("✓ Waiting for battle challenges...")
+    print("✓ Agent will continuously accept new games")
+    print("\nPress Ctrl+C to stop\n")
+
+    # Continuously accept every incoming challenge and keep statistics
+    async def accept_loop():
+        while True:
+            try:
+                await rl_agent.ladder(n_games=1)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                print(f"Warning: accept loop error: {e}")
+                await asyncio.sleep(1)
+
+    async def stats_loop():
+        while True:
+            await asyncio.sleep(5)
+            num_battles = len(rl_agent.battles)
+            wins = sum(1 for b in rl_agent.battles.values()
+                       if getattr(b, 'won', False))
+            losses = num_battles - wins
+            print(
+                f"Stats: {num_battles} battles played | {wins} wins | {losses} losses")
+
+    await asyncio.gather(accept_loop(), stats_loop())
+
+
 if __name__ == "__main__":
-    print("Testing Pokemon agents with embed_battle pipeline...")
-    
-    # Test basic environment setup
-    print("✓ Environment setup complete!")
-    
-    # # Collect some training data to show the pipeline
-    # print("\nCollecting training data...")
-    # training_data = collect_training_data(n_battles=5)
-    
-    # Run benchmark
-    print("\nRunning agent benchmark...")
-    benchmark_agents(n_battles=500)  # Run 100 battles to see timing data
+    print("Connecting to Pokemon Showdown server...")
+
+    # Run the server connection
+    benchmark_agents(n_battles=50)
+    # asyncio.run(run_server_battles())

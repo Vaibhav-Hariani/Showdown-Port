@@ -132,26 +132,28 @@ static inline int can_player_act(Player* player, int choice) {
 // Helper function to get AI player choice (P2)
 static inline int get_p2_choice(Sim* sim, int mode) {
   Battle* b = sim->battle;
-  
+  int action = 6 + (rand() % 4);
+  // GEN_1_OU: original behavior (strategic AI)
   if (mode == 3 || mode == 2) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
-  int action = select_best_move_choice(&b->p2, &b->p1);
-
-  int num_failed = 10;
-  while (!(valid_choice(2, b->p2, action, mode))) {
-    action = select_best_move_choice(&b->p2, &b->p1);
-    num_failed--;
+  if (mode == 0) {
+    if (sim->gametype == GEN_1_OU) {
+      action = select_best_move_choice(&b->p2, &b->p1);
+    }
+    int num_failed = 10;
+    while (!(valid_choice(2, b->p2, action, mode)) && num_failed > 0) {
+      action = 6 + (rand() % 4);
+      num_failed--;
+    }
     if (num_failed <= 0) {
       DLOG("Failed to properly choose move - checking all actions");
-      // Try all possible actions (switches and moves)
-      for (int i = 0; i < 10; i++) {
+      for (int i = 9; i >= 0; i--) {
         if (valid_choice(2, b->p2, i, mode)) {
           return i;
         }
       }
-      // No valid moves available - signal this to the caller
       DLOG("No valid moves found for opponent");
       return -1;
     }
@@ -197,21 +199,6 @@ static inline int battle_step(Sim* sim, int p1_choice, int p2_choice) {
   if (p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
     return -2;
   }
-
-  // Encode p1
-  if (p1_choice < 6) {
-  } else if (p1_choice >= 6 && p1_choice < 10) {
-    int mi = p1_choice - 6;
-    Move* mv = &b->p1.active_pokemon.pokemon->poke_moves[mi];
-  }
-  // Encode p2
-  if (p2_choice < 6) {
-  } else if (p2_choice >= 6 && p2_choice < 10) {
-    int mi2 = p2_choice - 6;
-    Move* mv2 = &b->p2.active_pokemon.pokemon->poke_moves[mi2];
-  }
-  // (Future: can optionally log opponent choice into a ring buffer if needed)
-
   // Handle actions based on battle mode
   if (mode == 0) {
     handle_regular_mode(b, p1_choice, p2_choice);
@@ -248,22 +235,18 @@ void reset_sim(Sim* s) {
 
 void c_reset(Sim* sim) {
   if (!sim->battle) {
-    // First reset: battle not yet allocated (should have been done in sim_init)
-    // This shouldn't happen if sim_init was called, but handle it gracefully
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
   } else {
-    // Subsequent resets: log previous episode before resetting
     log_episode(&sim->log,
                 sim->battle,
-                sim->rewards[0],  // Use P1's reward for logging
+                sim->rewards[0],  
                 sim->episode_valid_moves,
                 sim->episode_invalid_moves,
                 sim->tick,
                 sim->gametype - SIX_V_SIX);
     reset_sim(sim);
   }
-  // TeamConfig config = rand() % TEAM_CONFIG_MAX;
-  TeamConfig config = rand() % 2 + SIX_V_SIX;
+  TeamConfig config = rand() % TEAM_CONFIG_MAX;
   sim->gametype = (int)config;
   team_generator(&sim->battle->p1, config);
   team_generator(&sim->battle->p2, config);
@@ -276,7 +259,7 @@ void c_render(Sim* sim) { return; }
 
 void c_close(Sim* sim) {
   if (sim->battle) {
-    free(sim->battle);  // Frees the entire slab (Battle + Teams + Moves)
+    free(sim->battle);
     sim->battle = NULL;
   }
 }
@@ -285,11 +268,9 @@ void c_step(Sim* sim) {
   // Reset, return battle state, and reset
   if (sim->terminals[0]) {
     c_reset(sim);
-    // Reset terminal flag at start of step so model can observe if game ended
     for (int i = 0; i < sim->num_agents; i++) {
       sim->terminals[i] = 0;
     }
-    // Observations already packed in c_reset
     return;
   }
 
@@ -305,7 +286,7 @@ void c_step(Sim* sim) {
   } else {
     raw_choice_p2 = get_p2_choice(sim, battle->mode);
   }
-  // Validate P1's choice
+
   if (!valid_choice(1, battle->p1, raw_choice_p1, battle->mode)) {
     // Invalid move penalty for P1
     sim->rewards[0] = -0.01f;
@@ -316,11 +297,8 @@ void c_step(Sim* sim) {
     pack_all_agents(battle, sim->num_agents, sim->observations);
     return;
   }
-  // Validate P2's choice
   if (raw_choice_p2 < 0 ||
       !valid_choice(2, battle->p2, raw_choice_p2, battle->mode)) {
-    // P2 invalid: if controlled by AI this shouldn't happen; if by policy,
-    // penalize
     if (sim->num_agents == 2) {
       sim->rewards[1] = -0.01f;
       sim->episode_invalid_moves += 1;
