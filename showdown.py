@@ -11,7 +11,11 @@ from wandb import Table, Artifact
 
 class Showdown(pufferlib.PufferEnv):
     def __init__(
-            self, num_envs=1, render_mode=None, log_interval=1, buf=None, seed=0):
+            self, num_envs=1, num_agents=1, render_mode=None, log_interval=1, buf=None, seed=0):
+        # Validate num_agents
+        if num_agents != 1 and num_agents != 2:
+            raise pufferlib.APIUsageError('Showdown supports at most 2 agents (player 1 and player 2)')
+                
         # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
         # Followed by interleaved team data: 2 players * 6 pokemon * 7 ints each (id, move1, move2, move3, move4, hp_scaled, status_flags)
         # Total length = 4 + 84 = 88
@@ -20,24 +24,29 @@ class Showdown(pufferlib.PufferEnv):
         )
         self.single_action_space = gymnasium.spaces.Discrete(10)
         self.render_mode = render_mode
-        self.num_agents = num_envs
+        self.num_agents = num_envs * num_agents  # Total agents across all envs
+        # self.agents_per_env = num_agents
         self.log_interval = log_interval
         self.num_games = 0
         super().__init__(buf)
-        self.c_envs = binding.vec_init(
-            self.observations,
-            self.actions,
-            self.rewards,
-            self.terminals,
-            self.truncations,
-            num_envs,
-            seed,
-        )
+        
+        # Create C env instances following the Convert pattern
+        c_envs = []
+        for i in range(num_envs):
+            c_env = binding.env_init(
+                self.observations[i*num_agents:(i+1)*num_agents],
+                self.actions[i*num_agents:(i+1)*num_agents],
+                self.rewards[i*num_agents:(i+1)*num_agents],
+                self.terminals[i*num_agents:(i+1)*num_agents],
+                self.truncations[i*num_agents:(i+1)*num_agents],
+                seed + i,
+                num_agents=num_agents  # Pass num_agents to C binding
+            )
+            c_envs.append(c_env)
+        
+        self.c_envs = binding.vectorize(*c_envs)
 
     def reset(self, seed=0, options=None):
-        if options:
-            # Reset a specific environmentin step, on every thousan
-            binding.env_reset(self.c_envs + options, seed)
         binding.vec_reset(self.c_envs, seed)
         self.tick = 0
         return self.observations, []
@@ -252,12 +261,14 @@ def eval(policy, config, n_games=10):
 
 
 if __name__ == "__main__":
-    N = 1
-    env = Showdown(num_envs=N)
+    N = 12
+    num_agents = 2  # Test with 2 agents to see P2 moves
+    env = Showdown(num_envs=N,num_agents=num_agents)
+
     env.reset(seed=42)
     steps = 0
-    CACHE = int(1e6 * N)
-    actions = np.random.randint(6, 9, (CACHE, N))
+    CACHE = 1024
+    actions = np.random.randint(0, 9, (CACHE, env.num_agents))
     i = 0
     import time
 
@@ -266,14 +277,14 @@ if __name__ == "__main__":
     info = None
     while time.time() - start < 10:
         obs, rewards, terminals, trunc, info_tmp = env.step(actions[i % CACHE])
-        steps += N
+        steps += env.num_agents
         i += 1
         if info_tmp:
             info = info_tmp
         # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
-    sps = steps / duration if duration > 0 else 0
-    ms_per_move = (1000.0 / sps) if sps > 0 else 0.0
+    sps = steps / duration
+    ms_per_move = (1000.0 / sps)
     sps_str = f"{sps:,.0f}"
     ms_str = f"{ms_per_move:,.3f}"
     print(f"\n Showdown SPS: {sps_str}  |  ms/move: {ms_str}")

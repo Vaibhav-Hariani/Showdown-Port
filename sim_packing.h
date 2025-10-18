@@ -3,7 +3,7 @@
 
 #include "sim_utils/battle.h"
 #include "sim_utils/move.h"
-#include "stdint.h"
+#include <stdint.h>
 
 typedef struct {
   int16_t p1_choice;  // raw encoded choice (switch idx or move slot)
@@ -33,7 +33,11 @@ static inline void pack_poke(int16_t* row,
                              int is_active,
                              int hidden);
 
-void pack_battle(Battle* b, int16_t* out);
+// Pack observation for a specific player's perspective
+void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out);
+
+// Pack observations for all agents (up to 2 agents)
+void pack_all_agents(Battle* b, int num_agents, int16_t* out);
 
 // ============================================================================
 // Implementation
@@ -171,38 +175,53 @@ static inline void pack_poke(int16_t* row,
   row[6] = pack_status_and_volatiles(player, poke_index);
 }
 
-void pack_battle(Battle* b, int16_t* out) {
-  // Header: only active stat mods for both players (no previous-choice fields)
-  stat_mods* p1mods = &b->p1.active_pokemon.stat_mods;
-  stat_mods* p2mods = &b->p2.active_pokemon.stat_mods;
-  out[0] = pack_attack_def_specA_specD(p1mods);
-  out[1] = pack_stat_acc_eva(p1mods);
-  out[2] = pack_attack_def_specA_specD(p2mods);
-  out[3] = pack_stat_acc_eva(p2mods);
+// Pack observation from observer's perspective (opponent's unrevealed Pokemon are hidden)
+void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
+  // Header: stat mods for observer (first 2 ints) then opponent (next 2 ints)
+  stat_mods* observer_mods = &observer->active_pokemon.stat_mods;
+  stat_mods* opponent_mods = &opponent->active_pokemon.stat_mods;
+  out[0] = pack_attack_def_specA_specD(observer_mods);
+  out[1] = pack_stat_acc_eva(observer_mods);
+  out[2] = pack_attack_def_specA_specD(opponent_mods);
+  out[3] = pack_stat_acc_eva(opponent_mods);
 
-  // Pokémon rows (interleaved)
+  // Determine which player index (1 or 2) to use for gating revealed moves
+  int observer_index = (observer == &b->p1) ? 1 : 2;
+  int opponent_index = (observer == &b->p1) ? 2 : 1;
+
+  // Pokémon rows (interleaved: observer slot 0, opponent slot 0, observer slot 1, ...)
   for (int slot = 0; slot < PACK_TEAM_SLOTS; slot++) {
-    int interleave_index_p1 = slot * 2 + 0;
-    int base_offset_p1 =
-        PACK_HEADER_INTS + interleave_index_p1 * PACK_POKE_INTS;
-    pack_poke(out + base_offset_p1,
-              &b->p1,
-              1,
+    // Observer's Pokemon (always fully visible)
+    int interleave_index_observer = slot * 2 + 0;
+    int base_offset_observer = PACK_HEADER_INTS + interleave_index_observer * PACK_POKE_INTS;
+    pack_poke(out + base_offset_observer,
+              observer,
+              observer_index,
               slot,
-              (slot == b->p1.active_pokemon_index),
-              0);
+              (slot == observer->active_pokemon_index),
+              0);  // not hidden
 
-    int hidden = 0;
-    if (!(b->p1.shown_pokemon & (1u << slot))) hidden = 1;
-    int interleave_index_p2 = slot * 2 + 1;
-    int base_offset_p2 =
-        PACK_HEADER_INTS + interleave_index_p2 * PACK_POKE_INTS;
-    pack_poke(out + base_offset_p2,
-              &b->p2,
-              2,
+    // Opponent's Pokemon (hidden if not revealed)
+    int hidden = !(observer->shown_pokemon & (1u << slot));
+    int interleave_index_opponent = slot * 2 + 1;
+    int base_offset_opponent = PACK_HEADER_INTS + interleave_index_opponent * PACK_POKE_INTS;
+    pack_poke(out + base_offset_opponent,
+              opponent,
+              opponent_index,
               slot,
-              (slot == b->p2.active_pokemon_index),
+              (slot == opponent->active_pokemon_index),
               hidden);
+  }
+}
+
+// Pack observations for all agents (up to 2 agents)
+void pack_all_agents(Battle* b, int num_agents, int16_t* out) {
+  // Pack from P1's perspective
+  pack_battle(b, &b->p1, &b->p2, out);
+  
+  if (num_agents == 2) {
+    // Pack from P2's perspective
+    pack_battle(b, &b->p2, &b->p1, out + PACK_TOTAL_INTS);
   }
 }
 

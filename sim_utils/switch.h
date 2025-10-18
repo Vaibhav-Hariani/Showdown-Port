@@ -11,6 +11,11 @@ int valid_switch(Player cur, int target_loc) {
     DLOG("Switch Ignored: Target Pokémon has fainted.");
     return 0;
   }
+  if(cur.team[target_loc].id == MISSINGNO) {
+    DLOG("Switch Ignored: Target Pokémon is MISSINGNO.");
+    return 0;
+  }
+  
   if (cur.active_pokemon_index == target_loc) {
     DLOG("Switch ignored: Pokémon already active.");
     return 0;

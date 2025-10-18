@@ -4,8 +4,9 @@
 #include "../env_binding.h"
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
-  // env->size = unpack(kwargs, "size");
-  // init(env);
+  // Default to 1 agent (P1 controlled by policy, P2 is AI)
+  env->num_agents = 1;
+  env->num_agents = unpack(kwargs, "num_agents");
   return 0;
 }
 

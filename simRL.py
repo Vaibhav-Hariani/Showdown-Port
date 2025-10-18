@@ -10,7 +10,7 @@ from torch import nn
 import wandb
 import numpy as np
 
-# wandb.login()
+wandb.login()
 
 
 # from pufferlib.vector import autotune
@@ -20,7 +20,8 @@ if __name__ == "__main__":
     args["package"] = 'ocean'
     args["policy"] = "puffer"
     args["train"]["env"] = "showdown"
-    env_args = [1024]
+
+    env_args = [1024, 2]
     env = pufferlib.vector.make(
         Showdown,
         num_envs=24,
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     args["train"]["use_rnn"] = True
     policy = ShowdownLSTM(env.driver_env, policy,input_size=512,hidden_size=512).cuda()
     base_path = f'/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/'
-    model_name = "balmy_moon"
+    model_name = "checkpoint_311"
     best_wr = 0
 
     policy.load_state_dict(torch.load(f'{base_path}{model_name}.pt'))
@@ -47,13 +48,13 @@ if __name__ == "__main__":
             logs = trainer.train()
             if logs:
                 wandb.log(logs)
-                wr = logs.get("environment/num_won", 0)
-                if wr > best_wr:
-                    best_wr = wr
-                    torch.save(policy.state_dict(), f'{base_path}checkpoint_{epoch}.pt')
+            #     wr = logs.get("environment/num_won", 0)
+            #     if wr > best_wr:
+            #         best_wr = wr
+            #         torch.save(policy.state_dict(), f'{base_path}checkpoint_{epoch}.pt')
         trainer.print_dashboard()
-        trainer.close()        
-      ##generate wandb artifacts to step through model
-        print('Evaluating trained model over 100 games...')
-        tables = eval(policy, config=args['train'], n_games=100)
+        trainer.close()
+        # generate wandb artifacts to step through model
+        print('Evaluating trained model over 30 games...')
+        tables = eval(policy, config=args['train'], n_games=30)
         wandb.log(tables)
