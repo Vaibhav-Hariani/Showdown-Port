@@ -73,8 +73,9 @@ inline void sort_queue(battlequeue* bqueue) {
 // fainted.
 //  Returns 1 if p1's pokemon have fainted
 // Returns 2 if p2's pokemon have fainted
-//  returns 3 if both pokemon have fained
+//  returns 3 if both pokemon have fainted
 int eval_queue(Battle* b) {
+  sort_queue(&b->action_queue);
   for (int i = 0; i < b->action_queue.q_size; i++) {
     Action* current_action = &b->action_queue.queue[i];
 
