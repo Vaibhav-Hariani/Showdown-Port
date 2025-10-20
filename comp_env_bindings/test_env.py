@@ -507,5 +507,5 @@ if __name__ == "__main__":
     print("Connecting to Pokemon Showdown server...")
 
     # Run the server connection
-    benchmark_agents(n_battles=50)
-    # asyncio.run(run_server_battles())
+    # benchmark_agents(n_battles=50)
+    asyncio.run(run_server_battles())

@@ -6,9 +6,7 @@ import pufferlib
 from pufferlib.ocean.showdown_models import Showdown as ShowdownModel
 from pufferlib.ocean.showdown_models import ShowdownLSTM
 import torch
-from torch import nn
 import wandb
-import numpy as np
 
 wandb.login()
 
