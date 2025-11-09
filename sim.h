@@ -139,9 +139,9 @@ static inline int get_p2_choice(Sim* sim, int mode) {
   }
   // Regular mode: choose best damaging move
   if (mode == 0) {
-    if (sim->gametype == GEN_1_OU) {
-      action = select_best_move_choice(&b->p2, &b->p1);
-    }
+    // if (sim->gametype == GEN_1_OU) {
+    //   action = select_best_move_choice(&b->p2, &b->p1);
+    // }
     int num_failed = 10;
     while (!(valid_choice(2, b->p2, action, mode)) && num_failed > 0) {
       action = 6 + (rand() % 4);

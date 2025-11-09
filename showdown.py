@@ -219,12 +219,13 @@ def eval(policy, config, n_games=10):
         episode_rewards.append(float(reward[0]))
 
         # Check for game completion
-        if done[0] or truncated[0]:
+        if done[0] or truncated[0] or game_len > 1000:
             # Extract final reward
+            if game_len > 1000:
+                break
             
             final_reward = float(reward[0])
             game_rewards.append(final_reward)
-
             # Count wins/losses/ties
             if final_reward > 0:
                 wins += 1
