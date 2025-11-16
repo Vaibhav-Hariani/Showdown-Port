@@ -4,9 +4,12 @@
 #include "../env_binding.h"
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
-  // Default to 1 agent (P1 controlled by policy, P2 is AI)
-  env->num_agents = 1;
   env->num_agents = unpack(kwargs, "num_agents");
+  if(env->num_agents == 1) {
+    env->opp_type = unpack(kwargs, "opp_type");
+  }
+  env->battle = (Battle*)calloc(1, sizeof(Battle));
+  c_reset(env);
   return 0;
 }
 

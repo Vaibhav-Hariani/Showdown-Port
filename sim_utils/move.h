@@ -201,9 +201,6 @@ inline int attack(Battle* b,
     attacker->last_used = used_move;
   }
 
-  b->lastMove = NULL;
-  b->lastDamage = 0;
-
   int pre = pre_move_check(attacker, used_move);
   if (!pre) {
     return 0;
@@ -325,8 +322,7 @@ int valid_move(Player* user, int move_index) {
   }
   // If the move has no PP, normally it's invalid – but if the player has
   // no other moves with PP remaining, allow the move so the engine can
-  // resolve it as Struggle. We only reject explicit no-PP choices when at
-  // least one valid move exists.
+  // resolve it as Struggle.
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(move->id));
     for (int i = 0; i < 4; i++) {
@@ -357,7 +353,7 @@ int add_move_to_queue(Battle* battle,
     move = battle_poke->moves + move_index;
   }
   // Add to queue by modifying the action at q_size
-  if (battle->action_queue.q_size < 15) {
+    if (battle->action_queue.q_size < ACTION_QUEUE_MAX) {
     Action* action_ptr =
         &battle->action_queue.queue[battle->action_queue.q_size];
     memset(action_ptr, 0, sizeof(Action));  // Clear any previous data

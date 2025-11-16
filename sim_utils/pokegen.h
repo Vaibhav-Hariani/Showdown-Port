@@ -97,8 +97,7 @@ void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, POKEDEX_IDS poke_id) {
   }
   // 3a. Struggle copy
   memcpy(&ret->struggle, MOVES+STRUGGLE_MOVE_ID, sizeof(Move));
-  // 5. Status
-  // Zero out status flags
+
   memset(&ret->status, 0, sizeof(ret->status));
 }
 #endif
