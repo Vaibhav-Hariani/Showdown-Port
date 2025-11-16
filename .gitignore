@@ -7,5 +7,6 @@
 *.out
 *.so
 *.pt
+.github
 resources
 __pycache__/
