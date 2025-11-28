@@ -362,7 +362,6 @@ def benchmark_agents(n_battles=100):
         model_path = "final_choice_selfplay.pt"
         rl_agent = RLAgent(
             model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
-
         # Track results and timing
         smart_wins = 0
         rl_wins = 0
@@ -497,4 +496,5 @@ if __name__ == "__main__":
     ## Benchmark state: test against SimpleHeuristicsPlayer
     benchmark_agents(n_battles=50)    
     ## Run on the showdown server itself
-    asyncio.run(run_server_battles(username="PAC-Puffer",password="Password"))
+
+    # asyncio.run(run_server_battles(username="PAC-Puffer",password="Password"))
