@@ -276,9 +276,9 @@ class RLAgent(Player):
             kwargs['team'] = OUTeambuilder()
 
         # Load the PyTorch model
-        model = Showdown(None, hidden_size=256)
+        model = Showdown(None, hidden_size=512)
         self.model = ShowdownLSTM(
-            None, policy=model, input_size=256, hidden_size=256)
+            None, policy=model, input_size=512, hidden_size=512)
         weights = torch.load(model_path, weights_only=False)
 
         self.model.load_state_dict(weights)
@@ -430,7 +430,7 @@ def benchmark_agents(n_battles=100):
     return asyncio.run(run_battles())
 
 
-async def run_server_battles():
+async def run_server_battles(username="PAC-Puffer", password=None):
     """Connect to server and continuously accept battles"""
     server_base = "http://pokeagentshowdown.com.insecure.psim.us"
 
@@ -441,16 +441,12 @@ async def run_server_battles():
         "ws://pokeagentshowdown.com:8000/showdown/websocket",
         "https://play.pokemonshowdown.com/action.php?",
     )
-
-    username = "PAC-Puffer"
-    ##Password's been changed from prior commits; This should be switched to a secrets file.
-    password = None
     account = AccountConfiguration(username, password)
 
     # Load the model
 
-    base_path = "/puffertank/Showdown/PufferLib/"
-    model_path = "model.pt"
+    base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+    model_path = "final_choice_selfplay.pt"
 
     print(f"Loading model from {base_path}{model_path}...")
 
@@ -498,5 +494,7 @@ if __name__ == "__main__":
     print("Connecting to Pokemon Showdown server...")
 
     # Run the server connection
-    benchmark_agents(n_battles=50)
-    # asyncio.run(run_server_battles())
+    ## Benchmark state: test against SimpleHeuristicsPlayer
+    benchmark_agents(n_battles=50)    
+    ## Run on the showdown server itself
+    asyncio.run(run_server_battles(username="PAC-Puffer",password="Password"))
