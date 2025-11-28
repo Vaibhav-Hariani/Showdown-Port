@@ -358,8 +358,8 @@ def benchmark_agents(n_battles=100):
         # Create players
         smart_agent = SimpleHeuristicsPlayer(
             battle_format="gen1ou", team=OUTeambuilder())
-        base_path = "/puffertank/Showdown/PufferLib/comp_env/"
-        model_path = "final_model.pt"
+        base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+        model_path = "final_choice_selfplay.pt"
         rl_agent = RLAgent(
             model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
 
