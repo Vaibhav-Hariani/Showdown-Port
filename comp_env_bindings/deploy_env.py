@@ -429,25 +429,22 @@ def benchmark_agents(n_battles=100):
     return asyncio.run(run_battles())
 
 
-async def run_server_battles(username="PAC-Puffer", password=None):
+async def run_server_battles(server_config=None, username="PAC-Puffer", password=None):
     """Connect to server and continuously accept battles"""
-    server_base = "http://pokeagentshowdown.com.insecure.psim.us"
-
     from poke_env.ps_client.server_configuration import ServerConfiguration
     from poke_env.ps_client.account_configuration import AccountConfiguration
-
-    PokeAgentServerConfiguration = ServerConfiguration(
-        "ws://pokeagentshowdown.com:8000/showdown/websocket",
-        "https://play.pokemonshowdown.com/action.php?",
+    if server_config is None:
+        PokeAgentServerConfiguration = ServerConfiguration(
+            "ws://pokeagentshowdown.com:8000/showdown/websocket",
+            "https://play.pokemonshowdown.com/action.php?",
     )
+    else:
+        PokeAgentServerConfiguration = server_config
+    
     account = AccountConfiguration(username, password)
-
     # Load the model
-
     base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
     model_path = "final_choice_selfplay.pt"
-
-    print(f"Loading model from {base_path}{model_path}...")
 
     rl_agent = RLAgent(
         model_path=f"{base_path}{model_path}",
@@ -459,7 +456,6 @@ async def run_server_battles(username="PAC-Puffer", password=None):
         start_listening=True,
     )
 
-    print(f"✓ Connected to {server_base} as {username}")
     print("✓ Model loaded successfully")
     print("✓ Waiting for battle challenges...")
     print("✓ Agent will continuously accept new games")
@@ -490,11 +486,18 @@ async def run_server_battles(username="PAC-Puffer", password=None):
 
 
 if __name__ == "__main__":
-    print("Connecting to Pokemon Showdown server...")
+
+    username = "PAC-Puffer"
+    password = "Password"
+    PokeAgentServerConfiguration = ServerConfiguration(
+            "ws://pokeagentshowdown.com:8000/showdown/websocket",
+            "https://play.pokemonshowdown.com/action.php?",
+    )
 
     # Run the server connection
-    ## Benchmark state: test against SimpleHeuristicsPlayer
-    benchmark_agents(n_battles=50)    
     ## Run on the showdown server itself
 
-    # asyncio.run(run_server_battles(username="PAC-Puffer",password="Password"))
+    asyncio.run(run_server_battles(server_config=PokeAgentServerConfiguration, username="PAC-Puffer", password="Password"))
+
+    ## Benchmark state: test against SimpleHeuristicsPlayer
+    # benchmark_agents(n_battles=50)    

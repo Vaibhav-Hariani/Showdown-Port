@@ -1,0 +1,18 @@
+{
+  "name": "showdown-damage-calc-server",
+  "version": "1.0.0",
+  "description": "Node.js server for Smogon damage calculator to interface with Python",
+  "main": "damage_calc_server.js",
+  "scripts": {
+    "start": "node damage_calc_server.js",
+    "test": "node test_server.js"
+  },
+  "dependencies": {
+    "@smogon/calc": "0.10.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
