@@ -119,8 +119,38 @@ const server = http.createServer((req, res) => {
                 const {gen, attacker, defender, move, field} = parseRequest(body);
                 const result = calculate(gen, attacker, defender, move, field);
                 
+                const response = {
+                    damage: Array.isArray(result.damage) ? result.damage : [result.damage],
+                    rawDesc: result.rawDesc,
+                    desc: result.desc,
+                    fullDesc: result.fullDesc,
+                    originalCurHP: defender.originalCurHP,
+                    attacker: {
+                        name: attacker.name,
+                        level: attacker.level,
+                        stats: attacker.stats,
+                        boosts: attacker.boosts,
+                        status: attacker.status
+                    },
+                    defender: {
+                        name: defender.name,
+                        level: defender.level,
+                        stats: defender.stats,
+                        boosts: defender.boosts,
+                        status: defender.status,
+                        curHP: defender.curHP,
+                        maxHP: defender.maxHP()
+                    },
+                    move: {
+                        name: move.name,
+                        category: move.category,
+                        type: move.type,
+                        bp: move.bp
+                    }
+                };
+                
                 res.writeHead(200);
-                res.end(JSON.stringify(result));
+                res.end(JSON.stringify(response));
             } catch (error) {
                 console.error('Calculation error:', error);
                 res.writeHead(400);

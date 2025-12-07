@@ -59,121 +59,52 @@ class FieldData:
 
 @dataclass
 class DamageResult:
-    """Result of a damage calculation - wraps the Result object from @smogon/calc."""
-    
-    # Store the raw result
     _raw: Dict[str, Any] = field(repr=False)
     
-    def __post_init__(self):
-        """Allow accessing any property from the raw result."""
-        pass
-    
     @property
-    def damage(self) -> Union[int, List[int], List[List[int]]]:
-        """Get damage value(s)."""
-        return self._raw.get('damage', 0)
+    def damage(self) -> List[int]:
+        return self._raw.get('damage', [])
     
     @property
     def description(self) -> str:
-        """Get full damage description."""
-        # The Result object may have different description methods
         if 'rawDesc' in self._raw:
-            # Build basic description from rawDesc
-            desc = self._raw.get('rawDesc', {})
+            desc = self._raw['rawDesc']
             return f"{desc.get('attackerName', '?')} {desc.get('moveName', '?')} vs. {desc.get('defenderName', '?')}"
         return str(self._raw.get('desc', ''))
     
+    @property
+    def originalCurHP(self) -> int:
+        return self._raw.get('originalCurHP', 0)
+    
+    @property
+    def attacker(self) -> Dict[str, Any]:
+        return self._raw.get('attacker', {})
+    
+    @property
+    def defender(self) -> Dict[str, Any]:
+        return self._raw.get('defender', {})
+    
+    @property
+    def move(self) -> Dict[str, Any]:
+        return self._raw.get('move', {})
+    
     def min_damage(self) -> int:
-        """Get the minimum damage roll."""
-        damage = self.damage
-        if isinstance(damage, int):
-            return damage
-        elif isinstance(damage, list):
-            if not damage:
-                return 0
-            if isinstance(damage[0], list):
-                return min(min(sublist) if sublist else 0 for sublist in damage)
-            return min(damage)
-        return 0
+        return min(self.damage) if self.damage else 0
     
     def max_damage(self) -> int:
-        """Get the maximum damage roll."""
-        damage = self.damage
-        if isinstance(damage, int):
-            return damage
-        elif isinstance(damage, list):
-            if not damage:
-                return 0
-            if isinstance(damage[0], list):
-                return max(max(sublist) if sublist else 0 for sublist in damage)
-            return max(damage)
-        return 0
+        return max(self.damage) if self.damage else 0
     
     def average_damage(self) -> float:
-        """Get the average damage across all rolls."""
-        damage = self.damage
-        if isinstance(damage, int):
-            return float(damage)
-        elif isinstance(damage, list):
-            if not damage:
-                return 0.0
-            # Handle nested arrays (multi-hit moves)
-            if isinstance(damage[0], list):
-                flat = [item for sublist in damage for item in sublist]
-                return sum(flat) / len(flat) if flat else 0.0
-            else:
-                return sum(damage) / len(damage)
-        return 0.0
+        return sum(self.damage) / len(self.damage) if self.damage else 0.0
     
     def __getattr__(self, name):
-        """Allow accessing any property from the raw result."""
         if name.startswith('_'):
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
         return self._raw.get(name)
 
 
 class DamageCalculator:
-    """
-    Python interface to the Smogon damage calculator.
-    
-    This class manages a Node.js server running the TypeScript damage calculator
-    and provides a Python API to interact with it.
-    
-    Example:
-        calc = DamageCalculator()
-        calc.start()
-        
-        attacker = PokemonData(
-            name="Gengar",
-            item="Choice Specs",
-            nature="Timid",
-            evs={"spa": 252, "spe": 252},
-            boosts={"spa": 1}
-        )
-        
-        defender = PokemonData(
-            name="Chansey",
-            item="Eviolite",
-            nature="Calm",
-            evs={"hp": 252, "spd": 252}
-        )
-        
-        move = MoveData(name="Focus Blast")
-        
-        result = calc.calculate(gen=5, attacker=attacker, defender=defender, move=move)
-        print(result.description)
-        
-        calc.stop()
-    """
-    
     def __init__(self, port: int = 3456, server_script: Optional[str] = None):
-        """
-        Initialize the damage calculator.
-        
-        Args:
-            port: Port number for the Node.js server
-            server_script: Path to the Node.js server script (auto-detected if None)
-        """
         self.port = port
         self.base_url = f"http://localhost:{port}"
         self.process: Optional[subprocess.Popen] = None
@@ -185,21 +116,9 @@ class DamageCalculator:
             server_script = os.path.join(current_dir, "damage_calc_server.js")
         
         self.server_script = server_script
-        
-        # Register cleanup on exit
         atexit.register(self.stop)
     
     def start(self, timeout: float = 5.0) -> None:
-        """
-        Start the Node.js damage calculator server.
-        
-        Args:
-            timeout: Maximum time to wait for server to start (seconds)
-        
-        Raises:
-            RuntimeError: If server fails to start
-            FileNotFoundError: If Node.js or server script not found
-        """
         import os
         
         if not os.path.exists(self.server_script):
@@ -251,7 +170,6 @@ class DamageCalculator:
         )
     
     def stop(self) -> None:
-        """Stop the Node.js damage calculator server."""
         if self.process:
             print("Stopping damage calculator server...")
             self.process.terminate()
@@ -262,7 +180,6 @@ class DamageCalculator:
             self.process = None
     
     def is_running(self) -> bool:
-        """Check if the server is running."""
         try:
             response = requests.get(f"{self.base_url}/health", timeout=1)
             return response.status_code == 200
@@ -277,28 +194,9 @@ class DamageCalculator:
         move: MoveData,
         field: Optional[FieldData] = None
     ) -> DamageResult:
-        """
-        Calculate damage for a move.
-        
-        Args:
-            gen: Pokemon generation number (1-9)
-            attacker: Attacking Pokemon configuration
-            defender: Defending Pokemon configuration
-            move: Move configuration
-            field: Battle field configuration (optional)
-        
-        Returns:
-            DamageResult with calculation results
-        
-        Raises:
-            RuntimeError: If server is not running or calculation fails
-        """
         if not self.is_running():
-            raise RuntimeError(
-                "Server is not running. Call start() first."
-            )
+            raise RuntimeError("Server is not running. Call start() first.")
         
-        # Build request payload
         payload = {
             "gen": gen,
             "attacker": {k: v for k, v in asdict(attacker).items() if v is not None and v != {} and v != False},
@@ -334,10 +232,8 @@ class DamageCalculator:
             raise RuntimeError(f"Calculation failed: {str(e)}")
     
     def __enter__(self):
-        """Context manager entry."""
         self.start()
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
         self.stop()

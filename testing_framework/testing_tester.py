@@ -23,7 +23,6 @@ def example_basic_calculation():
         attacker = PokemonData(
             name="Gengar",
             item="Choice Specs",
-            nature="Timid",
             evs={"spa": 252, "spe": 252, "hp": 4},
             boosts={"spa": 1}
         )
@@ -31,7 +30,6 @@ def example_basic_calculation():
         defender = PokemonData(
             name="Chansey",
             item="Eviolite",
-            nature="Calm",
             evs={"hp": 252, "spd": 252, "def": 4}
         )
         
