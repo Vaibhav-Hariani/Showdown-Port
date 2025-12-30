@@ -30,7 +30,7 @@ typedef struct {
   float* rewards;
   unsigned char* terminals;
   int num_agents;  // Number of agents (1 = P1 only, 2 = both P1 and P2)
-  int gametype;
+  TeamConfig gametype;
   Battle* battle;
   int tick;
   int episode_valid_moves;
@@ -52,6 +52,7 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   }
   return 0;
 }
+
 void action(Battle* b, Player* user, Player* target, int input, int type) {
   if (input >= 6) {
     input -= 6;
@@ -233,19 +234,22 @@ void reset_sim(Sim* s) {
   return;
 }
 
-void c_reset(Sim* sim) {
+init_sim(Sim* sim){
   if (!sim->battle) {
     sim->battle = (Battle*)calloc(1, sizeof(Battle));
-  } else {
-    log_episode(&sim->log,
-                sim->battle,
-                sim->rewards[0],  
-                sim->episode_valid_moves,
-                sim->episode_invalid_moves,
-                sim->tick,
-                sim->gametype - SIX_V_SIX);
-    reset_sim(sim);
   }
+  reset_sim(sim);
+}
+
+void c_reset(Sim* sim) {
+  log_episode(&sim->log,
+              sim->battle,
+              sim->rewards[0],  
+              sim->episode_valid_moves,
+              sim->episode_invalid_moves,
+              sim->tick,
+              sim->gametype);
+  reset_sim(sim);
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
   sim->gametype = (int)config;
   team_generator(&sim->battle->p1, config);
@@ -254,6 +258,7 @@ void c_reset(Sim* sim) {
   // Pack observations for all agents
   pack_all_agents(sim->battle, sim->num_agents, sim->observations);
 }
+
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
 
@@ -265,7 +270,7 @@ void c_close(Sim* sim) {
 }
 
 void c_step(Sim* sim) {
-  // Reset, return battle state, and reset
+  // Reset if terminal, return battle state
   if (sim->terminals[0]) {
     c_reset(sim);
     for (int i = 0; i < sim->num_agents; i++) {

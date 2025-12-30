@@ -23,26 +23,22 @@ typedef struct {
 } Log;
 
 // Log everything in a single function
-void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks, int gametype) {
-  
+void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks, TeamConfig gametype) { 
   log->n += 1.0f;
   log->num_moves += ticks;
   log->episode_length += ticks;
   log->percent_valid_moves += (float) valid_moves / (float) ticks;
   
   log->episode_return += (reward + 0.01 * invalid_moves);
-  // // Increment gametype-specific counters for visualization
-  if (gametype == 0) {
-      // log->six_games += 1;
-      //Approximate scaling as every other game is going to be a six game: this is a mini hack
-      if (reward == 1.0f) {log->six_wins += 2.0f;}
-  } else if (gametype == 1) {
-      // log->gen1_games += 1;
-      if (reward == 1.0f) {log->gen1_wins += 2.0f;}
-  }
+
   if (reward == 1.0f) {
     log->num_won += 1.0f;
     log->perf += 1.0f;
+    if (gametype == SIX_V_SIX) {
+      log->six_wins += 2.0f;
+    } else if (gametype == GEN_1_OU) {
+      log->gen1_wins += 2.0f;
+    }
   } else if (reward == -1.0f) {
     float opp_hp = 0.0;
     for(int i = 0; i < NUM_POKE; i++) {
@@ -51,7 +47,6 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
     log->opponent_final_hp += opp_hp;
     log->num_lost += 1.0f;
   }
-  
   return;
 }
 #endif

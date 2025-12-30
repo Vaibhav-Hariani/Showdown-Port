@@ -6,8 +6,8 @@
 *.o
 *.out
 *.so
-comp_utils/
 resources
 __pycache__/
 node_modules/
 package_lock.json
+trained_models/
