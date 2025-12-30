@@ -44,7 +44,7 @@ void generate_moveset(MOVE_IDS out_moves[4],
 }
 // take an input pokemon object, and load it with moves, DV's/EV's (optionally)
 // Can expand to take in more data
-void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, POKEDEX_IDS poke_id) {
+void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int n_moves, POKEDEX_IDS poke_id) {
   // int* evs,
   // int* ivs,
   // int* opt_level
@@ -80,7 +80,7 @@ void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, POKEDEX_IDS poke_id) {
   }
   // 3. Moves
   if (move_ids) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < n_moves; i++) {
       MOVE_IDS id = move_ids[i];
       ret->poke_moves[i] = MOVES[id];
     }
