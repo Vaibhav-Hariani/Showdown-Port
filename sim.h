@@ -7,8 +7,8 @@
 
 #include "data_sim/ou_teams.h"
 #include "data_sim/typing.h"
-#include "sim_logging.h"
-#include "sim_packing.h"
+#include "sim_utils/sim_logging.h"
+#include "sim_utils/sim_packing.h"
 #include "sim_utils/battle.h"
 #include "sim_utils/battle_queue.h"
 #include "sim_utils/move.h"
@@ -35,9 +35,29 @@ typedef struct {
   int tick;
   int episode_valid_moves;
   int episode_invalid_moves;
-  float accumulated_invalid_penalty[2];  // Per-agent: sum of penalties from
-                                         // consecutive invalid moves
+  float accumulated_invalid_penalty[2];
 } Sim;
+
+void sim_init(Sim* sim, int* poke_array) {
+  sim->battle = (Battle*)calloc(1, sizeof(Battle));
+  if (poke_array) {
+      // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
+      // Can see if there's a better way to do so?
+      Player* p1 = &sim->battle->p1;
+      POKEDEX_IDS p1_poke = poke_array[0];
+      MOVE_IDS move_id = poke_array[1];
+      //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
+      // Can add those checks in later.
+      load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
+
+      Player* p2 = &sim->battle->p1;
+      POKEDEX_IDS p2_poke = poke_array[2];
+      MOVE_IDS move2_id = poke_array[3];
+      load_pokemon(p1->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
+      return;
+  }
+  c_reset(sim);
+}
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
@@ -103,7 +123,7 @@ void team_generator(Player* p, TeamConfig config) {
     }
     for (int i = 0; i < num_poke; i++) {
       load_pokemon(
-          &p->team[i], NULL, 0);  // Load same pokemon for all slots for now
+          &p->team[i], NULL, 0, 0);  // Load same pokemon for all slots for now
     }
   }
   // Set up active pokemon

@@ -13,7 +13,7 @@ int stat_test(POKEDEX_IDS poke) {
   int learnset_len = LEARNSET_LENGTHS[poke];
   Pokemon p = {0};
   printf("Selected Pokemon: %d %s\n", poke, POKE_NAMES[poke]);
-  load_pokemon(&p, NULL, &poke);
+  load_pokemon(&p, NULL, 0, &poke);
 
   MOVE_IDS selected_moves[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   generate_moveset(selected_moves, learnset, learnset_len);
