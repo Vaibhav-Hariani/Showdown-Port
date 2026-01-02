@@ -17,8 +17,6 @@ int attack(Battle* b,
            BattlePokemon* defender,
            Move* used_move);
 
-
-
 int gen1_cmp(Action* a, Action* b) {
   int first = a->order - b->order;
   if (first != 0) return first < 0;
@@ -26,7 +24,7 @@ int gen1_cmp(Action* a, Action* b) {
   if (first != 0) return first < 0;
   first = a->speed - b->speed;
   if (first == 0) {
-    //Tie: no need for fischer yates with 2 elements, so just insert randomly
+    // Tie: no need for fischer yates with 2 elements, so just insert randomly
     return rand() % 2;
   }
   return first < 0;
@@ -97,7 +95,7 @@ inline void sort_queue(battlequeue* bqueue) {
 // Returns 2 if p2's pokemon have fainted
 //  returns 3 if both pokemon have fainted
 int eval_queue(Battle* b) {
-  //using gen1 sort for eval_queue: should be significantly faster.
+  // using gen1 sort for eval_queue: should be significantly faster.
   sort_gen1(&b->action_queue);
   // sort_queue(&b->action_queue);
   for (int i = 0; i < b->action_queue.q_size; i++) {
@@ -107,7 +105,7 @@ int eval_queue(Battle* b) {
       Move* move = current_action->action_d.m;
       Player* User = current_action->User;
       Player* Target = current_action->Target;
-      if(move == NULL) {
+      if (move == NULL) {
         DLOG("Invalid move in queue at position %d", i);
       }
 
@@ -119,8 +117,8 @@ int eval_queue(Battle* b) {
         // Clear the currently active pokemon
         User->active_pokemon = (BattlePokemon){0};
         User->active_pokemon_index = -1;
-        
-        //Removing lock from bind/wrap if user faints
+
+        // Removing lock from bind/wrap if user faints
         Target->active_pokemon.immobilized = 0;
       }
 

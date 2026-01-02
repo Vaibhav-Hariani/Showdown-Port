@@ -7,13 +7,13 @@
 
 #include "data_sim/ou_teams.h"
 #include "data_sim/typing.h"
-#include "sim_utils/sim_logging.h"
-#include "sim_utils/sim_packing.h"
 #include "sim_utils/battle.h"
 #include "sim_utils/battle_queue.h"
 #include "sim_utils/move.h"
 #include "sim_utils/opponent_behavior.h"
 #include "sim_utils/pokegen.h"
+#include "sim_utils/sim_logging.h"
+#include "sim_utils/sim_packing.h"
 
 typedef enum {
   ONE_V_ONE = 0,
@@ -23,10 +23,7 @@ typedef enum {
   TEAM_CONFIG_MAX
 } TeamConfig;
 
-typedef enum {
-  RANDOM = 0,
-  GEN1_AI = 1
-} OpponentType;
+typedef enum { RANDOM = 0, GEN1_AI = 1 } OpponentType;
 
 typedef struct {
   Log log;
@@ -35,7 +32,8 @@ typedef struct {
   float* rewards;
   unsigned char* terminals;
   int num_agents;  // Number of agents (1 = P1 only, 2 = both P1 and P2)
-  int opp_type; // If num_agents==1, this specifies the AI: 0 is random, 1 is similar to the gen1 AI
+  int opp_type;    // If num_agents==1, this specifies the AI: 0 is random, 1 is
+                   // similar to the gen1 AI
   int gametype;
   Battle* battle;
   int tick;
@@ -47,20 +45,27 @@ typedef struct {
 void sim_init(Sim* sim, int* poke_array) {
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
   if (poke_array) {
-      // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
-      // Can see if there's a better way to do so?
-      Player* p1 = &sim->battle->p1;
-      POKEDEX_IDS p1_poke = poke_array[0];
-      MOVE_IDS move_id = poke_array[1];
-      //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
-      // Can add those checks in later.
-      load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
+    // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
+    // Can see if there's a better way to do so?
+    Player* p1 = &sim->battle->p1;
+    POKEDEX_IDS p1_poke = poke_array[0];
+    MOVE_IDS move_id = poke_array[1];
+    // Important: Not currently checking if a pokemon index is valid, or if a
+    // move is in a pokemons learnset
+    //  Can add those checks in later.
+    load_pokemon(p1->team,
+                 &move_id,
+                 1,
+                 p1_poke);  // Load same pokemon for all slots for now
 
-      Player* p2 = &sim->battle->p1;
-      POKEDEX_IDS p2_poke = poke_array[2];
-      MOVE_IDS move2_id = poke_array[3];
-      load_pokemon(p1->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
-      return;
+    Player* p2 = &sim->battle->p1;
+    POKEDEX_IDS p2_poke = poke_array[2];
+    MOVE_IDS move2_id = poke_array[3];
+    load_pokemon(p1->team,
+                 &move2_id,
+                 1,
+                 p2_poke);  // Load same pokemon for all slots for now
+    return;
   }
   c_reset(sim);
 }
@@ -128,8 +133,10 @@ void team_generator(Player* p, TeamConfig config) {
       num_poke = 6;
     }
     for (int i = 0; i < num_poke; i++) {
-      load_pokemon(
-          &p->team[i], NULL, 0, 0);  // Load same pokemon for all slots for now
+      load_pokemon(&p->team[i],
+                   NULL,
+                   0,
+                   MISSINGNO);  // Load same pokemon for all slots for now
     }
   }
   // Set up active pokemon
@@ -163,6 +170,7 @@ static inline int ai_choice(Sim* sim, int mode) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
+  int action;
   if (mode == 0) {
     // if (sim->gametype == GEN_1_OU) {
     //   action = select_best_move_choice(&b->p2, &b->p1);
@@ -247,17 +255,10 @@ void reset_sim(Sim* s) {
   s->episode_invalid_moves = 0;
 }
 
-init_sim(Sim* sim){
-  if (!sim->battle) {
-    sim->battle = (Battle*)calloc(1, sizeof(Battle));
-  }
-  reset_sim(sim);
-}
-
 void c_reset(Sim* sim) {
   log_episode(&sim->log,
               sim->battle,
-              sim->rewards[0],  
+              sim->rewards[0],
               sim->episode_valid_moves,
               sim->episode_invalid_moves,
               sim->tick,
@@ -275,10 +276,7 @@ void c_reset(Sim* sim) {
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
 
-void c_close(Sim* sim) {
-  free(sim->battle);
-}
-
+void c_close(Sim* sim) { free(sim->battle); }
 
 // c_step validates inputs, executes battle step, and cleans up
 void c_step(Sim* sim) {
@@ -296,10 +294,9 @@ void c_step(Sim* sim) {
 
   int selfplay = sim->num_agents != 2;
 
-
   int raw_choice_p1 = sim->actions[0];
   int raw_choice_p2 = selfplay ? sim->actions[1] : ai_choice(sim, battle->mode);
-  
+
   if (!valid_choice(1, battle->p1, raw_choice_p1, battle->mode)) {
     // Invalid move penalty for P1
     sim->rewards[0] = -0.01f;
@@ -320,7 +317,7 @@ void c_step(Sim* sim) {
     return;
   }
 
-  // This is the core sim body: everything around this is puffer support 
+  // This is the core sim body: everything around this is puffer support
 
   // Both choices valid - execute battle step
   int a = battle_step(battle, raw_choice_p1, raw_choice_p2);
@@ -332,7 +329,7 @@ void c_step(Sim* sim) {
     battle->mode = end_step(battle);
   }
 
-  // End of sim 
+  // End of sim
 
   battle->action_queue.q_size = 0;
   float r = reward(sim);

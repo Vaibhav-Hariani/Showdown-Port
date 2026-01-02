@@ -1,7 +1,6 @@
 #include "sim.h"
 
-//TODO: Fix this entire system. Mega-borked
-
+// TODO: Fix this entire system. Mega-borked
 
 // Convert to obs of ints. We can do player1 followed by p2, array of length 2*6
 // * (4 (moves), every status effect, hp,

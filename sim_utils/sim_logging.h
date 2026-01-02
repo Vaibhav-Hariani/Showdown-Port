@@ -23,12 +23,18 @@ typedef struct {
 } Log;
 
 // Log everything in a single function
-void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_moves, int ticks, TeamConfig gametype) { 
+void log_episode(Log* log,
+                 Battle* b,
+                 int reward,
+                 int valid_moves,
+                 int invalid_moves,
+                 int ticks,
+                 TeamConfig gametype) {
   log->n += 1.0f;
   log->num_moves += ticks;
   log->episode_length += ticks;
-  log->percent_valid_moves += (float) valid_moves / (float) ticks;
-  
+  log->percent_valid_moves += (float)valid_moves / (float)ticks;
+
   log->episode_return += (reward + 0.01 * invalid_moves);
 
   if (reward == 1.0f) {
@@ -41,7 +47,7 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
     }
   } else if (reward == -1.0f) {
     float opp_hp = 0.0;
-    for(int i = 0; i < NUM_POKE; i++) {
+    for (int i = 0; i < NUM_POKE; i++) {
       opp_hp += b->p2.team[i].hp;
     }
     log->opponent_final_hp += opp_hp;
@@ -51,7 +57,7 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 }
 #endif
 
-//Keeping just in case
+// Keeping just in case
 
 // void initial_log(Log* log, Battle* battle);
 // void final_update(Log* log,
@@ -62,7 +68,6 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 //                   int tick,
 //                   int episode_valid_moves,
 //                   int episode_invalid_moves);
-
 
 // // Initial logging function - combines team HP logging and matchup scoring
 // // Called at the beginning of each game
@@ -91,8 +96,8 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 //       int power = p1_poke->poke_moves[i].power;
 //       avg_poke_power += power;
 //     }
-//     // Check this Pokemon against all of Player 2's Pokemon for matchup scoring
-//     for (int p2_idx = 0; p2_idx < NUM_POKE; p2_idx++) {
+//     // Check this Pokemon against all of Player 2's Pokemon for matchup
+//     scoring for (int p2_idx = 0; p2_idx < NUM_POKE; p2_idx++) {
 //       Pokemon* p2_poke = &battle->p2.team[p2_idx];
 
 //       // Calculate P1 Pokemon's best type effectiveness against P2 Pokemon
@@ -100,14 +105,16 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 //                         damage_chart[p1_poke->type1][p2_poke->type2];
 //       float type2_eff = damage_chart[p1_poke->type2][p2_poke->type1] *
 //                         damage_chart[p1_poke->type2][p2_poke->type2];
-//       float p1_effectiveness = (type2_eff > type1_eff) ? type2_eff : type1_eff;
+//       float p1_effectiveness = (type2_eff > type1_eff) ? type2_eff :
+//       type1_eff;
 
 //       // Calculate P2 Pokemon's best type effectiveness against P1 Pokemon
 //       type1_eff = damage_chart[p2_poke->type1][p1_poke->type1] *
 //                   damage_chart[p2_poke->type1][p1_poke->type2];
 //       type2_eff = damage_chart[p2_poke->type2][p1_poke->type1] *
 //                   damage_chart[p2_poke->type2][p1_poke->type2];
-//       float p2_effectiveness = (type2_eff > type1_eff) ? type2_eff : type1_eff;
+//       float p2_effectiveness = (type2_eff > type1_eff) ? type2_eff :
+//       type1_eff;
 
 //       // Compare effectiveness and award points
 //       if (p1_effectiveness > p2_effectiveness) {
@@ -134,13 +141,15 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 //                   int tick,
 //                   int episode_valid_moves,
 //                   int episode_invalid_moves) {
-//   // num_moves is now tracked incrementally each step; do not add tick here to
+//   // num_moves is now tracked incrementally each step; do not add tick here
+//   to
 //   // avoid double counting
 //   log->episode_length += (float)tick;
 //   // Accumulate total moves for this episode as tick count (each tick
 //   // corresponds to a move decision)
 //   log->num_moves += (float)tick;
-//   // Track wins and losses (will be summed, then averaged by n to get win/loss
+//   // Track wins and losses (will be summed, then averaged by n to get
+//   win/loss
 //   // rate)
 //   log->episode_return += reward;
 
@@ -150,7 +159,8 @@ void log_episode(Log* log, Battle* b, int reward, int valid_moves, int invalid_m
 //   } else {
 //     log->num_lost += 1.0f;
 //   }
-//   // Record final HP values at end of episode (will be summed, then averaged by
+//   // Record final HP values at end of episode (will be summed, then averaged
+//   by
 //   // n)
 //   log->mean_p1_hp += mean_p1_hp;
 //   log->mean_p2_hp += mean_p2_hp;

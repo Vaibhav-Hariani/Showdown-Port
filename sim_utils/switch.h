@@ -80,7 +80,8 @@ void perform_switch_action(Battle* battle, Action* current_action) {
   // pokemon
   if (old_active >= 0) {
     for (int i = 0; i < 4; ++i) {
-      user->team[old_active].poke_moves[i].pp = user->active_pokemon.moves[i].pp;
+      user->team[old_active].poke_moves[i].pp =
+          user->active_pokemon.moves[i].pp;
       user->team[old_active].poke_moves[i].revealed =
           user->active_pokemon.moves[i].revealed;
     }
