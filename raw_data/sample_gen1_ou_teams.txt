@@ -1,0 +1,757 @@
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sleep Powder
+- Psychic
+- Double-Edge
+- Explosion
+
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Thunder Wave
+- Recover
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Ice Beam
+- Thunderbolt
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Reflect
+- Hyper Beam
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Hyper Beam
+- Blizzard
+- Earthquake
+===
+Jynx
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Lovely Kiss
+- Psychic
+- Blizzard
+- Counter
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Stun Spore
+- Mega Drain
+- Explosion
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sing
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Surf
+- Counter
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Jynx
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Blizzard
+- Body Slam
+- Lovely Kiss
+- Rest
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Stun Spore
+- Mega Drain
+- Explosion
+
+Gengar
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Thunderbolt
+- Hypnosis
+- Explosion
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Self-Destruct
+- Hyper Beam
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Thunderbolt
+- Hyper Beam
+===
+Gengar
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Thunderbolt
+- Hypnosis
+- Explosion
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Stun Spore
+- Mega Drain
+- Explosion
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sing
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Mega Drain
+- Explosion
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Ice Beam
+- Thunderbolt
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Self-Destruct
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Gengar
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Thunderbolt
+- Hypnosis
+- Explosion
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Stun Spore
+- Mega Drain
+- Explosion
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Surf
+- Thunderbolt
+- Thunder Wave
+- Recover
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sing
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Hyper Beam
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sleep Powder
+- Psychic
+- Mega Drain
+- Explosion
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Reflect
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Hyper Beam
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Jynx
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Lovely Kiss
+- Psychic
+- Blizzard
+- Rest
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Rhydon
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Earthquake
+- Body Slam
+- Substitute
+- Rock Slide
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Ice Beam
+- Thunderbolt
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Self-Destruct
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Stun Spore
+- Mega Drain
+
+Rhydon
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Earthquake
+- Body Slam
+- Substitute
+- Rock Slide
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sing
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Self-Destruct
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Mega Drain
+- Explosion
+
+Gengar
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Hypnosis
+- Psychic
+- Thunderbolt
+- Explosion
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Ice Beam
+- Thunderbolt
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Self-Destruct
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Gengar
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Night Shade
+- Thunderbolt
+- Hypnosis
+- Explosion
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Stun Spore
+- Explosion
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Surf
+- Thunderbolt
+- Thunder Wave
+- Recover
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Counter
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Stun Spore
+- Explosion
+
+Zapdos
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Thunderbolt
+- Drill Peck
+- Thunder Wave
+- Agility
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Ice Beam
+- Thunderbolt
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Reflect
+- Rest
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+===
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Blizzard
+- Thunder Wave
+- Recover
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Stun Spore
+- Explosion
+
+Cloyster
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Blizzard
+- Clamp
+- Rest
+- Explosion
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Sing
+- Seismic Toss
+- Thunder Wave
+- Soft-Boiled
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Hyper Beam
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Earthquake
+- Blizzard
+- Hyper Beam
+
+===
+
+Starmie
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Thunder Wave
+- Recover
+- Surf
+
+Exeggutor
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Sleep Powder
+- Explosion
+- Stun Spore
+
+Alakazam
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Psychic
+- Seismic Toss
+- Recover
+- Reflect
+
+Chansey
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Seismic Toss
+- Soft-Boiled
+- Toxic
+- Ice Beam
+
+Snorlax
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Rest
+- Ice Beam
+- Self-Destruct
+
+Tauros
+Ability: No Ability
+EVs: 65535 HP / 65535 Atk / 65535 Def / 65535 SpA / 65535 SpD / 65535 Spe
+IVs: 15 HP / 15 Atk / 15 Def / 15 SpA / 15 SpD / 15 Spe
+- Body Slam
+- Hyper Beam
+- Earthquake
+- Blizzard

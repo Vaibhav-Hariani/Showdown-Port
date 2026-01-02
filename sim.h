@@ -7,8 +7,8 @@
 
 #include "data_sim/ou_teams.h"
 #include "data_sim/typing.h"
-#include "sim_logging.h"
-#include "sim_packing.h"
+#include "sim_utils/sim_logging.h"
+#include "sim_utils/sim_packing.h"
 #include "sim_utils/battle.h"
 #include "sim_utils/battle_queue.h"
 #include "sim_utils/move.h"
@@ -41,9 +41,29 @@ typedef struct {
   int tick;
   int episode_valid_moves;
   int episode_invalid_moves;
-  float accumulated_invalid_penalty[2];  // Per-agent: sum of penalties from
-                                         // consecutive invalid moves
+  float accumulated_invalid_penalty[2];
 } Sim;
+
+void sim_init(Sim* sim, int* poke_array) {
+  sim->battle = (Battle*)calloc(1, sizeof(Battle));
+  if (poke_array) {
+      // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
+      // Can see if there's a better way to do so?
+      Player* p1 = &sim->battle->p1;
+      POKEDEX_IDS p1_poke = poke_array[0];
+      MOVE_IDS move_id = poke_array[1];
+      //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
+      // Can add those checks in later.
+      load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
+
+      Player* p2 = &sim->battle->p1;
+      POKEDEX_IDS p2_poke = poke_array[2];
+      MOVE_IDS move2_id = poke_array[3];
+      load_pokemon(p1->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
+      return;
+  }
+  c_reset(sim);
+}
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
@@ -58,6 +78,7 @@ int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   }
   return 0;
 }
+
 void action(Battle* b, Player* user, Player* target, int input, int type) {
   if (input >= 6) {
     input -= 6;
@@ -108,7 +129,7 @@ void team_generator(Player* p, TeamConfig config) {
     }
     for (int i = 0; i < num_poke; i++) {
       load_pokemon(
-          &p->team[i], NULL, 0);
+          &p->team[i], NULL, 0, 0);  // Load same pokemon for all slots for now
     }
   }
   // Set up active pokemon
@@ -141,12 +162,26 @@ static inline int ai_choice(Sim* sim, int mode) {
   if (mode > 0) {
     return select_valid_switch_choice(b->p2);
   }
-  int action = -1;
-  if (sim->opp_type == GEN1_AI) {
-    action = gen1_ai_move(&b->p2, &b->p1);
-  }
-  while (!valid_move(&b->p2, action)) {
-    action = 6 + (rand() % 4);
+  // Regular mode: choose best damaging move
+  if (mode == 0) {
+    // if (sim->gametype == GEN_1_OU) {
+    //   action = select_best_move_choice(&b->p2, &b->p1);
+    // }
+    int num_failed = 10;
+    while (!(valid_choice(2, b->p2, action, mode)) && num_failed > 0) {
+      action = 6 + (rand() % 4);
+      num_failed--;
+    }
+    if (num_failed <= 0) {
+      DLOG("Failed to properly choose move - checking all actions");
+      for (int i = 9; i >= 0; i--) {
+        if (valid_choice(2, b->p2, i, mode)) {
+          return i;
+        }
+      }
+      DLOG("No valid moves found for opponent");
+      return -1;
+    }
   }
   return action;
 }
@@ -212,14 +247,21 @@ void reset_sim(Sim* s) {
   s->episode_invalid_moves = 0;
 }
 
+init_sim(Sim* sim){
+  if (!sim->battle) {
+    sim->battle = (Battle*)calloc(1, sizeof(Battle));
+  }
+  reset_sim(sim);
+}
+
 void c_reset(Sim* sim) {
   log_episode(&sim->log,
               sim->battle,
-              sim->rewards[0],
+              sim->rewards[0],  
               sim->episode_valid_moves,
               sim->episode_invalid_moves,
               sim->tick,
-              sim->gametype - SIX_V_SIX);
+              sim->gametype);
   reset_sim(sim);
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
   sim->gametype = (int)config;
@@ -229,6 +271,7 @@ void c_reset(Sim* sim) {
   // Pack observations for all agents
   pack_all_agents(sim->battle, sim->num_agents, sim->observations);
 }
+
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
 
@@ -239,7 +282,7 @@ void c_close(Sim* sim) {
 
 // c_step validates inputs, executes battle step, and cleans up
 void c_step(Sim* sim) {
-  // Reset, return battle state, and reset
+  // Reset if terminal, return battle state
   if (sim->terminals[0]) {
     c_reset(sim);
     for (int i = 0; i < sim->num_agents; i++) {

@@ -124,14 +124,39 @@ class Embed():
             pass  # no explicit bit; faint encoded via HP=0
         return bits
 
+    def ordered_team(self, team):
+        # Preserve insertion order (dict preserves insertion order in Python 3.7+)
+        mons = list(team.values())[:6]
+        return mons + [None]*(6-len(mons))
+
+    def species_id(self, mon: Pokemon, active):
+        # Use pokemon name to look up ID in POKEDEX_LABELS
+        poke_name = mon.name.lower()
+        # Handle special cases that might differ between poke-env and our labels
+        name_mapping = {
+            'nidoran-f': 'nidoranf',
+            'nidoran-m': 'nidoranm',
+            'mr. mime': 'mrmime',
+            "farfetch’d": 'farfetchd'
+        }
+        poke_name = name_mapping.get(poke_name, poke_name)
+        sid = POKEMON_NAMES.index(poke_name)
+        return -sid if active else sid
+
+    def pack_move_py(self, move: Move, disabled=False):
+        # Use move name to look up ID in MOVE_LABELS
+        if move is None:
+            return 0
+        move_name = move.id.lower()
+        move_id = MOVE_LABELS.index(move_name) & 0xFF
+        pp = int(getattr(move, 'current_pp', getattr(move, 'pp', 0)))
+        pp = pp & 0x3F  # 6 bits for PP (0-63)
+        val = move_id | (pp << 8)
+        if disabled:
+            val |= (1 << 14)  # bit 14 for disabled flag
+        return val
+
     def _packed_embed(self, battle: AbstractBattle):
-        # New compact layout: total length 88 (mirrors C packing with previous-choice fields removed)
-        # Deviations vs C implementation:
-        #   - Previous choices (indices 0..3) unavailable in poke-env -> set to -1.
-        #   - Opponent confusion / flinch bits not populated (poke-env lacks direct counters).
-        #   - Disabled flag logic not implemented (always 0 as in current C path).
-        #   - Hidden opponent species gating: opponent team dict only contains revealed mons.
-        #   - Move revelation: we infer via mv.was_used; C sets Move.revealed also from prev choices.
         obs = np.zeros(88, dtype=np.int16)
         p1a = battle.active_pokemon
         p2a = battle.opponent_active_pokemon
@@ -141,69 +166,35 @@ class Embed():
         obs[2] = self._pack_statmods1(p2a)
         obs[3] = self._pack_statmods2(p2a)
 
-        def species_id(mon: Pokemon, active):
-            # Use pokemon name to look up ID in POKEDEX_LABELS
-            poke_name = mon.name.lower()
-            # Handle special cases that might differ between poke-env and our labels
-            name_mapping = {
-                'nidoran-f': 'nidoranf',
-                'nidoran-m': 'nidoranm',
-                'mr. mime': 'mrmime',
-                "farfetch’d": 'farfetchd'
-            }
-            poke_name = name_mapping.get(poke_name, poke_name)
-            sid = POKEMON_NAMES.index(poke_name)
-            return -sid if active else sid
-
-        # NOTE: C sim uses fixed original team order. poke-env may not expose
-        # unrevealed opponents yet; we approximate with a stable per-battle slot map.
-        def ordered_team(team):
-            # Preserve insertion order (dict preserves insertion order in Python 3.7+)
-            mons = list(team.values())[:6]
-            return mons + [None]*(6-len(mons))
-
-        p1_team = ordered_team(battle.team)
+        p1_team = self.ordered_team(battle.team)
 
         # Use natural ordering from poke-env - no caching needed
-        p2_team = ordered_team(battle.opponent_team)
-
-        def pack_move_py(move: Move, disabled=False):
-            # Use move name to look up ID in MOVE_LABELS
-            if move is None:
-                return 0
-            move_name = move.id.lower()
-            move_id = MOVE_LABELS.index(move_name) & 0xFF
-            pp = int(getattr(move, 'current_pp', getattr(move, 'pp', 0)))
-            pp = pp & 0x3F  # 6 bits for PP (0-63)
-            val = move_id | (pp << 8)
-            if disabled:
-                val |= (1 << 14)  # bit 14 for disabled flag
-            return val
+        p2_team = self.ordered_team(battle.opponent_team)
 
         for slot in range(6):
             base = 4 + (slot*2)*7
             mon = p1_team[slot]
             if mon:
-                obs[base+0] = species_id(mon, mon is p1a)
+                obs[base+0] = self.species_id(mon, mon is p1a)
                 moves = list(mon.moves.values()) if hasattr(
                     mon, 'moves') else []
                 for mi in range(4):
                     mv = moves[mi] if mi < len(moves) else None
-                    obs[base+1+mi] = pack_move_py(mv)
+                    obs[base+1+mi] = self.pack_move_py(mv)
                 obs[base+5] = self._encode_hp_percent(mon)
                 obs[base+6] = self._pack_status_bits(mon)
             base2 = 4 + (slot*2+1)*7
             mon2 = p2_team[slot]
             if mon2:
                 # Species id always present once mon object exists (considered revealed)
-                obs[base2+0] = species_id(mon2, mon2 is p2a)
+                obs[base2+0] = self.species_id(mon2, mon2 is p2a)
                 if hasattr(mon2, 'moves'):
                     moves2 = list(mon2.moves.values())
                     for mi in range(4):
                         mv = moves2[mi] if mi < len(moves2) else None
                         # Show all opponent moves that are available
                         if mv:
-                            obs[base2+1+mi] = pack_move_py(mv)
+                            obs[base2+1+mi] = self.pack_move_py(mv)
                 obs[base2+5] = self._encode_hp_percent(mon2)
                 obs[base2+6] = self._pack_status_bits(mon2)
         return obs
@@ -367,11 +358,10 @@ def benchmark_agents(n_battles=100):
         # Create players
         smart_agent = SimpleHeuristicsPlayer(
             battle_format="gen1ou", team=OUTeambuilder())
-        base_path = "/puffertank/Showdown_comp_env/bindings/comp_env_bindings/"
-        model_path = "woven_field.pt"
+        base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+        model_path = "final_choice_selfplay.pt"
         rl_agent = RLAgent(
             model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
-
         # Track results and timing
         smart_wins = 0
         rl_wins = 0
@@ -422,7 +412,7 @@ def benchmark_agents(n_battles=100):
         # Print results with timing data
         print(f"\n=== BENCHMARK RESULTS ===")
         print(
-            f"Smart Agent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
+            f"Opponent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
         print(
             f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
 
@@ -439,29 +429,22 @@ def benchmark_agents(n_battles=100):
     return asyncio.run(run_battles())
 
 
-async def run_server_battles():
+async def run_server_battles(server_config=None, username="PAC-Puffer", password=None):
     """Connect to server and continuously accept battles"""
-    # Server configuration (websocket + authentication endpoint)
-    server_base = "http://pokeagentshowdown.com.insecure.psim.us"
-    # poke-env expects a ServerConfiguration namedtuple (websocket_url, authentication_url)
     from poke_env.ps_client.server_configuration import ServerConfiguration
     from poke_env.ps_client.account_configuration import AccountConfiguration
-
-    PokeAgentServerConfiguration = ServerConfiguration(
-        "ws://pokeagentshowdown.com:8000/showdown/websocket",
-        "https://play.pokemonshowdown.com/action.php?",
+    if server_config is None:
+        PokeAgentServerConfiguration = ServerConfiguration(
+            "ws://pokeagentshowdown.com:8000/showdown/websocket",
+            "https://play.pokemonshowdown.com/action.php?",
     )
-
-    # Account username to use on the server
-    username = "PAC-Puffer"
-    password = 'aadQhyAC%5$F3!t'
+    else:
+        PokeAgentServerConfiguration = server_config
+    
     account = AccountConfiguration(username, password)
-
     # Load the model
     base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
     model_path = "final_choice_selfplay.pt"
-
-    print(f"Loading model from {base_path}{model_path}...")
 
     rl_agent = RLAgent(
         model_path=f"{base_path}{model_path}",
@@ -473,7 +456,6 @@ async def run_server_battles():
         start_listening=True,
     )
 
-    print(f"✓ Connected to {server_base} as {username}")
     print("✓ Model loaded successfully")
     print("✓ Waiting for battle challenges...")
     print("✓ Agent will continuously accept new games")
@@ -504,8 +486,18 @@ async def run_server_battles():
 
 
 if __name__ == "__main__":
-    print("Connecting to Pokemon Showdown server...")
+
+    username = "PAC-Puffer"
+    password = "Password"
+    PokeAgentServerConfiguration = ServerConfiguration(
+            "ws://pokeagentshowdown.com:8000/showdown/websocket",
+            "https://play.pokemonshowdown.com/action.php?",
+    )
 
     # Run the server connection
-    # benchmark_agents(n_battles=50)
-    asyncio.run(run_server_battles())
+    ## Run on the showdown server itself
+
+    asyncio.run(run_server_battles(server_config=PokeAgentServerConfiguration, username="PAC-Puffer", password="Password"))
+
+    ## Benchmark state: test against SimpleHeuristicsPlayer
+    # benchmark_agents(n_battles=50)    

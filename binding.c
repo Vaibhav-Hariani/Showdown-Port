@@ -5,11 +5,21 @@
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
   env->num_agents = unpack(kwargs, "num_agents");
-  if(env->num_agents == 1) {
-    env->opp_type = unpack(kwargs, "opp_type");
+
+  ///Team Loading: we can check if a custom_load kwarg exists. 
+  // If it does, we load in two pokemon, with a given move. 4 kwargs.
+  // Minor problem is that we can't specify a full board, will talk to joseph about easier ways to implement this.
+  if unpack(kwargs, "test"){
+    int poke_array[4] = {0};
+    poke_array[0] = unpack(kwargs, "load_poke1");
+    poke_array[1] = unpack(kwargs, "load_move1");
+
+    poke_array[2] = unpack(kwargs, "load_poke2");
+    poke_array[3] = unpack(kwargs, "load_move2");
+    sim_init(env, poke_array);
+    return 0;
   }
-  env->battle = (Battle*)calloc(1, sizeof(Battle));
-  c_reset(env);
+  sim_init(env, NULL);
   return 0;
 }
 
