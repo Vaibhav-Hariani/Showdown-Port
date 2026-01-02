@@ -6,6 +6,8 @@
 *.o
 *.out
 *.so
+*.pt
+.github
 resources
 __pycache__/
 node_modules/
