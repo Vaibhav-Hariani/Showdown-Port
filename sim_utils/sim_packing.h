@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#include "sim_utils/battle.h"
-#include "sim_utils/move.h"
+#include "../sim_utils/battle.h"
+#include "../sim_utils/move.h"
 
 typedef struct {
   int16_t p1_choice;  // raw encoded choice (switch idx or move slot)
