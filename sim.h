@@ -17,14 +17,6 @@
 #include "sim_utils/sim_logging.h"
 #include "sim_utils/sim_packing.h"
 
-typedef enum {
-  ONE_V_ONE = 0,
-  TWO_V_TWO,
-  SIX_V_SIX,
-  GEN_1_OU,
-  TEAM_CONFIG_MAX
-} TeamConfig;
-
 typedef enum { RANDOM = 0, GEN1_AI = 1 } OpponentType;
 
 typedef struct {
@@ -43,6 +35,9 @@ typedef struct {
   int episode_invalid_moves;
   float accumulated_invalid_penalty[2];
 } Sim;
+
+// Forward declarations for functions defined later
+void c_reset(Sim* sim);
 
 void sim_init(Sim* sim, int* poke_array) {
   sim->battle = (Battle*)calloc(1, sizeof(Battle));

@@ -9,7 +9,7 @@ static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
   ///Team Loading: we can check if a custom_load kwarg exists. 
   // If it does, we load in two pokemon, with a given move. 4 kwargs.
   // Minor problem is that we can't specify a full board, will talk to joseph about easier ways to implement this.
-  if unpack(kwargs, "test"){
+  if (unpack(kwargs, "test")) {
     int poke_array[4] = {0};
     poke_array[0] = unpack(kwargs, "load_poke1");
     poke_array[1] = unpack(kwargs, "load_move1");

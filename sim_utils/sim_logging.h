@@ -1,8 +1,8 @@
 #ifndef SIM_LOGGING_H
 #define SIM_LOGGING_H
 
-#include "data_sim/typing.h"
-#include "sim_utils/battle.h"
+#include "../data_sim/typing.h"
+#include "battle.h"
 
 // Log struct definition (if not already defined)
 
@@ -21,6 +21,15 @@ typedef struct {
   float gen1_wins;
   float six_wins;
 } Log;
+
+
+typedef enum TeamConfig {
+  ONE_V_ONE = 0,
+  TWO_V_TWO,
+  SIX_V_SIX,
+  GEN_1_OU,
+  TEAM_CONFIG_MAX
+} TeamConfig;
 
 // Log everything in a single function
 void log_episode(Log* log,
