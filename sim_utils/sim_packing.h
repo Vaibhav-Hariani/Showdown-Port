@@ -153,7 +153,7 @@ static inline void pack_poke(int16_t* row,
       break;
     }
   }
-
+  
   // Pack moves: use active_pokemon.moves if this is the active pokemon
   int reveal = (player_index == 1);
   for (int k = 0; k < 4; k++) {
@@ -177,8 +177,7 @@ static inline void pack_poke(int16_t* row,
   row[6] = pack_status_and_volatiles(player, poke_index);
 }
 
-// Pack observation from observer's perspective (opponent's unrevealed Pokemon
-// are hidden)
+// Pack observation from observer's perspective (opponent's unrevealed Pokemon are hidden)
 void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
   // Header: stat mods for observer (first 2 ints) then opponent (next 2 ints)
   stat_mods* observer_mods = &observer->active_pokemon.stat_mods;

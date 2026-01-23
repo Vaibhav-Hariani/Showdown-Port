@@ -7,6 +7,8 @@
 
 #include "data_sim/ou_teams.h"
 #include "data_sim/typing.h"
+#include "sim_utils/sim_logging.h"
+#include "sim_utils/sim_packing.h"
 #include "sim_utils/battle.h"
 #include "sim_utils/battle_queue.h"
 #include "sim_utils/move.h"
@@ -45,27 +47,20 @@ typedef struct {
 void sim_init(Sim* sim, int* poke_array) {
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
   if (poke_array) {
-    // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
-    // Can see if there's a better way to do so?
-    Player* p1 = &sim->battle->p1;
-    POKEDEX_IDS p1_poke = poke_array[0];
-    MOVE_IDS move_id = poke_array[1];
-    // Important: Not currently checking if a pokemon index is valid, or if a
-    // move is in a pokemons learnset
-    //  Can add those checks in later.
-    load_pokemon(p1->team,
-                 &move_id,
-                 1,
-                 p1_poke);  // Load same pokemon for all slots for now
+      // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
+      // Can see if there's a better way to do so?
+      Player* p1 = &sim->battle->p1;
+      POKEDEX_IDS p1_poke = poke_array[0];
+      MOVE_IDS move_id = poke_array[1];
+      //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
+      // Can add those checks in later.
+      load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
 
-    Player* p2 = &sim->battle->p1;
-    POKEDEX_IDS p2_poke = poke_array[2];
-    MOVE_IDS move2_id = poke_array[3];
-    load_pokemon(p1->team,
-                 &move2_id,
-                 1,
-                 p2_poke);  // Load same pokemon for all slots for now
-    return;
+      Player* p2 = &sim->battle->p1;
+      POKEDEX_IDS p2_poke = poke_array[2];
+      MOVE_IDS move2_id = poke_array[3];
+      load_pokemon(p1->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
+      return;
   }
   c_reset(sim);
 }
