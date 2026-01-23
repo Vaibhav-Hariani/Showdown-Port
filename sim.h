@@ -14,6 +14,8 @@
 #include "sim_utils/move.h"
 #include "sim_utils/opponent_behavior.h"
 #include "sim_utils/pokegen.h"
+#include "sim_utils/sim_logging.h"
+#include "sim_utils/sim_packing.h"
 
 typedef enum {
   ONE_V_ONE = 0,
@@ -23,6 +25,8 @@ typedef enum {
   TEAM_CONFIG_MAX
 } TeamConfig;
 
+typedef enum { RANDOM = 0, GEN1_AI = 1 } OpponentType;
+
 typedef struct {
   Log log;
   int16_t* observations;
@@ -30,6 +34,8 @@ typedef struct {
   float* rewards;
   unsigned char* terminals;
   int num_agents;  // Number of agents (1 = P1 only, 2 = both P1 and P2)
+  int opp_type;    // If num_agents==1, this specifies the AI: 0 is random, 1 is
+                   // similar to the gen1 AI
   int gametype;
   Battle* battle;
   int tick;
@@ -61,7 +67,7 @@ void sim_init(Sim* sim, int* poke_array) {
 
 int valid_choice(int player_num, Player p, unsigned int input, int mode) {
   // The players input doesn't even matter
-  if (!(mode == player_num || mode == 3 || mode == 0)) {
+  if (!(mode == player_num || mode % 3 == 0)) {
     return 1;
   }
   if (input < 6) {
@@ -122,8 +128,10 @@ void team_generator(Player* p, TeamConfig config) {
       num_poke = 6;
     }
     for (int i = 0; i < num_poke; i++) {
-      load_pokemon(
-          &p->team[i], NULL, 0, 0);  // Load same pokemon for all slots for now
+      load_pokemon(&p->team[i],
+                   NULL,
+                   0,
+                   MISSINGNO);  // Load same pokemon for all slots for now
     }
   }
   // Set up active pokemon
@@ -151,14 +159,13 @@ static inline int can_player_act(Player* player, int choice) {
 }
 
 // Helper function to get AI player choice (P2)
-static inline int get_p2_choice(Sim* sim, int mode) {
+static inline int ai_choice(Sim* sim, int mode) {
   Battle* b = sim->battle;
-  int action = 6 + (rand() % 4);
-  // GEN_1_OU: original behavior (strategic AI)
-  if (mode == 3 || mode == 2) {
+  if (mode > 0) {
     return select_valid_switch_choice(b->p2);
   }
   // Regular mode: choose best damaging move
+  int action;
   if (mode == 0) {
     // if (sim->gametype == GEN_1_OU) {
     //   action = select_best_move_choice(&b->p2, &b->p1);
@@ -181,7 +188,6 @@ static inline int get_p2_choice(Sim* sim, int mode) {
   }
   return action;
 }
-
 // Helper function to handle regular battle mode (no fainted Pokemon)
 static inline void handle_regular_mode(Battle* b,
                                        int p1_choice,
@@ -209,17 +215,8 @@ static inline void handle_fainted_mode(Battle* b,
   }
 }
 
-static inline int battle_step(Sim* sim, int p1_choice, int p2_choice) {
-  Battle* b = sim->battle;
+static inline int battle_step(Battle* b, int p1_choice, int p2_choice) {
   int mode = b->mode;
-
-  // Validate player choices
-  if (!valid_choice(1, b->p1, p1_choice, mode)) {
-    return -1;
-  }
-  if (p2_choice < 0 || !valid_choice(2, b->p2, p2_choice, mode)) {
-    return -2;
-  }
   // Handle actions based on battle mode
   if (mode == 0) {
     handle_regular_mode(b, p1_choice, p2_choice);
@@ -251,17 +248,16 @@ void reset_sim(Sim* s) {
   }
   s->episode_valid_moves = 0;
   s->episode_invalid_moves = 0;
-  return;
 }
 
 void c_reset(Sim* sim) {
   log_episode(&sim->log,
               sim->battle,
-              sim->rewards[0],  
+              sim->rewards[0],
               sim->episode_valid_moves,
               sim->episode_invalid_moves,
               sim->tick,
-              sim->gametype - SIX_V_SIX);
+              sim->gametype);
   reset_sim(sim);
   TeamConfig config = rand() % TEAM_CONFIG_MAX;
   sim->gametype = (int)config;
@@ -271,18 +267,15 @@ void c_reset(Sim* sim) {
   // Pack observations for all agents
   pack_all_agents(sim->battle, sim->num_agents, sim->observations);
 }
+
 // No rendering: bare text
 void c_render(Sim* sim) { return; }
 
-void c_close(Sim* sim) {
-  if (sim->battle) {
-    free(sim->battle);
-    sim->battle = NULL;
-  }
-}
+void c_close(Sim* sim) { free(sim->battle); }
 
+// c_step validates inputs, executes battle step, and cleans up
 void c_step(Sim* sim) {
-  // Reset, return battle state, and reset
+  // Reset if terminal, return battle state
   if (sim->terminals[0]) {
     c_reset(sim);
     for (int i = 0; i < sim->num_agents; i++) {
@@ -294,15 +287,10 @@ void c_step(Sim* sim) {
   sim->tick++;
   Battle* battle = sim->battle;
 
-  int raw_choice_p1 = sim->actions[0];
-  int raw_choice_p2;
+  int selfplay = sim->num_agents != 2;
 
-  // Get P2 choice: from policy if num_agents==2, else from AI
-  if (sim->num_agents == 2) {
-    raw_choice_p2 = sim->actions[1];
-  } else {
-    raw_choice_p2 = get_p2_choice(sim, battle->mode);
-  }
+  int raw_choice_p1 = sim->actions[0];
+  int raw_choice_p2 = selfplay ? sim->actions[1] : ai_choice(sim, battle->mode);
 
   if (!valid_choice(1, battle->p1, raw_choice_p1, battle->mode)) {
     // Invalid move penalty for P1
@@ -314,40 +302,37 @@ void c_step(Sim* sim) {
     pack_all_agents(battle, sim->num_agents, sim->observations);
     return;
   }
-  if (raw_choice_p2 < 0 ||
-      !valid_choice(2, battle->p2, raw_choice_p2, battle->mode)) {
-    if (sim->num_agents == 2) {
-      sim->rewards[1] = -0.01f;
-      sim->episode_invalid_moves += 1;
-      if (sim->accumulated_invalid_penalty[1] < 0.5f) {
-        sim->accumulated_invalid_penalty[1] += 0.01f;
-      }
-      pack_all_agents(battle, sim->num_agents, sim->observations);
-      return;
-    } else {
-      // AI opponent ran out of valid moves - treat as terminal
-      sim->rewards[0] = 0.0f;
-      sim->terminals[0] = 1;
-      return;
+  if (!selfplay && !valid_choice(2, battle->p2, raw_choice_p2, battle->mode)) {
+    sim->rewards[1] = -0.01f;
+    sim->episode_invalid_moves += 1;
+    if (sim->accumulated_invalid_penalty[1] < 0.5f) {
+      sim->accumulated_invalid_penalty[1] += 0.01f;
     }
+    pack_all_agents(battle, sim->num_agents, sim->observations);
+    return;
   }
-  // Both choices valid - execute battle step
-  int a = battle_step(sim, raw_choice_p1, raw_choice_p2);
 
+  // This is the core sim body: everything around this is puffer support
+
+  // Both choices valid - execute battle step
+  int a = battle_step(battle, raw_choice_p1, raw_choice_p2);
   sim->episode_valid_moves += 1;
   battle->mode = a;
+
+  // No end step if a pokemon has fainted (gen1 quirk)
   if (a == 0) {
     battle->mode = end_step(battle);
   }
-  // No end step if a pokemon has fainted (gen1 quirk)
-  battle->action_queue.q_size = 0;
 
+  // End of sim
+
+  battle->action_queue.q_size = 0;
   float r = reward(sim);
   if (r == 1.0f || r == -1.0f) {
     // Terminal: P1 wins (+1) or loses (-1)
     sim->rewards[0] = r;
     sim->terminals[0] = 1;
-    if (sim->num_agents == 2) {
+    if (!selfplay) {
       sim->rewards[1] = -r;  // P2 gets opposite reward
       sim->terminals[1] = 1;
     }
@@ -355,7 +340,7 @@ void c_step(Sim* sim) {
     // Non-terminal: apply accumulated penalty per agent
     sim->rewards[0] = sim->accumulated_invalid_penalty[0];
     sim->accumulated_invalid_penalty[0] = 0.0f;
-    if (sim->num_agents == 2) {
+    if (!selfplay) {
       sim->rewards[1] = sim->accumulated_invalid_penalty[1];
       sim->accumulated_invalid_penalty[1] = 0.0f;
     }

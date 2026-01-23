@@ -11,11 +11,11 @@ int valid_switch(Player cur, int target_loc) {
     DLOG("Switch Ignored: Target Pokémon has fainted.");
     return 0;
   }
-  if(cur.team[target_loc].id == MISSINGNO) {
+  if (cur.team[target_loc].id == MISSINGNO) {
     DLOG("Switch Ignored: Target Pokémon is MISSINGNO.");
     return 0;
   }
-  
+
   if (cur.active_pokemon_index == target_loc) {
     DLOG("Switch ignored: Pokémon already active.");
     return 0;
@@ -31,12 +31,12 @@ int valid_switch(Player cur, int target_loc) {
 }
 
 void add_switch(Battle* b, Player* user, int target_loc, int type) {
-  if (b->action_queue.q_size >= 15) {
+  if (b->action_queue.q_size >= ACTION_QUEUE_MAX) {
     DLOG("Action queue full, cannot add switch action.");
     return;
   }
   Action* cur_action = (b->action_queue.queue) + b->action_queue.q_size;
-  memset(cur_action, 0, sizeof(Action));
+  // memset(cur_action, 0, sizeof(Action));
   cur_action->action_type = switch_action;
   cur_action->User = user;
   cur_action->action_d.switch_target = target_loc;
@@ -76,14 +76,17 @@ void perform_switch_action(Battle* battle, Action* current_action) {
 
   user->shown_pokemon |= (1 << target);
 
-  // Before clearing the old active pokemon, copy revealed flags back to base pokemon
+  // Before clearing the old active pokemon, copy revealed flags back to base
+  // pokemon
   if (old_active >= 0) {
     for (int i = 0; i < 4; ++i) {
-      user->team[old_active].poke_moves[i].revealed = user->active_pokemon.moves[i].revealed;
+      user->team[old_active].poke_moves[i].pp =
+          user->active_pokemon.moves[i].pp;
+      user->team[old_active].poke_moves[i].revealed =
+          user->active_pokemon.moves[i].revealed;
     }
   }
-
-  memset(&user->active_pokemon, 0, sizeof(BattlePokemon));
+  reset_battle_pokemon(&user->active_pokemon);
   user->active_pokemon_index = target;
   user->active_pokemon.pokemon = &user->team[target];
   user->active_pokemon.stats = user->active_pokemon.pokemon->stats;
@@ -91,9 +94,9 @@ void perform_switch_action(Battle* battle, Action* current_action) {
   user->active_pokemon.type2 = user->active_pokemon.pokemon->type2;
   user->active_pokemon.sleep_ctr = user->active_pokemon.pokemon->status.sleep;
   // Copy base Pokemon's moves into the active_pokemon moves array
-  for (int i = 0; i < 4; ++i) {
-    user->active_pokemon.moves[i] = user->active_pokemon.pokemon->poke_moves[i];
-  }
+  memcpy(user->active_pokemon.moves,
+         user->active_pokemon.pokemon->poke_moves,
+         sizeof(user->active_pokemon.moves));
 
   if (old_active >= 0 && user->team[old_active].hp > 0) {
     DLOG("Come back %s! ", get_pokemon_name(user->team[old_active].id));

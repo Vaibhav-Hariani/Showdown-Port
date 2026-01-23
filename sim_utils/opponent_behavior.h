@@ -33,7 +33,7 @@ int get_highest_damage_move_index(Player* player) {
 }
 
 // Select best move considering type effectiveness, STAB, and move power
-int select_best_move_choice(Player* user, Player* opponent) {
+int gen1_ai_move(Player* user, Player* opponent) {
   BattlePokemon* opponent_active = &opponent->active_pokemon;
 
   BattlePokemon* active_pokemon = &user->active_pokemon;
@@ -44,9 +44,7 @@ int select_best_move_choice(Player* user, Player* opponent) {
   // for moves whose type matches the user's type1 or type2.
   for (int i = 0; i < 4; i++) {
     Move* move = &active_pokemon->pokemon->poke_moves[i];
-    if (!move) continue;
-    // Skip moves with no PP or no base power (status moves)
-    if (move->pp <= 0 || move->power <= 0) continue;
+    if (!move || move->pp <= 0 || move->power <= 0) continue;
 
     float base_damage = (float)move->power;
     // Calculate type effectiveness against opponent's types
@@ -63,14 +61,10 @@ int select_best_move_choice(Player* user, Player* opponent) {
 
     // Effective damage = base power × type effectiveness × stab
     float effective_damage = base_damage * total_type_mod * stab;
-    // Penalize moves with a recharge phase (Hyper Beam, Solar Beam)
+    // Custom penalty for recharge moves (Hyper Beam, Solar Beam)
     if (move->id == HYPER_BEAM_MOVE_ID || move->id == SOLAR_BEAM_MOVE_ID) {
       effective_damage *= 0.5f;
     }
-
-    // small tie-breaker: prefer higher PP remaining
-    effective_damage += ((float)move->pp) * 0.001f;
-
     if (effective_damage > max_effective_damage) {
       max_effective_damage = effective_damage;
       best_move_index = i;

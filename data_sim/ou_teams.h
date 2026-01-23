@@ -594,7 +594,6 @@ void load_team_from_ou(Player* p, int team_index) {
   if (team_index < 0) {
     team_index = rand() % num_ou_teams;
   }
-
   // Load 6 pokemon for the team
   for (int i = 0; i < 6; i++) {
     load_pokemon(&p->team[i], (MOVE_IDS*)ou_teams[team_index][i].moves, ou_teams[team_index][i].id);

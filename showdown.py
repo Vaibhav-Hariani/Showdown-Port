@@ -1,14 +1,12 @@
 import gymnasium
 import numpy as np
-import os
-import torch
-import pufferlib
 from pufferlib.ocean.showdown import binding
+import pufferlib
 
 
 class Showdown(pufferlib.PufferEnv):
     def __init__(
-            self, num_envs=1, num_agents=1, render_mode=None, log_interval=1, buf=None, seed=0):
+            self, num_envs=1, num_agents=1, opp_type=0, render_mode=None, log_interval=10, buf=None, seed=0):
         # Validate num_agents
         if num_agents != 1 and num_agents != 2:
             raise pufferlib.APIUsageError('Showdown supports at most 2 agents (player 1 and player 2)')
@@ -37,7 +35,8 @@ class Showdown(pufferlib.PufferEnv):
                 self.terminals[i*num_agents:(i+1)*num_agents],
                 self.truncations[i*num_agents:(i+1)*num_agents],
                 seed + i,
-                num_agents=num_agents  # Pass num_agents to C binding
+                num_agents=num_agents,
+                opp_type=opp_type  # Pass num_agents to C binding
             )
             c_envs.append(c_env)
         
@@ -65,21 +64,22 @@ class Showdown(pufferlib.PufferEnv):
 
     def render(self):
         binding.vec_render(self.c_envs, 0)
-        # return ShowdownParser.pretty_print(self.observations)
 
     def close(self):
         binding.vec_close(self.c_envs)
 
 
+
+
 if __name__ == "__main__":
-    N = 1
-    num_agents = 2  # Test with 2 agents to see P2 moves
-    env = Showdown(num_envs=N,num_agents=num_agents)
+    N = 12
+    num_agents = 1  # Test with 2 agents to see P2 moves
+    env = Showdown(num_envs=N)
 
     env.reset(seed=42)
     steps = 0
     CACHE = 1024
-    actions = np.random.randint(0, 9, (CACHE, env.num_agents))
+    actions = np.random.randint(0, 10, (CACHE, env.num_agents))
     i = 0
     import time
 
@@ -90,8 +90,8 @@ if __name__ == "__main__":
         obs, rewards, terminals, trunc, info_tmp = env.step(actions[i % CACHE])
         steps += env.num_agents
         i += 1
-        if info_tmp:
-            info = info_tmp
+        # if info_tmp:
+        #     info = info_tmp
         # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration
@@ -99,8 +99,3 @@ if __name__ == "__main__":
     sps_str = f"{sps:,.0f}"
     ms_str = f"{ms_per_move:,.3f}"
     print(f"\n Showdown SPS: {sps_str}  |  ms/move: {ms_str}")
-
-    # If you want to run evaluation here, add a call to evaluate_model and print the result.
-    # Example (requires a model, run, config):
-    # wins, losses = evaluate_model(run, model, config)
-    # print(f"Wins: {wins}, Losses: {losses}")

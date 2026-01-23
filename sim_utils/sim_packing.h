@@ -1,9 +1,10 @@
 #ifndef SIM_PACKING_H
 #define SIM_PACKING_H
 
+#include <stdint.h>
+
 #include "sim_utils/battle.h"
 #include "sim_utils/move.h"
-#include <stdint.h>
 
 typedef struct {
   int16_t p1_choice;  // raw encoded choice (switch idx or move slot)
@@ -143,7 +144,8 @@ static inline void pack_poke(int16_t* row,
   // If all four moves have zero or negative PP, report them as Struggle
   int all_zero_pp = 1;
   // For active pokemon, check PP in active_pokemon.moves array
-  Move* move_array = is_active ? player->active_pokemon.moves : poke->poke_moves;
+  Move* move_array =
+      is_active ? player->active_pokemon.moves : poke->poke_moves;
   for (int k = 0; k < 4; k++) {
     Move* m = &move_array[k];
     if (m->pp > 0) {
@@ -189,11 +191,13 @@ void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
   int observer_index = (observer == &b->p1) ? 1 : 2;
   int opponent_index = (observer == &b->p1) ? 2 : 1;
 
-  // Pokémon rows (interleaved: observer slot 0, opponent slot 0, observer slot 1, ...)
+  // Pokémon rows (interleaved: observer slot 0, opponent slot 0, observer slot
+  // 1, ...)
   for (int slot = 0; slot < PACK_TEAM_SLOTS; slot++) {
     // Observer's Pokemon (always fully visible)
     int interleave_index_observer = slot * 2 + 0;
-    int base_offset_observer = PACK_HEADER_INTS + interleave_index_observer * PACK_POKE_INTS;
+    int base_offset_observer =
+        PACK_HEADER_INTS + interleave_index_observer * PACK_POKE_INTS;
     pack_poke(out + base_offset_observer,
               observer,
               observer_index,
@@ -204,7 +208,8 @@ void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
     // Opponent's Pokemon (hidden if not revealed)
     int hidden = !(observer->shown_pokemon & (1u << slot));
     int interleave_index_opponent = slot * 2 + 1;
-    int base_offset_opponent = PACK_HEADER_INTS + interleave_index_opponent * PACK_POKE_INTS;
+    int base_offset_opponent =
+        PACK_HEADER_INTS + interleave_index_opponent * PACK_POKE_INTS;
     pack_poke(out + base_offset_opponent,
               opponent,
               opponent_index,
@@ -218,7 +223,7 @@ void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
 void pack_all_agents(Battle* b, int num_agents, int16_t* out) {
   // Pack from P1's perspective
   pack_battle(b, &b->p1, &b->p2, out);
-  
+
   if (num_agents == 2) {
     // Pack from P2's perspective
     pack_battle(b, &b->p2, &b->p1, out + PACK_TOTAL_INTS);

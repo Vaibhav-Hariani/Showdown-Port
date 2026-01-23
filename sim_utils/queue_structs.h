@@ -32,8 +32,13 @@ struct STR_ACTION {
   int origLoc;
 } typedef Action;
 
+// Maximum number of queued actions during a single turn. Original engine
+// used a larger queue but, for Gen1/simplified battles, there are at most
+// two actions (one per player) per resolution. Shrinking to a size of 2
+// enables simpler ordering logic and reduces memory pressure.
+#define ACTION_QUEUE_MAX 2
 struct STR_BQUEUE {
-  Action queue[15];
+  Action queue[ACTION_QUEUE_MAX];
   int q_size;
 };
 

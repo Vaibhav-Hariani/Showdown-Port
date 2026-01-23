@@ -3,10 +3,10 @@
 
 #include "../data_sim/poke_enum.h"
 #include "move_structs.h"
-#include "stdint.h"
 #include "stddef.h"
+#include "stdint.h"
 typedef enum {
-  SWITCH_STOP_NONE=0,
+  SWITCH_STOP_NONE = 0,
   SWITCH_STOP_RAGE,
   SWITCH_STOP_SOLAR_BEAM
 } SWITCH_STOPS;
@@ -97,9 +97,11 @@ typedef struct STR_BATTLE_POKEMON {
   int recharge_len;
   int dmg_counter;
   SWITCH_STOPS no_switch;
-  int multi_move_len;        // Remaining turns for multi-turn moves (Bind, Wrap, etc.)
-  Move* multi_move_src;      // The multi-turn move being executed
-  uint8_t immobilized : 1;   // Target is immobilized by opponent's multi-turn move
+  int multi_move_len;    // Remaining turns for multi-turn moves (Bind, Wrap,
+                         // etc.)
+  Move* multi_move_src;  // The multi-turn move being executed
+  uint8_t immobilized
+      : 1;  // Target is immobilized by opponent's multi-turn move
   uint8_t flinch : 1;
   uint8_t confusion_counter : 2;
   uint8_t reflect : 1;
@@ -107,7 +109,8 @@ typedef struct STR_BATTLE_POKEMON {
   uint8_t mist : 1;
   uint8_t leech_seed : 1;
   uint8_t disabled_count : 3;
-  MOVE_IDS disabled_move_id;  // The move ID that is disabled (not the slot index)
+  MOVE_IDS
+      disabled_move_id;  // The move ID that is disabled (not the slot index)
   // if not null, then rage is active
   Move* rage;
   Move* last_used;

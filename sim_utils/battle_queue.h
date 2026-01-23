@@ -17,6 +17,19 @@ int attack(Battle* b,
            BattlePokemon* defender,
            Move* used_move);
 
+int gen1_cmp(Action* a, Action* b) {
+  int first = a->order - b->order;
+  if (first != 0) return first < 0;
+  first = a->priority - b->priority;
+  if (first != 0) return first < 0;
+  first = a->speed - b->speed;
+  if (first == 0) {
+    // Tie: no need for fischer yates with 2 elements, so just insert randomly
+    return rand() % 2;
+  }
+  return first < 0;
+}
+
 // Sourced from sort
 // negative means a2 should be first, positive means a1 first.
 int cmp_priority_qsort(const void* a, const void* b) {
@@ -50,14 +63,20 @@ inline void fischer_yates(Action* arr, int end) {
   }
 }
 
+// Gen1-specific re-order, as we will only have two elements at most
+void sort_gen1(battlequeue* bqueue) {
+  int first_element = gen1_cmp(&bqueue->queue[0], &bqueue->queue[1]);
+  if (first_element) {
+    Action tmp = bqueue->queue[0];
+    bqueue->queue[0] = bqueue->queue[1];
+    bqueue->queue[1] = tmp;
+  }
+}
+
 // Smallish array: just using builtin sort
 // fischer yates shuffler for ties.
 inline void sort_queue(battlequeue* bqueue) {
-  // There is definitely a faster implementation somewhere
-  // Sort is also unstable (though we're randomizing ties so maybe that's not an
-  // issue?)
   qsort(bqueue->queue, bqueue->q_size, sizeof(Action), cmp_priority_qsort);
-
   int j = 0;
   while (j < bqueue->q_size - 1) {
     int buf = 1;
@@ -69,13 +88,16 @@ inline void sort_queue(battlequeue* bqueue) {
     j += buf;
   }
 }
+
 // Core queue function: self explanatory. Returns REGULAR if no pokemon have
 // fainted.
 //  Returns 1 if p1's pokemon have fainted
 // Returns 2 if p2's pokemon have fainted
 //  returns 3 if both pokemon have fainted
 int eval_queue(Battle* b) {
-  sort_queue(&b->action_queue);
+  // using gen1 sort for eval_queue: should be significantly faster.
+  sort_gen1(&b->action_queue);
+  // sort_queue(&b->action_queue);
   for (int i = 0; i < b->action_queue.q_size; i++) {
     Action* current_action = &b->action_queue.queue[i];
 
@@ -83,7 +105,7 @@ int eval_queue(Battle* b) {
       Move* move = current_action->action_d.m;
       Player* User = current_action->User;
       Player* Target = current_action->Target;
-      if(move == NULL) {
+      if (move == NULL) {
         DLOG("Invalid move in queue at position %d", i);
       }
 
@@ -95,8 +117,8 @@ int eval_queue(Battle* b) {
         // Clear the currently active pokemon
         User->active_pokemon = (BattlePokemon){0};
         User->active_pokemon_index = -1;
-        
-        //Removing lock from bind/wrap if user faints
+
+        // Removing lock from bind/wrap if user faints
         Target->active_pokemon.immobilized = 0;
       }
 
