@@ -6,9 +6,9 @@ import pufferlib
 
 class Showdown(pufferlib.PufferEnv):
     def __init__(
-            self, num_envs=1, num_agents=1, opp_type=0, render_mode=None, log_interval=10, buf=None, seed=0):
+            self, num_envs=1, num_agents=1, opp_type=0, test=False, render_mode=None, log_interval=10, buf=None, seed=0):
         # Validate num_agents
-        if num_agents != 1 and num_agents != 2:
+        if num_agents > 2:
             raise pufferlib.APIUsageError('Showdown supports at most 2 agents (player 1 and player 2)')
                 
         # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
@@ -36,6 +36,7 @@ class Showdown(pufferlib.PufferEnv):
                 self.truncations[i*num_agents:(i+1)*num_agents],
                 seed + i,
                 num_agents=num_agents,
+                test=test,
                 opp_type=opp_type  # Pass num_agents to C binding
             )
             c_envs.append(c_env)
@@ -52,7 +53,7 @@ class Showdown(pufferlib.PufferEnv):
         self.actions[:] = actions
         binding.vec_step(self.c_envs)
         info = []
-        if self.terminals[0] == True:
+        if self.terminals[0]:
             self.num_games += 1
             self.tick = 0
             # Standard logging at log_interval
@@ -74,7 +75,7 @@ class Showdown(pufferlib.PufferEnv):
 if __name__ == "__main__":
     N = 12
     num_agents = 1  # Test with 2 agents to see P2 moves
-    env = Showdown(num_envs=N)
+    env = Showdown(num_envs=N, test=False)
 
     env.reset(seed=42)
     steps = 0
@@ -89,10 +90,9 @@ if __name__ == "__main__":
     while time.time() - start < 10:
         obs, rewards, terminals, trunc, info_tmp = env.step(actions[i % CACHE])
         steps += env.num_agents
-        i += 1
         # if info_tmp:
         #     info = info_tmp
-        # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
+        # # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration
     ms_per_move = (1000.0 / sps)

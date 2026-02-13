@@ -38,23 +38,25 @@ typedef struct {
 
 // Forward declarations for functions defined later
 void c_reset(Sim* sim);
+static inline void set_active(Player* p);
 
 void sim_init(Sim* sim, int* poke_array) {
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
   if (poke_array) {
       // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
-      // Can see if there's a better way to do so?
       Player* p1 = &sim->battle->p1;
       POKEDEX_IDS p1_poke = poke_array[0];
       MOVE_IDS move_id = poke_array[1];
       //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
       // Can add those checks in later.
       load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
+      set_active(p1);
 
-      Player* p2 = &sim->battle->p1;
+      Player* p2 = &sim->battle->p2;
       POKEDEX_IDS p2_poke = poke_array[2];
       MOVE_IDS move2_id = poke_array[3];
-      load_pokemon(p1->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
+      load_pokemon(p2->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
+      set_active(p2);
       return;
   }
   c_reset(sim);
@@ -104,6 +106,21 @@ float reward(Sim* s) {
   return 0.0f;  // Non-terminal
 }
 
+static inline void set_active(Player* p) {
+  // Set up active pokemon
+  // Initialize and set up active pokemon
+  p->active_pokemon.pokemon = &p->team[0];
+  p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
+  p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
+  // Copy base Pokemon stats and moves into the active slot
+  p->active_pokemon.stats = p->active_pokemon.pokemon->stats;
+  for (int m = 0; m < 4; ++m) {
+    p->active_pokemon.moves[m] = p->active_pokemon.pokemon->poke_moves[m];
+  }
+  // Mark the active pokemon as seen
+  p->shown_pokemon |= (1u << p->active_pokemon_index);
+}
+
 void team_generator(Player* p, TeamConfig config) {
   // Clear the entire Pokemon table
   memset(p->team, 0, sizeof(Pokemon) * NUM_POKE);
@@ -129,20 +146,7 @@ void team_generator(Player* p, TeamConfig config) {
                    MISSINGNO);  // Load same pokemon for all slots for now
     }
   }
-  // Set up active pokemon
-  // Initialize and set up active pokemon
-  memset(&p->active_pokemon, 0, sizeof(BattlePokemon));
-  p->active_pokemon.pokemon = &p->team[0];
-  p->active_pokemon_index = 0;
-  p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
-  p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
-  // Copy base Pokemon stats and moves into the active slot
-  p->active_pokemon.stats = p->active_pokemon.pokemon->stats;
-  for (int m = 0; m < 4; ++m) {
-    p->active_pokemon.moves[m] = p->active_pokemon.pokemon->poke_moves[m];
-  }
-  // Mark the active pokemon as seen
-  p->shown_pokemon |= (1u << p->active_pokemon_index);
+  set_active(p);
 }
 
 // Helper function to check if a player can act (not frozen/sleeping unless
@@ -285,7 +289,7 @@ void c_step(Sim* sim) {
   int selfplay = sim->num_agents != 2;
 
   int raw_choice_p1 = sim->actions[0];
-  int raw_choice_p2 = selfplay ? sim->actions[1] : ai_choice(sim, battle->mode);
+  int raw_choice_p2 = selfplay ? ai_choice(sim, battle->mode): sim->actions[1];
 
   if (!valid_choice(1, battle->p1, raw_choice_p1, battle->mode)) {
     // Invalid move penalty for P1
