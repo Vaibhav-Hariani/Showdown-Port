@@ -190,7 +190,7 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   return regular_return ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
-inline int attack(Battle* b,
+static inline int attack(Battle* b,
                   BattlePokemon* attacker,
                   BattlePokemon* defender,
                   Move* used_move) {
