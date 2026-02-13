@@ -1,6 +1,7 @@
 #ifndef MOVE_STRUCTS_H
 #define MOVE_STRUCTS_H
 
+#include <stdint.h>
 #include "../data_sim/generated_move_enum.h"
 #include "../data_sim/typing.h"
 
@@ -19,13 +20,13 @@ typedef struct STR_BATTLE_POKEMON BattlePokemon;
 
 struct STR_MOVE {
   MOVE_IDS id;
-  int power;
-  float accuracy;
+  uint8_t power;      // Changed from int to uint8_t (max move power ~250)
+  uint8_t accuracy;   // Changed from float to uint8_t (0-255, where 255 = 100%)
   TYPE type;
   MOVE_CATEGORY category;
-  int pp;
+  uint8_t pp;         // Changed from int to uint8_t (max PP is 64)
   void (*movePtr)(Battle*, BattlePokemon*, BattlePokemon*);
-  int priority;
+  int8_t priority;    // Changed from int to int8_t (range -7 to +5)
   // Flag: set to 1 once the move has been revealed/used (for opponent
   // visibility)
   unsigned char revealed;

@@ -38,7 +38,7 @@ int gen1_ai_move(Player* user, Player* opponent) {
 
   BattlePokemon* active_pokemon = &user->active_pokemon;
   int best_move_index = -1;
-  float max_effective_damage = -1.0f;
+  uint32_t max_effective_damage = 0;
 
   // Iterate through the Pokémon's moves and score them. Include STAB (1.5x)
   // for moves whose type matches the user's type1 or type2.
@@ -46,24 +46,29 @@ int gen1_ai_move(Player* user, Player* opponent) {
     Move* move = &active_pokemon->pokemon->poke_moves[i];
     if (!move || move->pp <= 0 || move->power <= 0) continue;
 
-    float base_damage = (float)move->power;
-    // Calculate type effectiveness against opponent's types
-    float type_mod1 = damage_chart[move->type][opponent_active->type1];
-    float type_mod2 = damage_chart[move->type][opponent_active->type2];
-    float total_type_mod = type_mod1 * type_mod2;
+    uint32_t base_damage = (uint32_t)move->power;
+    // Calculate type effectiveness against opponent's types using fixed-point
+    // damage_chart values are uint16_t where 256 = 1.0x
+    uint32_t type_mod1 = damage_chart[move->type][opponent_active->type1];
+    uint32_t type_mod2 = damage_chart[move->type][opponent_active->type2];
+    // Multiply type modifiers: (type_mod1 * type_mod2) / 256
+    uint32_t total_type_mod = (type_mod1 * type_mod2) >> 8;
 
-    // STAB: 1.5x if move type matches either of the user's types
-    float stab = 1.0f;
+    // STAB: 384 (1.5x) if move type matches either of the user's types, else 256 (1.0x)
+    uint16_t stab = 256;
     if (move->type == active_pokemon->type1 ||
         move->type == active_pokemon->type2) {
-      stab = 1.5f;
+      stab = 384;
     }
 
     // Effective damage = base power × type effectiveness × stab
-    float effective_damage = base_damage * total_type_mod * stab;
-    // Custom penalty for recharge moves (Hyper Beam, Solar Beam)
+    // Result is in fixed-point, divide by 256 at the end
+    uint32_t effective_damage = (base_damage * total_type_mod * stab) >> 8;
+    
+    // Custom penalty for recharge moves (Hyper Beam, Solar Beam): multiply by 0.5
+    // In fixed-point: multiply by 128 (0.5 * 256) and divide by 256
     if (move->id == HYPER_BEAM_MOVE_ID || move->id == SOLAR_BEAM_MOVE_ID) {
-      effective_damage *= 0.5f;
+      effective_damage = (effective_damage * 128) >> 8;
     }
     if (effective_damage > max_effective_damage) {
       max_effective_damage = effective_damage;

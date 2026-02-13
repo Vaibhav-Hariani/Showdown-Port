@@ -36,8 +36,7 @@ if __name__ == "__main__":
         f.write("#define GENERATED_MOVEDEX_H\n\n")
         f.write('#include "typing.h"\n')
         f.write('#include "generated_move_enum.h"\n')
-        f.write('#include "movedex.h"\n')
-        f.write('#include "pokemon.h"\n\n')
+        f.write('#include "movedex.h"\n\n')
 
         f.write("const Move MOVES[] = {\n")
         # insert the no move entry
@@ -58,7 +57,7 @@ if __name__ == "__main__":
                 f"     .power = {-1 if move['power'] == 'INF' else move['power']},\n"
             )
             f.write(
-                f"     .accuracy = {-1 if move['accuracy'] == 'INF' else float(move['accuracy']) / 100.0},\n"
+                f"     .accuracy = {-1 if move['accuracy'] == 'INF' else int(float(move['accuracy']) * 255 / 100.0)},\n"
             )
             f.write(f"     .priority = {move['priority']},\n")
             f.write(f"     .movePtr = {move['effect_fn']}}},\n")

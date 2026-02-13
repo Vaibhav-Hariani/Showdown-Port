@@ -34,17 +34,18 @@ int calculate_damage(BattlePokemon* attacker,
   // TODO: Focus energy also has a special critical hit effect.
   // How this is handled should be decided separately
 
-  // TODO: Not handling stat modifiers quite yet
+  // Get stat modifiers as fixed-point values (256 = 1.0x)
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     if (attacker->pokemon->status.burn) {
       attack_stat /= 2;  // Burn halves physical attack
     }
-    attack_stat *= get_stat_modifier(attacker->stat_mods.specA);
+    // Apply stat modifier using fixed-point arithmetic
+    attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
     // Specials use stat_special_defence: this should always be the same as
     // their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
-    defense_stat *= get_stat_modifier(defender->stat_mods.specD);
+    defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.specD)) >> 8;
     if (defender->light_screen) {
       defense_stat *= 2;  // Light Screen doubles special defense
       if (defense_stat > 1024) {
@@ -53,9 +54,9 @@ int calculate_damage(BattlePokemon* attacker,
     }
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
-    attack_stat *= get_stat_modifier(attacker->stat_mods.attack);
+    attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
-    defense_stat *= get_stat_modifier(defender->stat_mods.defense);
+    defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
     if (defender->reflect) {
       defense_stat *= 2;  // Reflect doubles physical defense
     }
@@ -65,19 +66,26 @@ int calculate_damage(BattlePokemon* attacker,
   }
 
   int level = base_attacker->stats.level;
-  // Type effectiveness
-  float type_effectiveness = damage_chart[used_move->type][defender->type1] *
-                             damage_chart[used_move->type][defender->type2];
+  // Type effectiveness using fixed-point arithmetic (256 = 1.0x)
+  // Multiply two damage chart values together, then divide by 256
+  uint32_t type_effectiveness = 
+      ((uint32_t)damage_chart[used_move->type][defender->type1] * 
+       (uint32_t)damage_chart[used_move->type][defender->type2]) >> 8;
 
-  // STAB (Same-Type Attack Bonus)
-  float stab =
+  // STAB (Same-Type Attack Bonus): 1.5x = 384/256, 1.0x = 256/256
+  uint16_t stab =
       (attacker->type1 == used_move->type || attacker->type2 == used_move->type)
-          ? 1.5
-          : 1.0;
-  // Damage formula
-  int damage =
-      (((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2) *
-      stab * type_effectiveness;
+          ? 384  // 1.5x in fixed-point
+          : 256; // 1.0x in fixed-point
+  
+  // Damage formula with fixed-point arithmetic
+  // Base damage calculation (integer portion)
+  int base_damage = ((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2;
+  
+  // Apply type effectiveness and STAB using fixed-point
+  // (base_damage * stab * type_effectiveness) / (256 * 256)
+  int damage = (base_damage * stab * type_effectiveness) >> 16;
+  
   // Damage at this point should be 0,1, or greater than 1. Only if greater
   // than one should anything happen.
   if (damage <= 1) {
@@ -87,8 +95,9 @@ int calculate_damage(BattlePokemon* attacker,
     return damage;  // return 0 for failure
   }
   // Random factor (Exactly as specified by bulbapedia)
-  float random_factor = (rand() % 38 + 217) / 255.0;
-  return damage * random_factor;
+  // Use integer arithmetic: multiply then divide to avoid float
+  int random_factor = rand() % 38 + 217;  // 217-254 range
+  return (damage * random_factor) / 255;
 }
 
 // Add status checks for flinching and other statuses
@@ -127,8 +136,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
         def *= 2;  // Reflect doubles physical defense
       }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
-      float random_factor = (rand() % 38 + 217) / 255.0;
-      damage = (int)(damage * random_factor);
+      // Use integer arithmetic: multiply then divide to avoid float
+      int random_factor = rand() % 38 + 217;  // 217-254 range
+      damage = (damage * random_factor) / 255;
       attacker->pokemon->hp -= damage;
       attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
       DLOG("%s hurt itself in its confusion! (%d HP)",
@@ -180,7 +190,7 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
   return regular_return ? 1 : 0;  // return 1 if move can proceed, 0 if blocked
 }
 
-inline int attack(Battle* b,
+static inline int attack(Battle* b,
                   BattlePokemon* attacker,
                   BattlePokemon* defender,
                   Move* used_move) {
@@ -233,10 +243,11 @@ inline int attack(Battle* b,
     return 1;
   }
 
-  int actual_accuracy = (used_move->accuracy * 255);
-  int accuracy = actual_accuracy *
-                 get_stat_modifier(attacker->stat_mods.accuracy) *
-                 get_evasion_modifier(defender->stat_mods.evasion);
+  // Accuracy is now stored as uint8_t (0-255), so no need to multiply
+  // Use fixed-point stat modifiers (256 = 1.0x)
+  int accuracy = ((int)used_move->accuracy * 
+                  get_stat_modifier(attacker->stat_mods.accuracy) *
+                  get_evasion_modifier(defender->stat_mods.evasion)) >> 16;
   int accuracy_random = (rand() % 256);
   if (accuracy_random >= accuracy) {
     DLOG("%s's attack %s missed!",

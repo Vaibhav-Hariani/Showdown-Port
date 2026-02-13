@@ -97,7 +97,7 @@ move_id,name,type,category,pp,power,accuracy,priority,effect_fn
 96,Meditate,Psychic,Status,40,0,100,0,NULL
 97,Agility,Psychic,Status,30,0,100,0,NULL
 98,Quick Attack,Normal,Physical,30,40,100,1,NULL
-99,Rage,Normal,Physical,20,20,100,0,apply_rage
+99,Rage,Normal,Physical,20,20,100,0,NULL
 100,Teleport,Psychic,Status,20,0,100,0,NULL
 101,Night Shade,Ghost,Special,15,0,100,0,apply_night_shade
 102,Mimic,Normal,Status,10,0,INF,0,apply_mimic
