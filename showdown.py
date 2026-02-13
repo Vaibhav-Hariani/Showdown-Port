@@ -6,11 +6,22 @@ import pufferlib
 
 class Showdown(pufferlib.PufferEnv):
     def __init__(
-            self, num_envs=1, num_agents=1, opp_type=0, test=False, render_mode=None, log_interval=10, buf=None, seed=0):
+        self,
+        num_envs=1,
+        num_agents=1,
+        opp_type=0,
+        test=False,
+        render_mode=None,
+        log_interval=10,
+        buf=None,
+        seed=0,
+    ):
         # Validate num_agents
         if num_agents > 2:
-            raise pufferlib.APIUsageError('Showdown supports at most 2 agents (player 1 and player 2)')
-                
+            raise pufferlib.APIUsageError(
+                "Showdown supports at most 2 agents (player 1 and player 2)"
+            )
+
         # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
         # Followed by interleaved team data: 2 players * 6 pokemon * 7 ints each (id, move1, move2, move3, move4, hp_scaled, status_flags)
         # Total length = 4 + 84 = 88
@@ -24,23 +35,23 @@ class Showdown(pufferlib.PufferEnv):
         self.log_interval = log_interval
         self.num_games = 0
         super().__init__(buf)
-        
+
         # Create C env instances following the Convert pattern
         c_envs = []
         for i in range(num_envs):
             c_env = binding.env_init(
-                self.observations[i*num_agents:(i+1)*num_agents],
-                self.actions[i*num_agents:(i+1)*num_agents],
-                self.rewards[i*num_agents:(i+1)*num_agents],
-                self.terminals[i*num_agents:(i+1)*num_agents],
-                self.truncations[i*num_agents:(i+1)*num_agents],
+                self.observations[i * num_agents : (i + 1) * num_agents],
+                self.actions[i * num_agents : (i + 1) * num_agents],
+                self.rewards[i * num_agents : (i + 1) * num_agents],
+                self.terminals[i * num_agents : (i + 1) * num_agents],
+                self.truncations[i * num_agents : (i + 1) * num_agents],
                 seed + i,
                 num_agents=num_agents,
                 test=test,
-                opp_type=opp_type  # Pass num_agents to C binding
+                opp_type=opp_type,  # Pass num_agents to C binding
             )
             c_envs.append(c_env)
-        
+
         self.c_envs = binding.vectorize(*c_envs)
 
     def reset(self, seed=0, options=None):
@@ -70,8 +81,6 @@ class Showdown(pufferlib.PufferEnv):
         binding.vec_close(self.c_envs)
 
 
-
-
 if __name__ == "__main__":
     N = 12
     num_agents = 1  # Test with 2 agents to see P2 moves
@@ -95,7 +104,7 @@ if __name__ == "__main__":
         # # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration
-    ms_per_move = (1000.0 / sps)
+    ms_per_move = 1000.0 / sps
     sps_str = f"{sps:,.0f}"
     ms_str = f"{ms_per_move:,.3f}"
     print(f"\n Showdown SPS: {sps_str}  |  ms/move: {ms_str}")

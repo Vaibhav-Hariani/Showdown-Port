@@ -30,11 +30,25 @@ def log_episode(episode_obs, episode_actions, episode_rewards, game_count):
     label = f"win #{game_count}" if final_reward > 0 else f"lose #{game_count}"
 
     # Create table (15 columns)
-    table = Table(columns=[
-        "step", "action", "reward",
-        "p1_active_id", "p1_active_name", "p1_active_hp", "p1_active_status", "p1_moves", "p1_move_names",
-        "p2_active_id", "p2_active_name", "p2_active_hp", "p2_active_status", "p2_moves", "p2_move_names"
-    ])
+    table = Table(
+        columns=[
+            "step",
+            "action",
+            "reward",
+            "p1_active_id",
+            "p1_active_name",
+            "p1_active_hp",
+            "p1_active_status",
+            "p1_moves",
+            "p1_move_names",
+            "p2_active_id",
+            "p2_active_name",
+            "p2_active_hp",
+            "p2_active_status",
+            "p2_moves",
+            "p2_move_names",
+        ]
+    )
 
     for step_idx in range(len(episode_obs)):
         obs_step = episode_obs[step_idx]
@@ -43,42 +57,48 @@ def log_episode(episode_obs, episode_actions, episode_rewards, game_count):
 
         parsed = ShowdownParser.parse_observation(obs_step, team_size=6)
         p1_dict = {
-            'id': None,
-            'name': None,
-            'hp': 0,
-            'status': 'fainted',
-            'moves': '',
-            'move_names': ''
+            "id": None,
+            "name": None,
+            "hp": 0,
+            "status": "fainted",
+            "moves": "",
+            "move_names": "",
         }
 
         p2_dict = p1_dict.copy()
 
         # Parser now returns players[].active_pokemon (or None) and header statmods
-        p1_info = parsed.get('players', [None, None])[0]
-        p2_info = parsed.get('players', [None, None])[1]
+        p1_info = parsed.get("players", [None, None])[0]
+        p2_info = parsed.get("players", [None, None])[1]
 
         p1_active = None
         p2_active = None
         if p1_info:
-            p1_active = p1_info.get('active_pokemon')
+            p1_active = p1_info.get("active_pokemon")
         if p2_info:
-            p2_active = p2_info.get('active_pokemon')
+            p2_active = p2_info.get("active_pokemon")
 
         def _format_active(active):
             if not active:
-                return dict(id=None, name=None, hp=0, status='fainted', moves='', move_names='')
-            pid = active.get('id')
-            name = active.get('name')
-            hp = active.get('hp_scaled')
-            status = active.get('status') or {}
-            status_str = ','.join(
-                [k for k, v in status.items() if v]) or 'healthy'
-            moves_list = active.get('moves') or []
-            moves_str = ','.join(
-                [f"{m.get('id')}({m.get('pp')})" for m in moves_list])
-            move_names = ','.join([m.get('name')
-                                  for m in moves_list if m.get('name')])
-            return dict(id=pid, name=name, hp=hp, status=status_str, moves=moves_str, move_names=move_names)
+                return dict(
+                    id=None, name=None, hp=0, status="fainted", moves="", move_names=""
+                )
+            pid = active.get("id")
+            name = active.get("name")
+            hp = active.get("hp_scaled")
+            status = active.get("status") or {}
+            status_str = ",".join([k for k, v in status.items() if v]) or "healthy"
+            moves_list = active.get("moves") or []
+            moves_str = ",".join([f"{m.get('id')}({m.get('pp')})" for m in moves_list])
+            move_names = ",".join([m.get("name") for m in moves_list if m.get("name")])
+            return dict(
+                id=pid,
+                name=name,
+                hp=hp,
+                status=status_str,
+                moves=moves_str,
+                move_names=move_names,
+            )
 
         p1_dict = _format_active(p1_active)
         p2_dict = _format_active(p2_active)
@@ -87,18 +107,18 @@ def log_episode(episode_obs, episode_actions, episode_rewards, game_count):
             step_idx,
             action_step,
             reward_step,
-            p1_dict['id'],
-            p1_dict['name'],
-            p1_dict['hp'],
-            p1_dict['status'],
-            p1_dict['moves'],
-            p1_dict['move_names'],
-            p2_dict['id'],
-            p2_dict['name'],
-            p2_dict['hp'],
-            p2_dict['status'],
-            p2_dict['moves'],
-            p2_dict['move_names']
+            p1_dict["id"],
+            p1_dict["name"],
+            p1_dict["hp"],
+            p1_dict["status"],
+            p1_dict["moves"],
+            p1_dict["move_names"],
+            p2_dict["id"],
+            p2_dict["name"],
+            p2_dict["hp"],
+            p2_dict["status"],
+            p2_dict["moves"],
+            p2_dict["move_names"],
         )
 
     return label, table
@@ -117,15 +137,15 @@ def eval(policy, config, env_class, n_games=10):
     Returns:
         dict: Dictionary of wandb tables with episode data
     """
-    device = config['device'] 
-    use_rnn = config['use_rnn']
+    device = config["device"]
+    use_rnn = config["use_rnn"]
 
-    env = env_class(num_envs=1, log_interval=n_games+1)
+    env = env_class(num_envs=1, log_interval=n_games + 1)
     ob, _ = env.reset()
 
     # Setup LSTM state if needed
     state = {}
-    if use_rnn: 
+    if use_rnn:
         policy_hidden_size = policy.hidden_size
         state = dict(
             lstm_h=torch.zeros(1, policy_hidden_size, device=device),
@@ -145,12 +165,12 @@ def eval(policy, config, env_class, n_games=10):
     episode_actions = []
     episode_rewards = []
     tables_dict = {}
-    
+
     policy.eval()
     # Run until we complete N games
     while games_completed < n_games:
         game_len += 1
-        print(f"Evaluating game {games_completed}: On step {game_len}", end='\r')
+        print(f"Evaluating game {games_completed}: On step {game_len}", end="\r")
         # Track observation
         episode_obs.append(ob[0].copy())
 
@@ -174,7 +194,7 @@ def eval(policy, config, env_class, n_games=10):
             # Extract final reward
             if game_len > 1000:
                 break
-            
+
             final_reward = float(reward[0])
             game_rewards.append(final_reward)
             # Count wins/losses/ties
@@ -187,7 +207,8 @@ def eval(policy, config, env_class, n_games=10):
             games_completed += 1
             # Create wandb table for this episode
             label, table = log_episode(
-                episode_obs, episode_actions, episode_rewards, games_completed)
+                episode_obs, episode_actions, episode_rewards, games_completed
+            )
             tables_dict[label] = table
 
             # Reset episode tracking
@@ -197,8 +218,8 @@ def eval(policy, config, env_class, n_games=10):
             episode_rewards = []
             # Reset LSTM state if needed
             if use_rnn:
-                state['lstm_h'].zero_()
-                state['lstm_c'].zero_()
+                state["lstm_h"].zero_()
+                state["lstm_c"].zero_()
 
     # Cleanup
     env.close()
@@ -207,6 +228,5 @@ def eval(policy, config, env_class, n_games=10):
     total_games = wins + losses + ties
     avg_reward = np.mean(game_rewards) if game_rewards else 0.0
 
-    print(
-        f"Of {total_games} games, {wins} wins, {losses} losses, {avg_reward} reward")
+    print(f"Of {total_games} games, {wins} wins, {losses} losses, {avg_reward} reward")
     return tables_dict

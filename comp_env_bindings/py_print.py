@@ -1,6 +1,7 @@
-import numpy as np 
+import numpy as np
 from pokedex_labels import pokemon_name
 from move_labels import move_name
+
 
 class ShowdownParser:
     @staticmethod
@@ -45,10 +46,10 @@ class ShowdownParser:
         if obs.ndim != 1:
             raise ValueError(f"Expected 1D observation, got shape {obs.shape}")
         if obs.size != 88:
-            raise ValueError(f"Expected packed observation of length 88, got {obs.size}")
+            raise ValueError(
+                f"Expected packed observation of length 88, got {obs.size}"
+            )
         return ShowdownParser._parse_v3(obs, team_size)
-
-
 
     @staticmethod
     def _parse_v3(obs: np.ndarray, team_size: int):
@@ -71,50 +72,54 @@ class ShowdownParser:
                 moves = []
                 for k in range(4):
                     m = ShowdownParser.unpack_move(int(row[1 + k]))
-                    m['name'] = move_name(m['id']) if m['id'] else None
+                    m["name"] = move_name(m["id"]) if m["id"] else None
                     moves.append(m)
                 hp_scaled = row[5] / 10  # 0..1000
                 status = ShowdownParser.unpack_status(int(row[6]))
-                team.append({
-                    'id': poke_id,
-                    'name': pokemon_name(poke_id),
-                    'is_active': is_active,
-                    'hp_scaled': hp_scaled,
-                    'status': status,
-                    'moves': moves,
-                })
-            players.append({'active_index': active_index, 'team': team})
+                team.append(
+                    {
+                        "id": poke_id,
+                        "name": pokemon_name(poke_id),
+                        "is_active": is_active,
+                        "hp_scaled": hp_scaled,
+                        "status": status,
+                        "moves": moves,
+                    }
+                )
+            players.append({"active_index": active_index, "team": team})
         # Active stat mods live in header (4 words) for v3
         header = {
-            'p1_statmods': ShowdownParser.unpack_stat_mods(int(obs[0]), int(obs[1])),
-            'p2_statmods': ShowdownParser.unpack_stat_mods(int(obs[2]), int(obs[3])),
+            "p1_statmods": ShowdownParser.unpack_stat_mods(int(obs[0]), int(obs[1])),
+            "p2_statmods": ShowdownParser.unpack_stat_mods(int(obs[2]), int(obs[3])),
         }
-        return {'version': 'v3', 'players': players, 'header': header}
+        return {"version": "v3", "players": players, "header": header}
 
-
-    
     @staticmethod
     def format_status_fast(status: dict, status_names: list) -> str:
         """Fast status formatting using pre-computed names"""
         # Use list comp with direct indexing instead of dict iteration
         active = [name for name in status_names if status.get(name, False)]
-        return ','.join(active) if active else "healthy"
+        return ",".join(active) if active else "healthy"
 
     @staticmethod
     def pretty_print(obs):
         data_dict = ShowdownParser.parse_observation(obs)
-        header = data_dict['header']
-        players = data_dict['players']
+        header = data_dict["header"]
+        players = data_dict["players"]
         print(f"Header: {header}")
         for idx, player in enumerate(players, start=1):
             print(f"Player {idx}:")
-            for i, mon in enumerate(player['team']):
-                active_marker = '*' if i == player['active_index'] else ' '
-                status_flags = [name for name, val in mon['status'].items() if val]
-                status_str = ','.join(status_flags) if status_flags else 'healthy'
-                hp_field = mon.get('hp', mon.get('hp_scaled'))
-                moves_str = ', '.join([f"{m['id']}({m['pp']})" for m in mon['moves'] if m['id']])
-                print(f"  {active_marker}Pokemon {mon['id']} | HP {hp_field} | Status: {status_str} | Moves: {moves_str}")
+            for i, mon in enumerate(player["team"]):
+                active_marker = "*" if i == player["active_index"] else " "
+                status_flags = [name for name, val in mon["status"].items() if val]
+                status_str = ",".join(status_flags) if status_flags else "healthy"
+                hp_field = mon.get("hp", mon.get("hp_scaled"))
+                moves_str = ", ".join(
+                    [f"{m['id']}({m['pp']})" for m in mon["moves"] if m["id"]]
+                )
+                print(
+                    f"  {active_marker}Pokemon {mon['id']} | HP {hp_field} | Status: {status_str} | Moves: {moves_str}"
+                )
 
     # --- Comparison Utilities ---
     @staticmethod
@@ -124,35 +129,41 @@ class ShowdownParser:
         b = ShowdownParser.parse_observation(packed_b, team_size)
         mismatches = {}
         # Compare header stat mods
-        for k in ['p1_statmods', 'p2_statmods']:
-            for stat, aval in a['header'][k].items():
-                bval = b['header'][k][stat]
+        for k in ["p1_statmods", "p2_statmods"]:
+            for stat, aval in a["header"][k].items():
+                bval = b["header"][k][stat]
                 if aval != bval:
                     mismatches.setdefault(k, {})[stat] = (aval, bval)
         # Compare active pokemon basic info
         for pi in range(2):
-            ateam = a['players'][pi]['team']
-            bteam = b['players'][pi]['team']
+            ateam = a["players"][pi]["team"]
+            bteam = b["players"][pi]["team"]
             limit = min(len(ateam), len(bteam))
             for i in range(limit):
-                af = ateam[i]; bf = bteam[i]
+                af = ateam[i]
+                bf = bteam[i]
                 # Only check visible species and active status
-                for field in ['id', 'is_active']:
+                for field in ["id", "is_active"]:
                     if af[field] != bf[field]:
-                        mismatches.setdefault(f'player{pi+1}_mon{i}', {})[field] = (af[field], bf[field])
+                        mismatches.setdefault(f"player{pi+1}_mon{i}", {})[field] = (
+                            af[field],
+                            bf[field],
+                        )
                 # HP scaled
-                ahp = af.get('hp_scaled', af.get('hp'))
-                bhp = bf.get('hp_scaled', bf.get('hp'))
+                ahp = af.get("hp_scaled", af.get("hp"))
+                bhp = bf.get("hp_scaled", bf.get("hp"))
                 if ahp != bhp:
-                    mismatches.setdefault(f'player{pi+1}_mon{i}', {})['hp'] = (ahp, bhp)
+                    mismatches.setdefault(f"player{pi+1}_mon{i}", {})["hp"] = (ahp, bhp)
                 # Moves (only revealed ones: id>0)
                 for mi in range(4):
-                    amid = af['moves'][mi]['id']
-                    bmid = bf['moves'][mi]['id']
+                    amid = af["moves"][mi]["id"]
+                    bmid = bf["moves"][mi]["id"]
                     if amid != bmid:
                         # Ignore if one side is unrevealed (0) and the other also 0
                         if not (amid == 0 and bmid == 0):
-                            mismatches.setdefault(f'player{pi+1}_mon{i}', {})[f'move{mi}'] = (amid, bmid)
+                            mismatches.setdefault(f"player{pi+1}_mon{i}", {})[
+                                f"move{mi}"
+                            ] = (amid, bmid)
         return mismatches
 
     @staticmethod

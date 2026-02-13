@@ -10,7 +10,10 @@ from poke_env.battle import Pokemon, Move, AbstractBattle
 from poke_env.player import Player, RandomPlayer, SimpleHeuristicsPlayer
 from poke_env.teambuilder import Teambuilder
 from poke_env.environment import SinglesEnv
-from poke_env.ps_client.server_configuration import ServerConfiguration, ShowdownServerConfiguration
+from poke_env.ps_client.server_configuration import (
+    ServerConfiguration,
+    ShowdownServerConfiguration,
+)
 
 from move_labels import MOVE_LABELS
 from pokedex_labels import POKEMON_NAMES
@@ -19,7 +22,7 @@ from ou_teams import get_random_ou_team, OU_TEAMS
 from pufferlib.ocean.showdown_models import Showdown, ShowdownLSTM
 
 
-class Embed():
+class Embed:
     def embed_battle(self, battle: AbstractBattle):
         return self._packed_embed(battle)
 
@@ -63,7 +66,7 @@ class Embed():
             pp = 31
         val = move_id | (pp << 8)
         if disabled:
-            val |= (1 << 13)
+            val |= 1 << 13
         # bits14-15 remain 0
         return val & 0x3FFF  # mask to 14 bits (bit13 included)
 
@@ -127,17 +130,17 @@ class Embed():
     def ordered_team(self, team):
         # Preserve insertion order (dict preserves insertion order in Python 3.7+)
         mons = list(team.values())[:6]
-        return mons + [None]*(6-len(mons))
+        return mons + [None] * (6 - len(mons))
 
     def species_id(self, mon: Pokemon, active):
         # Use pokemon name to look up ID in POKEDEX_LABELS
         poke_name = mon.name.lower()
         # Handle special cases that might differ between poke-env and our labels
         name_mapping = {
-            'nidoran-f': 'nidoranf',
-            'nidoran-m': 'nidoranm',
-            'mr. mime': 'mrmime',
-            "farfetch’d": 'farfetchd'
+            "nidoran-f": "nidoranf",
+            "nidoran-m": "nidoranm",
+            "mr. mime": "mrmime",
+            "farfetch’d": "farfetchd",
         }
         poke_name = name_mapping.get(poke_name, poke_name)
         sid = POKEMON_NAMES.index(poke_name)
@@ -149,11 +152,11 @@ class Embed():
             return 0
         move_name = move.id.lower()
         move_id = MOVE_LABELS.index(move_name) & 0xFF
-        pp = int(getattr(move, 'current_pp', getattr(move, 'pp', 0)))
+        pp = int(getattr(move, "current_pp", getattr(move, "pp", 0)))
         pp = pp & 0x3F  # 6 bits for PP (0-63)
         val = move_id | (pp << 8)
         if disabled:
-            val |= (1 << 14)  # bit 14 for disabled flag
+            val |= 1 << 14  # bit 14 for disabled flag
         return val
 
     def _packed_embed(self, battle: AbstractBattle):
@@ -172,31 +175,30 @@ class Embed():
         p2_team = self.ordered_team(battle.opponent_team)
 
         for slot in range(6):
-            base = 4 + (slot*2)*7
+            base = 4 + (slot * 2) * 7
             mon = p1_team[slot]
             if mon:
-                obs[base+0] = self.species_id(mon, mon is p1a)
-                moves = list(mon.moves.values()) if hasattr(
-                    mon, 'moves') else []
+                obs[base + 0] = self.species_id(mon, mon is p1a)
+                moves = list(mon.moves.values()) if hasattr(mon, "moves") else []
                 for mi in range(4):
                     mv = moves[mi] if mi < len(moves) else None
-                    obs[base+1+mi] = self.pack_move_py(mv)
-                obs[base+5] = self._encode_hp_percent(mon)
-                obs[base+6] = self._pack_status_bits(mon)
-            base2 = 4 + (slot*2+1)*7
+                    obs[base + 1 + mi] = self.pack_move_py(mv)
+                obs[base + 5] = self._encode_hp_percent(mon)
+                obs[base + 6] = self._pack_status_bits(mon)
+            base2 = 4 + (slot * 2 + 1) * 7
             mon2 = p2_team[slot]
             if mon2:
                 # Species id always present once mon object exists (considered revealed)
-                obs[base2+0] = self.species_id(mon2, mon2 is p2a)
-                if hasattr(mon2, 'moves'):
+                obs[base2 + 0] = self.species_id(mon2, mon2 is p2a)
+                if hasattr(mon2, "moves"):
                     moves2 = list(mon2.moves.values())
                     for mi in range(4):
                         mv = moves2[mi] if mi < len(moves2) else None
                         # Show all opponent moves that are available
                         if mv:
-                            obs[base2+1+mi] = self.pack_move_py(mv)
-                obs[base2+5] = self._encode_hp_percent(mon2)
-                obs[base2+6] = self._pack_status_bits(mon2)
+                            obs[base2 + 1 + mi] = self.pack_move_py(mv)
+                obs[base2 + 5] = self._encode_hp_percent(mon2)
+                obs[base2 + 6] = self._pack_status_bits(mon2)
         return obs
 
     # Modify this to return zero if the game isn't over, else 1 if the model won, -1 if the model lost.
@@ -239,8 +241,8 @@ class OUTeambuilder(Teambuilder):
         """Convert OU team format to showdown format string."""
         pokemon_strings = []
         for pokemon in team_data:
-            species = pokemon['species']
-            moves = pokemon['moves']
+            species = pokemon["species"]
+            moves = pokemon["moves"]
             # Basic showdown format for Gen 1
             # Species @ Item (gen1 has no items, so just species)
             # - Move1
@@ -257,6 +259,7 @@ class OUTeambuilder(Teambuilder):
     def yield_team(self):
         """Return a random packed team."""
         import random
+
         return random.choice(self.packed_teams)
 
 
@@ -266,19 +269,17 @@ class RLAgent(Player):
     Includes a teambuilder that selects random teams from the OU teams list.
     """
 
-    def __init__(self, model_path: str, device='cuda', use_ou_teams=False, **kwargs):
-        self.env = Env(battle_format=kwargs.get(
-            "battle_format", "gen1randombattle"))
+    def __init__(self, model_path: str, device="cuda", use_ou_teams=False, **kwargs):
+        self.env = Env(battle_format=kwargs.get("battle_format", "gen1randombattle"))
         self.embed = Embed()
 
         # If use_ou_teams is True and no team provided, create OUTeambuilder
-        if use_ou_teams and 'team' not in kwargs:
-            kwargs['team'] = OUTeambuilder()
+        if use_ou_teams and "team" not in kwargs:
+            kwargs["team"] = OUTeambuilder()
 
         # Load the PyTorch model
         model = Showdown(None, hidden_size=512)
-        self.model = ShowdownLSTM(
-            None, policy=model, input_size=512, hidden_size=512)
+        self.model = ShowdownLSTM(None, policy=model, input_size=512, hidden_size=512)
         weights = torch.load(model_path, weights_only=False)
 
         self.model.load_state_dict(weights)
@@ -357,11 +358,17 @@ def benchmark_agents(n_battles=100):
     async def run_battles():
         # Create players
         smart_agent = SimpleHeuristicsPlayer(
-            battle_format="gen1ou", team=OUTeambuilder())
-        base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+            battle_format="gen1ou", team=OUTeambuilder()
+        )
+        base_path = (
+            "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+        )
         model_path = "final_choice_selfplay.pt"
         rl_agent = RLAgent(
-            model_path=f"{base_path}{model_path}", use_ou_teams=True, battle_format="gen1ou")
+            model_path=f"{base_path}{model_path}",
+            use_ou_teams=True,
+            battle_format="gen1ou",
+        )
         # Track results and timing
         smart_wins = 0
         rl_wins = 0
@@ -388,7 +395,7 @@ def benchmark_agents(n_battles=100):
                 battle = rl_agent.battles[battle_tag]
 
                 # Track number of moves in this battle
-                num_moves = battle.turn if hasattr(battle, 'turn') else 0
+                num_moves = battle.turn if hasattr(battle, "turn") else 0
                 battle_moves.append(num_moves)
 
                 if battle.won:
@@ -398,7 +405,7 @@ def benchmark_agents(n_battles=100):
 
                 if (i + 1) % 10 == 0:
                     avg_moves = np.mean(battle_moves) if battle_moves else 0
-                    print(f"Completed {i + 1}/{n_battles} battles", end='\r')
+                    print(f"Completed {i + 1}/{n_battles} battles", end="\r")
 
         # Calculate timing statistics
         total_time = time.time() - start_time
@@ -412,17 +419,15 @@ def benchmark_agents(n_battles=100):
         # Print results with timing data
         print(f"\n=== BENCHMARK RESULTS ===")
         print(
-            f"Opponent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)")
-        print(
-            f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
+            f"Opponent wins: {smart_wins}/{n_battles} ({smart_wins/n_battles*100:.1f}%)"
+        )
+        print(f"RL Agent wins: {rl_wins}/{n_battles} ({rl_wins/n_battles*100:.1f}%)")
 
         print(f"\n=== TIMING STATISTICS ===")
-        print(
-            f"Total time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+        print(f"Total time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
         print(f"Fastest battle: {min_battle_time:.2f} seconds")
         print(f"Slowest battle: {max_battle_time:.2f} seconds")
-        print(
-            f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")
+        print(f"Average time per move: {avg_battle_time/avg_moves*1000:.1f} ms")
         return smart_wins, rl_wins
 
     # Run the async battles
@@ -433,17 +438,20 @@ async def run_server_battles(server_config=None, username="PAC-Puffer", password
     """Connect to server and continuously accept battles"""
     from poke_env.ps_client.server_configuration import ServerConfiguration
     from poke_env.ps_client.account_configuration import AccountConfiguration
+
     if server_config is None:
         PokeAgentServerConfiguration = ServerConfiguration(
             "ws://pokeagentshowdown.com:8000/showdown/websocket",
             "https://play.pokemonshowdown.com/action.php?",
-    )
+        )
     else:
         PokeAgentServerConfiguration = server_config
-    
+
     account = AccountConfiguration(username, password)
     # Load the model
-    base_path = "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+    base_path = (
+        "/puffertank/Showdown/PufferLib/pufferlib/ocean/showdown/comp_env_bindings/"
+    )
     model_path = "final_choice_selfplay.pt"
 
     rl_agent = RLAgent(
@@ -476,11 +484,11 @@ async def run_server_battles(server_config=None, username="PAC-Puffer", password
         while True:
             await asyncio.sleep(5)
             num_battles = len(rl_agent.battles)
-            wins = sum(1 for b in rl_agent.battles.values()
-                       if getattr(b, 'won', False))
+            wins = sum(1 for b in rl_agent.battles.values() if getattr(b, "won", False))
             losses = num_battles - wins
             print(
-                f"Stats: {num_battles} battles played | {wins} wins | {losses} losses")
+                f"Stats: {num_battles} battles played | {wins} wins | {losses} losses"
+            )
 
     await asyncio.gather(accept_loop(), stats_loop())
 
@@ -490,14 +498,20 @@ if __name__ == "__main__":
     username = "PAC-Puffer"
     password = "Password"
     PokeAgentServerConfiguration = ServerConfiguration(
-            "ws://pokeagentshowdown.com:8000/showdown/websocket",
-            "https://play.pokemonshowdown.com/action.php?",
+        "ws://pokeagentshowdown.com:8000/showdown/websocket",
+        "https://play.pokemonshowdown.com/action.php?",
     )
 
     # Run the server connection
     ## Run on the showdown server itself
 
-    asyncio.run(run_server_battles(server_config=PokeAgentServerConfiguration, username="PAC-Puffer", password="Password"))
+    asyncio.run(
+        run_server_battles(
+            server_config=PokeAgentServerConfiguration,
+            username="PAC-Puffer",
+            password="Password",
+        )
+    )
 
     ## Benchmark state: test against SimpleHeuristicsPlayer
-    # benchmark_agents(n_battles=50)    
+    # benchmark_agents(n_battles=50)

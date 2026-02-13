@@ -15,7 +15,7 @@ wandb.login()
 if __name__ == "__main__":
     args = pufferl.load_config("showdown")
     args["wandb"] = True
-    args["package"] = 'ocean'
+    args["package"] = "ocean"
 
     args["tag"] = "showdown_final_sweep"
     args["policy_name"] = "Showdown"

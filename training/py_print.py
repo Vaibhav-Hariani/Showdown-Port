@@ -1,6 +1,7 @@
-import numpy as np 
+import numpy as np
 from .data_labels.pokedex_labels import pokemon_name
 from .data_labels.move_labels import move_name
+
 
 class ShowdownParser:
     @staticmethod
@@ -43,10 +44,10 @@ class ShowdownParser:
         if obs.ndim != 1:
             raise ValueError(f"Expected 1D observation, got shape {obs.shape}")
         if obs.size != 88:
-            raise ValueError(f"Expected v3 packed observation of length 88, got {obs.size}")
+            raise ValueError(
+                f"Expected v3 packed observation of length 88, got {obs.size}"
+            )
         return ShowdownParser._parse_v3(obs, team_size)
-
-
 
     @staticmethod
     def _parse_v3(obs: np.ndarray, team_size: int):
@@ -84,7 +85,9 @@ class ShowdownParser:
                         # move not revealed / not present
                         continue
                     mv = ShowdownParser.unpack_move(packed)
-                    mv['name'] = move_name(int(mv['id'])) if mv['id'] is not None else None
+                    mv["name"] = (
+                        move_name(int(mv["id"])) if mv["id"] is not None else None
+                    )
                     moves.append(mv)
 
                 hp_scaled = int(row[5])
@@ -94,19 +97,24 @@ class ShowdownParser:
                 stat_mods = p1_statmods if p_idx == 0 else p2_statmods
 
                 active_pokemon = {
-                    'id': species_id,
-                    'name': pokemon_name(species_id),
-                    'hp_scaled': hp_scaled,
-                    'status': ShowdownParser.unpack_status(status_flags),
-                    'stat_mods': stat_mods,
-                    'moves': moves,
+                    "id": species_id,
+                    "name": pokemon_name(species_id),
+                    "hp_scaled": hp_scaled,
+                    "status": ShowdownParser.unpack_status(status_flags),
+                    "stat_mods": stat_mods,
+                    "moves": moves,
                 }
                 # only one active per team; break after found
                 break
 
-            players.append({
-                'active_index': active_index,
-                'active_pokemon': active_pokemon,
-            })
+            players.append(
+                {
+                    "active_index": active_index,
+                    "active_pokemon": active_pokemon,
+                }
+            )
 
-        return {'header': {'p1_statmods': p1_statmods, 'p2_statmods': p2_statmods}, 'players': players}
+        return {
+            "header": {"p1_statmods": p1_statmods, "p2_statmods": p2_statmods},
+            "players": players,
+        }
