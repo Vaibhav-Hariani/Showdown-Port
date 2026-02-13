@@ -105,7 +105,7 @@ All optimizations focused on eliminating floating-point operations on hot paths 
 
 - Updated to generate accuracy as uint8_t (0-255 range) instead of float (0.0-1.0)
 - Regenerated `data_sim/generated_movedex.h` with new format
-- Fixed apply_rage reference issue
+- Fixed apply_rage compilation error: The CSV incorrectly referenced `apply_rage` function which was commented out in movedex.h. Changed to NULL to match the already-generated code. Note: Rage behavior is fully implemented in move.h and poke_structs.h, so no behavioral change occurred.
 
 ## Performance Impact Estimation
 
@@ -137,6 +137,7 @@ All optimizations have been tested and verified:
    - Type effectiveness: 0.0x, 0.5x, 1.0x, 1.5x, 2.0x all correct
    - Stat modifiers: All 13 stages (-6 to +6) produce correct multipliers
    - Move accuracy: 100% = 255, 70% = 178, etc.
+   - Accuracy calculation: `accuracy * stat_mod * eva_mod >> 16` correctly handles three multiplications (accuracy is 0-255, modifiers are fixed-point 256 = 1.0x, so >> 16 divides by 256²)
 3. ✅ Struct sizes reduced as expected
 4. ✅ No behavioral changes - all calculations remain mathematically equivalent
 
