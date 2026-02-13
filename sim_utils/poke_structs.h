@@ -24,7 +24,7 @@ typedef enum {
 
 struct STR_STATS {
   int base_stats[STAT_COUNT];  // Array to hold all base_stats, post IVs/EVs
-  int level;
+  uint8_t level;               // Changed from int to uint8_t (max level 100)
   // Future relevance
   //  bool gender;
   //  int item_id;
@@ -89,16 +89,15 @@ typedef struct STR_BATTLE_POKEMON {
   struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
-  int substitute_hp;
-  int badly_poisoned_ctr;
-  int sleep_ctr;
-  int recharge_counter;
+  int16_t substitute_hp;           // Changed from int to int16_t (max HP ~700)
+  uint8_t badly_poisoned_ctr;      // Changed from int to uint8_t (max ~16 turns)
+  uint8_t sleep_ctr;               // Changed from int to uint8_t (max ~8 turns)
+  uint8_t recharge_counter;        // Changed from int to uint8_t (max ~3 turns)
   Move recharge_src;
-  int recharge_len;
-  int dmg_counter;
+  uint8_t recharge_len;            // Changed from int to uint8_t (max ~3 turns)
+  int16_t dmg_counter;             // Changed from int to int16_t (max damage ~500)
   SWITCH_STOPS no_switch;
-  int multi_move_len;    // Remaining turns for multi-turn moves (Bind, Wrap,
-                         // etc.)
+  uint8_t multi_move_len;          // Changed from int to uint8_t (max ~8 turns)
   Move* multi_move_src;  // The multi-turn move being executed
   uint8_t immobilized
       : 1;  // Target is immobilized by opponent's multi-turn move

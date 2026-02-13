@@ -15,9 +15,9 @@ typedef struct STR_BATTLE {
   Player p1;
   Player p2;
   battlequeue action_queue;
-  int turn_num;
+  uint16_t turn_num;    // Changed from int to uint16_t (max turns ~65k)
   Move* lastMove;
-  int lastDamage;
+  int16_t lastDamage;   // Changed from int to int16_t (max damage ~500)
   // Used to determine if a pokemon needs switching
   int mode;
 } Battle;
