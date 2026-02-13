@@ -1,6 +1,7 @@
 #ifndef QUEUE_STRUCTS_H
 #define QUEUE_STRUCTS_H
 
+#include <stdint.h>
 #include "move_structs.h"
 
 // Battle queue related enums and structs
@@ -18,7 +19,7 @@ enum ENUM_ACTIONS {
 union UN_ACTIONS {
   Move* m;
   // Index of switch target
-  int switch_target;
+  uint8_t switch_target;  // Changed from int to uint8_t (max 6 Pokemon)
 } typedef action_union;
 
 struct STR_ACTION {
@@ -26,10 +27,10 @@ struct STR_ACTION {
   action_types action_type;
   Player* User;
   Player* Target;
-  int order;
-  int priority;
-  int speed;
-  int origLoc;
+  int16_t order;        // Changed from int to int16_t
+  int8_t priority;      // Changed from int to int8_t (range -7 to +5)
+  int16_t speed;        // Changed from int to int16_t (max speed ~500)
+  uint8_t origLoc;      // Changed from int to uint8_t (max 6 locations)
 } typedef Action;
 
 // Maximum number of queued actions during a single turn. Original engine
@@ -39,7 +40,7 @@ struct STR_ACTION {
 #define ACTION_QUEUE_MAX 2
 struct STR_BQUEUE {
   Action queue[ACTION_QUEUE_MAX];
-  int q_size;
+  uint8_t q_size;  // Changed from int to uint8_t (max 2)
 };
 
 #endif

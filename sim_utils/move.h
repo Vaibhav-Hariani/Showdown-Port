@@ -136,8 +136,9 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
         def *= 2;  // Reflect doubles physical defense
       }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
-      float random_factor = (rand() % 38 + 217) / 255.0;
-      damage = (int)(damage * random_factor);
+      // Use integer arithmetic: multiply then divide to avoid float
+      int random_factor = rand() % 38 + 217;  // 217-254 range
+      damage = (damage * random_factor) / 255;
       attacker->pokemon->hp -= damage;
       attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
       DLOG("%s hurt itself in its confusion! (%d HP)",
