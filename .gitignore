@@ -6,6 +6,7 @@
 *.o
 *.out
 *.so
+conductor/
 CLAUDE.md
 *.pt
 .github

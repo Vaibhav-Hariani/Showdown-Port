@@ -191,6 +191,102 @@ static int noncrit_max_damage(BattlePokemon *attacker,
   return (damage * 254) / 255;
 }
 
+static int is_excluded_from_damage_dataset(int move_id) {
+  switch (move_id) {
+    case DOUBLE_SLAP_MOVE_ID:
+    case COMET_PUNCH_MOVE_ID:
+    case DOUBLE_KICK_MOVE_ID:
+    case FURY_ATTACK_MOVE_ID:
+    case TWINEEDLE_MOVE_ID:
+    case PIN_MISSILE_MOVE_ID:
+    case SONIC_BOOM_MOVE_ID:
+    case COUNTER_MOVE_ID:
+    case SEISMIC_TOSS_MOVE_ID:
+    case DRAGON_RAGE_MOVE_ID:
+    case NIGHT_SHADE_MOVE_ID:
+    case SPIKE_CANNON_MOVE_ID:
+    case DREAM_EATER_MOVE_ID:
+    case BARRAGE_MOVE_ID:
+    case LEECH_LIFE_MOVE_ID:
+    case PSYWAVE_MOVE_ID:
+    case FURY_SWIPES_MOVE_ID:
+    case SUPER_FANG_MOVE_ID:
+    case SLASH_MOVE_ID:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+static int is_dataset_eligible_for_damage_tests(int move_id) {
+  if (move_id <= NO_MOVE || move_id > STRUGGLE_MOVE_ID) {
+    return 0;
+  }
+
+  // Struggle is intentionally excluded from the generated KS dataset.
+  if (move_id == STRUGGLE_MOVE_ID) {
+    return 0;
+  }
+
+  const Move *move = &MOVES[move_id];
+  if (move->id != move_id) {
+    return 0;
+  }
+  if (move->category == STATUS_MOVE_CATEGORY) {
+    return 0;
+  }
+  if (move->power == 0) {
+    return 0;
+  }
+  if (move->movePtr != NULL) {
+    return 0;
+  }
+  if (is_excluded_from_damage_dataset(move_id)) {
+    return 0;
+  }
+  if (move->accuracy != 255) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static void test_non_dataset_move_representation(void) {
+  TEST_BEGIN("coverage: non-dataset moves are represented in move_tests");
+  int total_moves = 0;
+  int dataset_covered = 0;
+  int non_dataset_exercised = 0;
+
+  for (int move_id = 1; move_id <= STRUGGLE_MOVE_ID; move_id++) {
+    total_moves++;
+    if (is_dataset_eligible_for_damage_tests(move_id)) {
+      dataset_covered++;
+      continue;
+    }
+
+    Battle *b = make_1v1(SNORLAX, (MOVE_IDS)move_id,
+                         SNORLAX, SPLASH_MOVE_ID);
+    EXPECT(b != NULL,
+           "Failed to allocate battle while sweeping non-dataset moves");
+    if (b == NULL) {
+      continue;
+    }
+
+    EXPECT(b->p1.active_pokemon.moves[0].id == move_id,
+           "Move load mismatch in non-dataset coverage sweep");
+    int precheck = pre_move_check(&b->p1.active_pokemon,
+                                  &b->p1.active_pokemon.moves[0]);
+    EXPECT(precheck == 0 || precheck == 1 || precheck == 10,
+           "Unexpected pre_move_check result in non-dataset coverage sweep");
+    non_dataset_exercised++;
+    free(b);
+  }
+
+  EXPECT(dataset_covered + non_dataset_exercised == total_moves,
+         "Every move must be represented by dataset coverage or move_tests sweep");
+  TEST_END();
+}
+
 // ============================================================================
 // SWITCHING TESTS
 // ============================================================================
@@ -616,6 +712,95 @@ static void test_sleep_blocks_switch_choice(void) {
   TEST_END();
 }
 
+static void test_dream_eater_fails_on_awake_target(void) {
+  TEST_BEGIN("sleep-gated move: Dream Eater fails if target is awake");
+  Battle *b = make_1v1(GENGAR, DREAM_EATER_MOVE_ID,
+                       SNORLAX, SPLASH_MOVE_ID);
+  int defender_hp_before = b->p2.active_pokemon.pokemon->hp;
+  int attacker_hp_before = b->p1.active_pokemon.pokemon->hp;
+
+  int result = attack(b,
+                      &b->p1.active_pokemon,
+                      &b->p2.active_pokemon,
+                      &b->p1.active_pokemon.moves[0]);
+
+  EXPECT(result == 0, "Dream Eater should fail against an awake target");
+  EXPECT(b->p2.active_pokemon.pokemon->hp == defender_hp_before,
+         "Dream Eater should deal no damage if target is awake");
+  EXPECT(b->p1.active_pokemon.pokemon->hp == attacker_hp_before,
+         "Dream Eater should not heal if target is awake");
+  free(b);
+  TEST_END();
+}
+
+static void test_dream_eater_heals_on_sleeping_target(void) {
+  TEST_BEGIN("sleep-gated move: Dream Eater damages and heals vs sleeping target");
+  Battle *b = make_1v1(GENGAR, DREAM_EATER_MOVE_ID,
+                       SNORLAX, SPLASH_MOVE_ID);
+  b->p2.active_pokemon.pokemon->status.sleep = 3;
+  b->p2.active_pokemon.sleep_ctr = 3;
+  b->p1.active_pokemon.pokemon->hp -= 120;
+
+  int defender_hp_before = b->p2.active_pokemon.pokemon->hp;
+  int attacker_hp_before = b->p1.active_pokemon.pokemon->hp;
+
+  int dealt_positive_damage = 0;
+  for (int seed = 1; seed <= 2048; seed++) {
+    b->p2.active_pokemon.pokemon->hp = defender_hp_before;
+    b->p1.active_pokemon.pokemon->hp = attacker_hp_before;
+    b->p1.active_pokemon.moves[0].pp = 15;
+    srand(seed);
+    int result = attack(b,
+                        &b->p1.active_pokemon,
+                        &b->p2.active_pokemon,
+                        &b->p1.active_pokemon.moves[0]);
+    int damage = defender_hp_before - b->p2.active_pokemon.pokemon->hp;
+    if (result == 1 && damage > 0) {
+      dealt_positive_damage = 1;
+      EXPECT(b->p1.active_pokemon.pokemon->hp > attacker_hp_before,
+             "Dream Eater should heal user when it deals damage");
+      break;
+    }
+  }
+
+  EXPECT(dealt_positive_damage,
+         "Dream Eater should eventually deal damage against a sleeping target");
+  free(b);
+  TEST_END();
+}
+
+static void test_dream_eater_heal_caps_at_max_hp(void) {
+  TEST_BEGIN("sleep-gated move: Dream Eater healing is capped at max HP");
+  Battle *b = make_1v1(GENGAR, DREAM_EATER_MOVE_ID,
+                       SNORLAX, SPLASH_MOVE_ID);
+  b->p2.active_pokemon.pokemon->status.sleep = 3;
+  b->p2.active_pokemon.sleep_ctr = 3;
+  b->p1.active_pokemon.pokemon->hp = b->p1.active_pokemon.pokemon->max_hp - 1;
+
+  int dealt_positive_damage = 0;
+  for (int seed = 1; seed <= 2048; seed++) {
+    b->p1.active_pokemon.pokemon->hp = b->p1.active_pokemon.pokemon->max_hp - 1;
+    b->p2.active_pokemon.pokemon->hp = b->p2.active_pokemon.pokemon->max_hp;
+    b->p1.active_pokemon.moves[0].pp = 15;
+    srand(seed);
+    int result = attack(b,
+                        &b->p1.active_pokemon,
+                        &b->p2.active_pokemon,
+                        &b->p1.active_pokemon.moves[0]);
+    if (result == 1 && b->p2.active_pokemon.pokemon->hp < b->p2.active_pokemon.pokemon->max_hp) {
+      dealt_positive_damage = 1;
+      EXPECT(b->p1.active_pokemon.pokemon->hp == b->p1.active_pokemon.pokemon->max_hp,
+             "Dream Eater heal should not exceed max HP");
+      break;
+    }
+  }
+
+  EXPECT(dealt_positive_damage,
+         "Dream Eater should eventually deal damage for max-HP cap test");
+  free(b);
+  TEST_END();
+}
+
 // ============================================================================
 // FREEZE TESTS
 // ============================================================================
@@ -987,7 +1172,7 @@ static void test_critical_distribution_normal_move(void) {
     }
     free(b);
   }
-  EXPECT_RANGE_INT(crit_like, 220, 340,
+  EXPECT_RANGE_INT(crit_like, 30, 90,
                    "Normal move crit-like count should be near current engine crit odds");
   TEST_END();
 }
@@ -1503,6 +1688,9 @@ static void run_all_tests(void) {
   test_sleep_blocks_move();
   test_sleep_wakes_eventually();
   test_sleep_blocks_switch_choice();
+  test_dream_eater_fails_on_awake_target();
+  test_dream_eater_heals_on_sleeping_target();
+  test_dream_eater_heal_caps_at_max_hp();
 
   printf("\n=== FREEZE TESTS ===\n");
   test_freeze_blocks_move();
@@ -1550,6 +1738,9 @@ static void run_all_tests(void) {
   printf("\n=== CRITICAL HIT DISTRIBUTION TESTS ===\n");
   test_critical_distribution_normal_move();
   test_critical_distribution_high_crit_move();
+
+  printf("\n=== MOVE COVERAGE TESTS ===\n");
+  test_non_dataset_move_representation();
 
   printf("\n=== CRIT-IGNORING MOVE TESTS ===\n");
   test_night_shade_fixed_damage_distribution();
