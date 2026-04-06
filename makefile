@@ -10,3 +10,6 @@ clean:
 
 debug_sim: clean 
 	$(CC) -fdiagnostics-color=always $(INCLUDES) $(FLAGS) -g -DDEBUG sim.c -o debug_sim.out
+
+testing: debug_sim
+	$(CC) -fdiagnostics-color=always $(INCLUDES) $(FLAGS) -g -DDEBUG testing_framework/move_tests.c -o testing.out

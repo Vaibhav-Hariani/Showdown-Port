@@ -6,6 +6,7 @@
 *.o
 *.out
 *.so
+CLAUDE.md
 *.pt
 .github
 resources
@@ -13,3 +14,4 @@ __pycache__/
 node_modules/
 package_lock.json
 trained_models/
+testing_framework/move_tests

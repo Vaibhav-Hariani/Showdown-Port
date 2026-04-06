@@ -140,7 +140,9 @@ static inline void apply_multi_turn_damage(Battle *battle,
     battle->lastDamage = inflicted;
     DLOG("%s is hurt by %s! (%d HP)",
          get_pokemon_name(defender->pokemon->id),
-         attacker->multi_move_src ? attacker->multi_move_src->name : "trap",
+         attacker->multi_move_src
+             ? get_move_name(attacker->multi_move_src->id)
+             : "trap",
          inflicted);
   }
 }
@@ -185,22 +187,26 @@ void apply_barrage(Battle *battle,
 void apply_bide(Battle *battle,
                 BattlePokemon *attacker,
                 BattlePokemon *defender) {
-  // First turn bide is used
-  if (attacker->recharge_counter == 0) {
-    // Either 2 or 3 moves
+  // First turn Bide is used.
+  if (attacker->recharge_counter == 0 && attacker->recharge_len == 0) {
+    // Either 2 or 3 charge turns.
     attacker->recharge_len = rand() % 2 + 2;
+    attacker->recharge_counter = 1;
+    attacker->recharge_src = *battle->lastMove;
+    attacker->recharge_src.power = 0;
+    attacker->recharge_src.accuracy = 255;
     return;
   }
-  if (attacker->recharge_counter == attacker->recharge_len) {
-    // Bide is fully charged
-
-    // This means that there should be a post attack phase where fainted pokemon
-    // are swapped, And the queue is cleaned up.
-    defender->pokemon->hp -= attacker->dmg_counter * 2;
+  if (attacker->recharge_counter >= attacker->recharge_len) {
+    // Bide is fully charged.
+    int bide_damage = attacker->dmg_counter * 2;
+    int inflicted = apply_damage_with_substitute(defender, bide_damage);
+    battle->lastDamage = inflicted;
     DLOG("Bide triggered!");
     attacker->recharge_counter = 0;
     attacker->recharge_len = 0;
     attacker->dmg_counter = 0;
+    attacker->recharge_src = (Move){0};
     return;
   }
   attacker->recharge_counter++;
@@ -825,12 +831,7 @@ void apply_seismic_toss(Battle *battle,
                         BattlePokemon *attacker,
                         BattlePokemon *defender) {
   int damage = attacker->pokemon->stats.level;
-  int actual_damage = apply_damage_with_substitute(defender, damage);
-  if (actual_damage > 0) {
-    DLOG("%s took %d damage from Seismic Toss!",
-         get_pokemon_name(defender->pokemon->id),
-         damage);
-  }
+  apply_damage_with_substitute(defender, damage);
 }
 
 // Self Destruct - User faints after using this move (200 base power)

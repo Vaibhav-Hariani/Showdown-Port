@@ -82,22 +82,21 @@ typedef struct STR_BATTLE_POKEMON {
   // moves is by default NULL
   // The existence of a move will override the reference from
   // the base Pokemon struct
-  // This is mainly useful for transform / mimic
-  // We copy over the moves and the
+  // This is useful for transform / mimic
   poke_stats stats;
   Move moves[4];
   struct STR_STAT_MODS stat_mods;
   TYPE type1;
   TYPE type2;
-  int16_t substitute_hp;           // Changed from int to int16_t (max HP ~700)
-  uint8_t badly_poisoned_ctr;      // Changed from int to uint8_t (max ~16 turns)
-  uint8_t sleep_ctr;               // Changed from int to uint8_t (max ~8 turns)
-  uint8_t recharge_counter;        // Changed from int to uint8_t (max ~3 turns)
+  int16_t substitute_hp;           
+  uint8_t badly_poisoned_ctr;      
+  uint8_t sleep_ctr;               
+  uint8_t recharge_counter;
   Move recharge_src;
-  uint8_t recharge_len;            // Changed from int to uint8_t (max ~3 turns)
-  int16_t dmg_counter;             // Changed from int to int16_t (max damage ~500)
+  uint8_t recharge_len;            
+  int16_t dmg_counter;             
   SWITCH_STOPS no_switch;
-  uint8_t multi_move_len;          // Changed from int to uint8_t (max ~8 turns)
+  uint8_t multi_move_len;          
   Move* multi_move_src;  // The multi-turn move being executed
   uint8_t immobilized
       : 1;  // Target is immobilized by opponent's multi-turn move

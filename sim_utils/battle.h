@@ -23,6 +23,9 @@ int end_step(Battle* b) {
     DLOG("Player %d's Resolution", i);
     for (int j = 0; j < NUM_POKE; j++) {
       Pokemon* poke = &p->team[j];
+      if (poke->id == MISSINGNO) continue;
+
+
       int is_active = (j == p->active_pokemon_index);
       // Sleep
       if (poke->status.sleep) {

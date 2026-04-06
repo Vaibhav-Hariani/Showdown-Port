@@ -16,6 +16,33 @@
 // for memset
 #include "string.h"
 
+static inline int is_high_crit_move(MOVE_IDS move_id) {
+  switch (move_id) {
+    case KARATE_CHOP_MOVE_ID:
+    case RAZOR_LEAF_MOVE_ID:
+    case CRABHAMMER_MOVE_ID:
+    case SLASH_MOVE_ID:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+static inline int roll_critical_hit(BattlePokemon* attacker, Move* used_move) {
+  // Gen 1 style: base chance scales with base Speed; high-crit moves use 8x
+  // the base chance (capped at 255/256).
+  int crit_threshold = attacker->pokemon->stats.base_stats[STAT_SPEED] / 2;
+  if (is_high_crit_move(used_move->id)) {
+    crit_threshold *= 8;
+  }
+  crit_threshold = min(crit_threshold, 255);
+  return (rand() % 256) < crit_threshold;
+}
+
+static inline int is_seismic_toss_move(const Move* used_move) {
+  return used_move != NULL && used_move->id == SEISMIC_TOSS_MOVE_ID;
+}
+
 int calculate_damage(BattlePokemon* attacker,
                      BattlePokemon* defender,
                      Move* used_move) {
@@ -30,38 +57,46 @@ int calculate_damage(BattlePokemon* attacker,
   int attack_stat;
   int defense_stat;
 
-  // Critical hits ignore the stat modifiers.
-  // TODO: Focus energy also has a special critical hit effect.
-  // How this is handled should be decided separately
+  // Critical hits ignore stat-stage modifiers and screens. Focus Energy is
+  // still not implemented in engine state, so only move/high-crit behavior
+  // is applied here.
+  int is_critical = 0;
+  if (power > 0) {
+    is_critical = roll_critical_hit(attacker, used_move);
+  }
 
   // Get stat modifiers as fixed-point values (256 = 1.0x)
   if (used_move->category == SPECIAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
-    if (attacker->pokemon->status.burn) {
-      attack_stat /= 2;  // Burn halves physical attack
-    }
-    // Apply stat modifier using fixed-point arithmetic
-    attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
-    // Specials use stat_special_defence: this should always be the same as
-    // their stat_special
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
-    defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.specD)) >> 8;
-    if (defender->light_screen) {
-      defense_stat *= 2;  // Light Screen doubles special defense
-      if (defense_stat > 1024) {
-        defense_stat -= defense_stat % 1024;
+    if (!is_critical) {
+      if (attacker->pokemon->status.burn) {
+        attack_stat /= 2;  // Existing engine behavior
+      }
+      // Apply stat modifier using fixed-point arithmetic
+      attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
+      // Specials use stat_special_defence: this should always be the same as
+      // their stat_special
+      defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.specD)) >> 8;
+      if (defender->light_screen) {
+        defense_stat *= 2;  // Light Screen doubles special defense
+        if (defense_stat > 1024) {
+          defense_stat -= defense_stat % 1024;
+        }
       }
     }
   } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
-    attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
-    defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
-    if (defender->reflect) {
-      defense_stat *= 2;  // Reflect doubles physical defense
-    }
-    if (defense_stat > 1024) {
-      defense_stat -= defense_stat % 1024;
+    if (!is_critical) {
+      attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
+      defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
+      if (defender->reflect) {
+        defense_stat *= 2;  // Reflect doubles physical defense
+      }
+      if (defense_stat > 1024) {
+        defense_stat -= defense_stat % 1024;
+      }
     }
   }
 
@@ -85,6 +120,11 @@ int calculate_damage(BattlePokemon* attacker,
   // Apply type effectiveness and STAB using fixed-point
   // (base_damage * stab * type_effectiveness) / (256 * 256)
   int damage = (base_damage * stab * type_effectiveness) >> 16;
+
+  if (is_critical) {
+    damage *= 2;
+    DLOG("A critical hit!");
+  }
   
   // Damage at this point should be 0,1, or greater than 1. Only if greater
   // than one should anything happen.
@@ -250,9 +290,11 @@ static inline int attack(Battle* b,
                   get_evasion_modifier(defender->stat_mods.evasion)) >> 16;
   int accuracy_random = (rand() % 256);
   if (accuracy_random >= accuracy) {
-    DLOG("%s's attack %s missed!",
-         get_pokemon_name(attacker->pokemon->id),
-         get_move_name(used_move->id));
+    if (!is_seismic_toss_move(used_move)) {
+      DLOG("%s's attack %s missed!",
+           get_pokemon_name(attacker->pokemon->id),
+           get_move_name(used_move->id));
+    }
 
     if (used_move->id == HIGH_JUMP_KICK_MOVE_ID) {
       attacker->pokemon->hp = max(attacker->pokemon->hp - 1, 0);
@@ -276,9 +318,11 @@ static inline int attack(Battle* b,
   int skip_damage = (used_move->id == SOLAR_BEAM_MOVE_ID);
   if (!skip_damage && used_move->power != 0 &&
       attacker->recharge_counter == attacker->recharge_len) {
-    DLOG("%s used %s!",
-         get_pokemon_name(attacker->pokemon->id),
-         get_move_name(used_move->id));
+    if (!is_seismic_toss_move(used_move)) {
+      DLOG("%s used %s!",
+           get_pokemon_name(attacker->pokemon->id),
+           get_move_name(used_move->id));
+    }
 
     damage = calculate_damage(attacker, defender, used_move);
 
