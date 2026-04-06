@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "../data_sim/generated_movedex.h"
+#include "../data_sim/pokedex.h"
 #include "../data_sim/stat_modifiers.h"
 #include "battle_structs.h"
 #include "move_structs.h"
@@ -31,12 +32,21 @@ static inline int is_high_crit_move(MOVE_IDS move_id) {
 static inline int roll_critical_hit(BattlePokemon* attacker, Move* used_move) {
   // Gen 1 style: base chance scales with base Speed; high-crit moves use 8x
   // the base chance (capped at 255/256).
-  int crit_threshold = attacker->pokemon->stats.base_stats[STAT_SPEED] / 2;
+  // Use species base Speed from pokedex data, not the loaded/buffed battle
+  // speed stat.
+  int species_speed =
+      POKEMON_BASE[attacker->pokemon->id].base_stats[STAT_SPEED];
+  int crit_threshold = species_speed / 2;
   if (is_high_crit_move(used_move->id)) {
     crit_threshold *= 8;
   }
   crit_threshold = min(crit_threshold, 255);
   return (rand() % 256) < crit_threshold;
+}
+
+static inline int is_special_type_gen1(TYPE type) {
+  return type == FIRE || type == WATER || type == GRASS || type == ELECTRIC ||
+         type == ICE || type == PSYCHIC || type == DRAGON;
 }
 
 static inline int is_seismic_toss_move(const Move* used_move) {
@@ -48,6 +58,7 @@ int calculate_damage(BattlePokemon* attacker,
                      Move* used_move) {
   // Base power of the move
   int power = used_move->power;
+  int use_special_split = is_special_type_gen1(used_move->type);
 
   // Attack and Defense stats
   // Only if SPECIAL attack
@@ -66,13 +77,10 @@ int calculate_damage(BattlePokemon* attacker,
   }
 
   // Get stat modifiers as fixed-point values (256 = 1.0x)
-  if (used_move->category == SPECIAL_MOVE_CATEGORY) {
+  if (use_special_split) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
     if (!is_critical) {
-      if (attacker->pokemon->status.burn) {
-        attack_stat /= 2;  // Existing engine behavior
-      }
       // Apply stat modifier using fixed-point arithmetic
       attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
       // Specials use stat_special_defence: this should always be the same as
@@ -85,10 +93,14 @@ int calculate_damage(BattlePokemon* attacker,
         }
       }
     }
-  } else if (used_move->category == PHYSICAL_MOVE_CATEGORY) {
+  } else {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
     if (!is_critical) {
+      if (attacker->pokemon->status.burn) {
+        // Burn halves physical attack for non-critical damage checks.
+        attack_stat /= 2;
+      }
       attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
       defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
       if (defender->reflect) {
@@ -101,11 +113,26 @@ int calculate_damage(BattlePokemon* attacker,
   }
 
   int level = base_attacker->stats.level;
-  // Type effectiveness using fixed-point arithmetic (256 = 1.0x)
-  // Multiply two damage chart values together, then divide by 256
-  uint32_t type_effectiveness = 
-      ((uint32_t)damage_chart[used_move->type][defender->type1] * 
-       (uint32_t)damage_chart[used_move->type][defender->type2]) >> 8;
+  if (is_critical) {
+    // Gen 1 critical hits double attacker level within the damage formula.
+    level *= 2;
+    DLOG("A Critical Hit!");
+  }
+
+  // Gen 1 overflow quirk: if either attacking or defending stat exceeds 255,
+  // both are quartered (floor) before entering the base damage formula.
+  if (attack_stat > 255 || defense_stat > 255) {
+    attack_stat /= 4;
+    defense_stat /= 4;
+    if (defense_stat <= 0) {
+      defense_stat = 1;
+    }
+  }
+
+  // Type effectiveness in fixed-point arithmetic (256 = 1.0x).
+  // Keep each type multiplier separate so we can floor per-step.
+  uint16_t type_effectiveness_1 = damage_chart[used_move->type][defender->type1];
+  uint16_t type_effectiveness_2 = damage_chart[used_move->type][defender->type2];
 
   // STAB (Same-Type Attack Bonus): 1.5x = 384/256, 1.0x = 256/256
   uint16_t stab =
@@ -116,16 +143,12 @@ int calculate_damage(BattlePokemon* attacker,
   // Damage formula with fixed-point arithmetic
   // Base damage calculation (integer portion)
   int base_damage = ((2 * level / 5 + 2) * power * attack_stat / defense_stat) / 50 + 2;
-  
-  // Apply type effectiveness and STAB using fixed-point
-  // (base_damage * stab * type_effectiveness) / (256 * 256)
-  int damage = (base_damage * stab * type_effectiveness) >> 16;
 
-  if (is_critical) {
-    damage *= 2;
-    DLOG("A critical hit!");
-  }
-  
+  // Apply STAB and type modifiers sequentially so each stage floors.
+  int damage = (base_damage * stab) >> 8;
+  damage = (damage * type_effectiveness_1) >> 8;
+  damage = (damage * type_effectiveness_2) >> 8;
+
   // Damage at this point should be 0,1, or greater than 1. Only if greater
   // than one should anything happen.
   if (damage <= 1) {
@@ -136,7 +159,7 @@ int calculate_damage(BattlePokemon* attacker,
   }
   // Random factor (Exactly as specified by bulbapedia)
   // Use integer arithmetic: multiply then divide to avoid float
-  int random_factor = rand() % 38 + 217;  // 217-254 range
+  int random_factor = rand() % 39 + 217;  // 217-255 range
   return (damage * random_factor) / 255;
 }
 
@@ -177,7 +200,7 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
       // Use integer arithmetic: multiply then divide to avoid float
-      int random_factor = rand() % 38 + 217;  // 217-254 range
+      int random_factor = rand() % 39 + 217;  // 217-255 range
       damage = (damage * random_factor) / 255;
       attacker->pokemon->hp -= damage;
       attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
@@ -314,6 +337,14 @@ static inline int attack(Battle* b,
     return 0;
   }
 
+  // Gen 1 Dream Eater fails unless the target is asleep.
+  if (used_move->id == DREAM_EATER_MOVE_ID &&
+      defender->sleep_ctr == 0 && defender->pokemon->status.sleep == 0) {
+    DLOG("%s's Dream Eater failed!",
+         get_pokemon_name(attacker->pokemon->id));
+    return 0;
+  }
+
   int damage = 0;
   int skip_damage = (used_move->id == SOLAR_BEAM_MOVE_ID);
   if (!skip_damage && used_move->power != 0 &&
@@ -328,6 +359,8 @@ static inline int attack(Battle* b,
 
     if (attacker->recharge_len == 0 ||
         attacker->recharge_counter != attacker->recharge_len) {
+      int damage_to_pokemon = damage;
+      int had_substitute = (defender->substitute_hp > 0);
       if (defender->substitute_hp > 0) {
         if (damage >= defender->substitute_hp) {
           defender->substitute_hp = 0;
@@ -340,6 +373,18 @@ static inline int attack(Battle* b,
         defender->pokemon->hp -= damage;
         defender->pokemon->hp = max(defender->pokemon->hp, 0);
       }
+      if (had_substitute) {
+        damage_to_pokemon = 0;
+      }
+
+      // Gen 1 Dream Eater heals the user by 50% of damage dealt
+      // (minimum 1 HP when damage is dealt), capped at max HP.
+      if (used_move->id == DREAM_EATER_MOVE_ID && damage_to_pokemon > 0) {
+        int heal_amount = max(1, damage_to_pokemon / 2);
+        attacker->pokemon->hp =
+            min(attacker->pokemon->hp + heal_amount, attacker->pokemon->max_hp);
+      }
+
       defender->dmg_counter += damage;
     }
     b->lastDamage = damage;
