@@ -13,6 +13,8 @@ CLAUDE.md
 resources
 __pycache__/
 node_modules/
-package_lock.json
+package-lock.json
+package.json
+damage-calc/
 trained_models/
 testing_framework/move_tests
