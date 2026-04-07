@@ -14,8 +14,8 @@
 #include "sim_utils/move.h"
 #include "sim_utils/opponent_behavior.h"
 #include "sim_utils/pokegen.h"
-#include "sim_utils/sim_logging.h"
-#include "sim_utils/sim_packing.h"
+
+static inline int get_team_index(const Player* player, const Pokemon* pokemon);
 
 typedef enum { RANDOM = 0, GEN1_AI = 1 } OpponentType;
 
@@ -41,6 +41,7 @@ void c_reset(Sim* sim);
 static inline void set_active(Player* p);
 
 void sim_init(Sim* sim, int* poke_array) {
+  sim_srand((unsigned int)rand());
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
   if (poke_array) {
       // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
@@ -62,16 +63,16 @@ void sim_init(Sim* sim, int* poke_array) {
   c_reset(sim);
 }
 
-int valid_choice(int player_num, Player p, unsigned int input, int mode) {
-  // The players input doesn't even matter
-  if (!(mode == player_num || mode % 3 == 0)) {
+int valid_choice(int player_num, const Player* p, unsigned int input, int mode) {
+  // If this player is not expected to act this step, treat as valid.
+  if (mode != 0 && mode != 3 && mode != player_num) {
     return 1;
   }
-  if (input < 6) {
+  if (input < NUM_POKE) {
     return valid_switch(p, input);
   }
   if (mode == 0 && input <= 9) {
-    return valid_move(&p, input - 6);
+    return valid_move(p, input - 6);
   }
   return 0;
 }
@@ -83,7 +84,6 @@ void action(Battle* b, Player* user, Player* target, int input, int type) {
   } else {
     add_switch(b, user, input, type);
   }
-  b->action_queue.q_size++;
 }
 
 // Reward function: Only returns a terminal win/loss signal.
@@ -94,8 +94,16 @@ float reward(Sim* s) {
   int p1_alive = 0;
   int p2_alive = 0;
   for (int j = 0; j < NUM_POKE; j++) {
-    p1_alive += b->p1.team[j].hp > 0 ? 1 : 0;
-    p2_alive += b->p2.team[j].hp > 0 ? 1 : 0;
+    if (!p1_alive && b->p1.team[j].hp > 0) {
+      p1_alive = 1;
+    }
+    if (!p2_alive && b->p2.team[j].hp > 0) {
+      p2_alive = 1;
+    }
+    // Common path: both sides still have live Pokemon.
+    if (p1_alive && p2_alive) {
+      return 0.0f;
+    }
   }
   if (p1_alive == 0) {
     return -1.0f;  // All of player 1's Pokemon fainted => loss
@@ -110,6 +118,8 @@ static inline void set_active(Player* p) {
   // Set up active pokemon
   // Initialize and set up active pokemon
   p->active_pokemon.pokemon = &p->team[0];
+  p->active_pokemon_index =
+      (char)get_team_index(p, p->active_pokemon.pokemon);
   p->active_pokemon.type1 = p->active_pokemon.pokemon->type1;
   p->active_pokemon.type2 = p->active_pokemon.pokemon->type2;
   // Copy base Pokemon stats and moves into the active slot
@@ -122,15 +132,16 @@ static inline void set_active(Player* p) {
 }
 
 void team_generator(Player* p, TeamConfig config) {
-  // Clear the entire Pokemon table
-  memset(p->team, 0, sizeof(Pokemon) * NUM_POKE);
   // Reset visibility bitfield
   p->shown_pokemon = 0;
 
   // Load NUM_POKE pokemon for the team
   if (config == GEN_1_OU) {
+    // OU loader overwrites all six slots, so no full memset is needed.
     load_team_from_ou(p, -1);  // Load a random OU team
   } else {
+    // Non-OU configs may leave trailing slots unused; clear table first.
+    memset(p->team, 0, sizeof(Pokemon) * NUM_POKE);
     int num_poke = 1;
     if (config == ONE_V_ONE) {
       num_poke = 1;
@@ -160,30 +171,9 @@ static inline int can_player_act(Player* player, int choice) {
 // Helper function to get AI player choice (P2)
 static inline int ai_choice(Sim* sim, int mode) {
   Battle* b = sim->battle;
-  if (mode > 0) {
-    return select_valid_switch_choice(b->p2);
-  }
-  // Regular mode: choose best damaging move
-  int action;
-  if (mode == 0) {
-    // if (sim->gametype == GEN_1_OU) {
-    //   action = select_best_move_choice(&b->p2, &b->p1);
-    // }
-    int num_failed = 10;
-    while (!(valid_choice(2, b->p2, action, mode)) && num_failed > 0) {
-      action = 6 + (rand() % 4);
-      num_failed--;
-    }
-    if (num_failed <= 0) {
-      DLOG("Failed to properly choose move - checking all actions");
-      for (int i = 9; i >= 0; i--) {
-        if (valid_choice(2, b->p2, i, mode)) {
-          return i;
-        }
-      }
-      DLOG("No valid moves found for opponent");
-      return -1;
-    }
+  int action = choose_gen1_ai_action(2, &b->p2, &b->p1, mode);
+  if (action == 0 && !valid_choice(2, &b->p2, 0, mode)) {
+    DLOG("No valid actions found for opponent");
   }
   return action;
 }
@@ -258,7 +248,7 @@ void c_reset(Sim* sim) {
               sim->tick,
               sim->gametype);
   reset_sim(sim);
-  TeamConfig config = rand() % TEAM_CONFIG_MAX;
+  TeamConfig config = sim_rand() % TEAM_CONFIG_MAX;
   sim->gametype = (int)config;
   team_generator(&sim->battle->p1, config);
   team_generator(&sim->battle->p2, config);
@@ -286,12 +276,13 @@ void c_step(Sim* sim) {
   sim->tick++;
   Battle* battle = sim->battle;
 
-  int selfplay = sim->num_agents != 2;
+  int selfplay = (sim->num_agents == 1);
+  int mode = battle->mode;
 
   int raw_choice_p1 = sim->actions[0];
-  int raw_choice_p2 = selfplay ? ai_choice(sim, battle->mode): sim->actions[1];
+  int raw_choice_p2 = selfplay ? ai_choice(sim, mode) : sim->actions[1];
 
-  if (!valid_choice(1, battle->p1, raw_choice_p1, battle->mode)) {
+  if (!valid_choice(1, &battle->p1, raw_choice_p1, mode)) {
     // Invalid move penalty for P1
     sim->rewards[0] = -0.01f;
     sim->episode_invalid_moves += 1;
@@ -301,7 +292,7 @@ void c_step(Sim* sim) {
     pack_all_agents(battle, sim->num_agents, sim->observations);
     return;
   }
-  if (!selfplay && !valid_choice(2, battle->p2, raw_choice_p2, battle->mode)) {
+  if (!selfplay && !valid_choice(2, &battle->p2, raw_choice_p2, mode)) {
     sim->rewards[1] = -0.01f;
     sim->episode_invalid_moves += 1;
     if (sim->accumulated_invalid_penalty[1] < 0.5f) {
@@ -326,7 +317,10 @@ void c_step(Sim* sim) {
   // End of sim
 
   battle->action_queue.q_size = 0;
-  float r = reward(sim);
+  float r = 0.0f;
+  if (battle->mode != 0) {
+    r = reward(sim);
+  }
   if (r == 1.0f || r == -1.0f) {
     // Terminal: P1 wins (+1) or loses (-1)
     sim->rewards[0] = r;

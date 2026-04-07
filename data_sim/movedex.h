@@ -52,7 +52,7 @@ static inline int apply_damage_with_substitute(BattlePokemon *defender,
 
 static inline int choose_hit_count(int min_hits, int max_hits) {
   if (min_hits == 2 && max_hits == 5) {
-    int roll = rand() % 8;
+    int roll = sim_rand() % 8;
     if (roll < 3) return 2;
     if (roll < 6) return 3;
     return (roll == 6) ? 4 : 5;
@@ -60,7 +60,7 @@ static inline int choose_hit_count(int min_hits, int max_hits) {
   if (max_hits <= min_hits) {
     return min_hits;
   }
-  return min_hits + (rand() % (max_hits - min_hits + 1));
+  return min_hits + (sim_rand() % (max_hits - min_hits + 1));
 }
 
 static inline int apply_multi_hit_followup(Battle *battle,
@@ -159,7 +159,7 @@ void apply_acid(Battle *battle,
     DLOG("%s is protected by Mist!", get_pokemon_name(defender->pokemon->id));
     return;
   }
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.defense = max(defender->stat_mods.defense - 1, -6);
     DLOG("%s's Defense fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -169,7 +169,7 @@ void apply_acid(Battle *battle,
 void apply_aurora_beam(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.attack = max(defender->stat_mods.attack - 1, -6);
     DLOG("%s's Attack fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -190,7 +190,7 @@ void apply_bide(Battle *battle,
   // First turn Bide is used.
   if (attacker->recharge_counter == 0 && attacker->recharge_len == 0) {
     // Either 2 or 3 charge turns.
-    attacker->recharge_len = rand() % 2 + 2;
+    attacker->recharge_len = sim_rand() % 2 + 2;
     attacker->recharge_counter = 1;
     attacker->recharge_src = *battle->lastMove;
     attacker->recharge_src.power = 0;
@@ -231,7 +231,7 @@ void apply_bind(Battle *battle,
 void apply_bite(Battle *battle,
                 BattlePokemon *attacker,
                 BattlePokemon *defender) {
-  if (rand() % 256 < 26) {  // 26/256 ≈ 10.2%
+  if (sim_rand() % 256 < 26) {  // 26/256 ≈ 10.2%
     defender->flinch = 1;
     DLOG("%s flinched!", get_pokemon_name(defender->pokemon->id));
   }
@@ -241,7 +241,7 @@ void apply_bite(Battle *battle,
 void apply_bubble(Battle *battle,
                   BattlePokemon *attacker,
                   BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
     DLOG("%s's Speed fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -251,7 +251,7 @@ void apply_bubble(Battle *battle,
 void apply_bubble_beam(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
     DLOG("%s's Speed fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -283,7 +283,7 @@ void apply_clamp(Battle *battle,
 void apply_constrict(Battle *battle,
                      BattlePokemon *attacker,
                      BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
     DLOG("%s's Speed fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -352,9 +352,9 @@ void apply_disable(Battle *battle,
   }
 
   // Randomly select one of the valid moves
-  int selected = rand() % valid_count;
+  int selected = sim_rand() % valid_count;
   defender->disabled_move_id = valid_moves[selected];
-  defender->disabled_count = (rand() % 7) + 1;  // 1-7 turns
+  defender->disabled_count = (sim_rand() % 7) + 1;  // 1-7 turns
 
   DLOG("%s's %s was disabled for %d turns!",
        get_pokemon_name(defender->pokemon->id),
@@ -366,7 +366,7 @@ void apply_disable(Battle *battle,
 void apply_dizzy_punch(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
-  if (rand() % 256 < 51) {  // 51/256 ≈ 19.9%
+  if (sim_rand() % 256 < 51) {  // 51/256 ≈ 19.9%
     defender->confusion_counter = 1;
     DLOG("%s became confused!", get_pokemon_name(defender->pokemon->id));
   }
@@ -410,7 +410,7 @@ void apply_explosion(Battle *battle,
 void apply_fire_blast(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
-  if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
+  if (sim_rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->pokemon->status.burn = 1;
     DLOG("%s was burned!", get_pokemon_name(defender->pokemon->id));
   }
@@ -452,7 +452,7 @@ void apply_fissure(Battle *battle,
 
   int accuracy =
       attacker->pokemon->stats.level - defender->pokemon->stats.level + 30;
-  if (rand() % 100 >= accuracy) {
+  if (sim_rand() % 100 >= accuracy) {
     DLOG("Fissure missed!");
     return;
   }
@@ -519,7 +519,7 @@ void apply_guillotine(Battle *battle,
 
   int accuracy =
       attacker->pokemon->stats.level - defender->pokemon->stats.level + 30;
-  if (rand() % 100 >= accuracy) {
+  if (sim_rand() % 100 >= accuracy) {
     DLOG("Guillotine missed!");
     return;
   }
@@ -552,7 +552,7 @@ void apply_horn_drill(Battle *battle,
 
   int accuracy =
       attacker->pokemon->stats.level - defender->pokemon->stats.level + 30;
-  if (rand() % 100 >= accuracy) {
+  if (sim_rand() % 100 >= accuracy) {
     DLOG("Horn Drill missed!");
     return;
   }
@@ -606,7 +606,7 @@ void apply_light_screen(Battle *battle,
 void apply_low_kick(Battle *battle,
                     BattlePokemon *attacker,
                     BattlePokemon *defender) {
-  if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
+  if (sim_rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->flinch = 1;
     DLOG("%s flinched!", get_pokemon_name(defender->pokemon->id));
   }
@@ -625,7 +625,7 @@ void apply_mimic(Battle *battle,
     }
   }
   // Copy a random move from the defender
-  int random_move_index = rand() % 4;
+  int random_move_index = sim_rand() % 4;
   attacker->moves[mimic_index].id = defender->moves[random_move_index].id;
   attacker->moves[mimic_index].power = defender->moves[random_move_index].power;
   attacker->moves[mimic_index].accuracy =
@@ -684,7 +684,7 @@ void apply_petal_dance(Battle *battle,
                        BattlePokemon *attacker,
                        BattlePokemon *defender) {
   if (attacker->recharge_counter == 0) {
-    attacker->recharge_len = rand() % 2 + 2;  // 2 or 3 turns
+    attacker->recharge_len = sim_rand() % 2 + 2;  // 2 or 3 turns
     DLOG("%s began dancing!", get_pokemon_name(attacker->pokemon->id));
   }
 
@@ -703,7 +703,7 @@ void apply_petal_dance(Battle *battle,
 void apply_poison_sting(Battle *battle,
                         BattlePokemon *attacker,
                         BattlePokemon *defender) {
-  if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
+  if (sim_rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->pokemon->status.poison = 1;
     DLOG("%s was poisoned!", get_pokemon_name(defender->pokemon->id));
   }
@@ -713,7 +713,7 @@ void apply_poison_sting(Battle *battle,
 void apply_psychic(Battle *battle,
                    BattlePokemon *attacker,
                    BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.specD = max(defender->stat_mods.specD - 1, -6);
     DLOG("%s's Special Defense fell!", get_pokemon_name(defender->pokemon->id));
   }
@@ -725,7 +725,7 @@ void apply_psywave(Battle *battle,
                    BattlePokemon *defender) {
   // Gen 1: Random damage from 1 to (level × 1.5), rounded down
   int max_damage = (int)(1.5 * attacker->pokemon->stats.level);
-  int damage = (rand() % max_damage) + 1;
+  int damage = (sim_rand() % max_damage) + 1;
   int actual_damage = apply_damage_with_substitute(defender, damage);
   if (actual_damage > 0) {
     DLOG("%s took %d damage from Psywave!",
@@ -808,7 +808,7 @@ void apply_rest(Battle *battle,
 void apply_rock_slide(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
-  if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
+  if (sim_rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->flinch = 1;
     DLOG("%s flinched!", get_pokemon_name(defender->pokemon->id));
   }
@@ -923,7 +923,7 @@ void apply_solar_beam(Battle *battle,
 void apply_stomp(Battle *battle,
                  BattlePokemon *attacker,
                  BattlePokemon *defender) {
-  if (rand() % 256 < 77) {  // 77/256 ≈ 30.1%
+  if (sim_rand() % 256 < 77) {  // 77/256 ≈ 30.1%
     defender->flinch = 1;
     DLOG("%s flinched!", get_pokemon_name(defender->pokemon->id));
   }
@@ -981,7 +981,7 @@ void apply_thrash(Battle *battle,
                   BattlePokemon *attacker,
                   BattlePokemon *defender) {
   if (attacker->recharge_counter == 0) {
-    attacker->recharge_len = rand() % 2 + 2;  // 2 or 3 turns
+    attacker->recharge_len = sim_rand() % 2 + 2;  // 2 or 3 turns
     DLOG("%s began thrashing!", get_pokemon_name(attacker->pokemon->id));
   }
 
@@ -1000,7 +1000,7 @@ void apply_thrash(Battle *battle,
 void apply_thunder(Battle *battle,
                    BattlePokemon *attacker,
                    BattlePokemon *defender) {
-  if (rand() % 256 < 26) {  // 26/256 ≈ 10.2%
+  if (sim_rand() % 256 < 26) {  // 26/256 ≈ 10.2%
     defender->pokemon->status.paralyzed = 1;
     DLOG("%s was paralyzed!", get_pokemon_name(defender->pokemon->id));
   }
@@ -1054,7 +1054,7 @@ void apply_transform(Battle *battle,
 void bubble_beam_base(Battle *battle,
                       BattlePokemon *attacker,
                       BattlePokemon *defender) {
-  if (rand() % 256 < 85) {  // 85/256 ≈ 33.2%
+  if (sim_rand() % 256 < 85) {  // 85/256 ≈ 33.2%
     defender->stat_mods.speed = max(defender->stat_mods.speed - 1, -6);
     DLOG("%s's Speed fell!", get_pokemon_name(defender->pokemon->id));
   }

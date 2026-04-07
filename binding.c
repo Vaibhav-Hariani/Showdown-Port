@@ -4,6 +4,7 @@
 #include "../env_binding.h"
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
+  (void)args;
   env->num_agents = unpack(kwargs, "num_agents");
 
   ///Team Loading: we can check if a custom_load kwarg exists. 

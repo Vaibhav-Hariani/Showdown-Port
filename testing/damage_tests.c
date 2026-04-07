@@ -6,7 +6,7 @@
 
 #include "move_labels.h"
 
-#define DEFAULT_DATASET_PATH "testing_framework/damage_dataset.txt"
+#define DEFAULT_DATASET_PATH "testing/damage_dataset.txt"
 #define DEFAULT_RUNS_PER_SETUP 1000
 #define DEFAULT_KS_THRESHOLD 0.12
 #define DEFAULT_SEED_BASE 500000
@@ -356,10 +356,10 @@ static int collect_empirical_distribution(const DamageSetup *setup,
   empirical->n_bins = 0;
 
   // Seed once per setup so each trial draws fresh RNG values from a single
-  // stream; reseeding per trial biases early rand() outputs and skews crit/
+  // stream; reseeding per trial biases early sim_rand() outputs and skews crit/
   // damage-roll distributions.
   unsigned int seed = base_seed + (unsigned int)(setup_index * 100003);
-  srand(seed);
+  sim_srand(seed);
 
   for (int i = 0; i < runs; i++) {
     Battle *b = make_1v1((POKEDEX_IDS)setup->attacker_id,

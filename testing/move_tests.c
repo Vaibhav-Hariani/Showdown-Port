@@ -120,7 +120,7 @@ static int calc_damage_with_seed(unsigned int seed,
                                  BattlePokemon *attacker,
                                  BattlePokemon *defender,
                                  Move *move) {
-  srand(seed);
+  sim_srand(seed);
   return calculate_damage(attacker, defender, move);
 }
 
@@ -309,8 +309,8 @@ static void test_switch_invalid_same_slot(void) {
   Battle *b = make_2v1(KANGASKHAN, TACKLE_MOVE_ID,
                        SNORLAX,    TACKLE_MOVE_ID,
                        STARMIE,    TACKLE_MOVE_ID);
-  EXPECT(valid_switch(b->p1, 0) == 0, "Switching to active slot should be invalid");
-  EXPECT(valid_switch(b->p1, 1) == 1, "Switching to slot 1 should be valid");
+  EXPECT(valid_switch(&b->p1, 0) == 0, "Switching to active slot should be invalid");
+  EXPECT(valid_switch(&b->p1, 1) == 1, "Switching to slot 1 should be valid");
   free(b);
   TEST_END();
 }
@@ -321,7 +321,7 @@ static void test_switch_invalid_fainted(void) {
                        SNORLAX,    TACKLE_MOVE_ID,
                        STARMIE,    TACKLE_MOVE_ID);
   b->p1.team[1].hp = 0;
-  EXPECT(valid_switch(b->p1, 1) == 0, "Switching to fainted Pokemon should be invalid");
+  EXPECT(valid_switch(&b->p1, 1) == 0, "Switching to fainted Pokemon should be invalid");
   free(b);
   TEST_END();
 }
@@ -343,10 +343,10 @@ static void test_switch_after_faint_forced(void) {
   b->action_queue.q_size = 0;
   EXPECT(b->mode == 1, "Mode should be 1 (P1 must switch) after active faint");
   // A switch to slot 1 should be a valid choice in forced-switch mode.
-  EXPECT(valid_choice(1, b->p1, 1, b->mode) == 1,
+  EXPECT(valid_choice(1, &b->p1, 1, b->mode) == 1,
          "Switch to slot 1 should be valid in forced-switch mode");
   // A move choice should NOT be valid while forced to switch.
-  EXPECT(valid_choice(1, b->p1, 6, b->mode) == 0,
+  EXPECT(valid_choice(1, &b->p1, 6, b->mode) == 0,
          "Move choice should be invalid when forced to switch");
   free(b);
   TEST_END();
@@ -364,7 +364,7 @@ static void test_rage_prevents_switch(void) {
   // Directly apply Rage lock state (mirrors what the engine sets).
   b->p1.active_pokemon.no_switch = SWITCH_STOP_RAGE;
   b->p1.active_pokemon.rage = &b->p1.active_pokemon.moves[0];
-  EXPECT(valid_switch(b->p1, 1) == 0, "Should not be able to switch while Rage-locked");
+  EXPECT(valid_switch(&b->p1, 1) == 0, "Should not be able to switch while Rage-locked");
   free(b);
   TEST_END();
 }
@@ -393,7 +393,7 @@ static void test_solarbeam_prevents_switch(void) {
   b->p1.active_pokemon.no_switch = SWITCH_STOP_SOLAR_BEAM;
   b->p1.active_pokemon.recharge_counter = 1;
   b->p1.active_pokemon.recharge_len = 1;
-  EXPECT(valid_switch(b->p1, 1) == 0, "Should not be able to switch during Solar Beam charge");
+  EXPECT(valid_switch(&b->p1, 1) == 0, "Should not be able to switch during Solar Beam charge");
   free(b);
   TEST_END();
 }
@@ -441,7 +441,7 @@ static void test_bind_target_can_switch_out(void) {
   // Bind P2 (P1 is actually P2 here in perspective — let's set it up correctly).
   b->p2.active_pokemon.immobilized = 1;
   // valid_switch only checks no_switch, not immobilized — switching IS allowed.
-  EXPECT(valid_switch(b->p2, 0) == 0, "Can't switch to currently active slot");
+  EXPECT(valid_switch(&b->p2, 0) == 0, "Can't switch to currently active slot");
   // P2 has only one slot, but the point is immobilized != no_switch.
   EXPECT(b->p2.active_pokemon.no_switch == SWITCH_STOP_NONE,
          "Immobilized != switch-locked; no_switch should be NONE");
@@ -505,7 +505,7 @@ static int safe_turn(Battle *b, int p1_action, int p2_action) {
 
 static void test_multi_hit_deals_damage(void) {
   TEST_BEGIN("multi-hit: Double Slap deals damage in multiple passes");
-  srand(0);
+  sim_srand(0);
   // Use high-HP targets so no faint occurs mid-test.
   Battle *b = make_1v1(CLEFABLE, DOUBLE_SLAP_MOVE_ID,
                        SNORLAX,  SPLASH_MOVE_ID);
@@ -523,7 +523,7 @@ static void test_multi_hit_deals_damage(void) {
 
 static void test_pin_missile_multi_hit(void) {
   TEST_BEGIN("multi-hit: Pin Missile hits 2-5 times");
-  srand(1);
+  sim_srand(1);
   Battle *b = make_1v1(BEEDRILL, PIN_MISSILE_MOVE_ID,
                        SNORLAX,  SPLASH_MOVE_ID);
   int total_damage = 0;
@@ -545,7 +545,7 @@ static void test_pin_missile_multi_hit(void) {
 
 static void test_solarbeam_charges_then_fires(void) {
   TEST_BEGIN("two-turn: Solar Beam charges turn 1, fires turn 2");
-  srand(0);
+  sim_srand(0);
   Battle *b = make_1v1(VENUSAUR, SOLAR_BEAM_MOVE_ID,
                        SNORLAX,  SPLASH_MOVE_ID);
   int hp_before = b->p2.active_pokemon.pokemon->hp;
@@ -572,7 +572,7 @@ static void test_skull_bash_charges_then_fires(void) {
   // recharge_counter == recharge_len, so damage fires on turn 1 (0==0).
   // The defense boost still applies. This is a known engine deviation from Gen 1.
   TEST_BEGIN("two-turn: Skull Bash deals damage AND sets charge state turn 1");
-  srand(0);
+  sim_srand(0);
   Battle *b = make_1v1(BLASTOISE, SKULL_BASH_MOVE_ID,
                        SNORLAX,   SPLASH_MOVE_ID);
   int hp_before = b->p2.active_pokemon.pokemon->hp;
@@ -596,7 +596,7 @@ static void test_razor_wind_charges_then_fires(void) {
   // incremented, so Razor Wind's damage fires on turn 1 (recharge_counter==0
   // == recharge_len==0). This is a known engine deviation from Gen 1.
   TEST_BEGIN("two-turn: Razor Wind deals damage AND sets charge state turn 1");
-  srand(0);
+  sim_srand(0);
   Battle *b = make_1v1(FEAROW, RAZOR_WIND_MOVE_ID,
                        SNORLAX, SPLASH_MOVE_ID);
   int hp_before = b->p2.active_pokemon.pokemon->hp;
@@ -616,7 +616,7 @@ static void test_razor_wind_charges_then_fires(void) {
 
 static void test_hyper_beam_sets_recharge(void) {
   TEST_BEGIN("recharge: Hyper Beam sets recharge state after use");
-  srand(0);
+  sim_srand(0);
   // Use Snorlax vs Snorlax — Hyper Beam won't OHKO, so Snorlax survives.
   Battle *b = make_1v1(SNORLAX, HYPER_BEAM_MOVE_ID,
                        SNORLAX,  SPLASH_MOVE_ID);
@@ -646,7 +646,7 @@ static void test_recharge_blocks_move(void) {
 
 static void test_recharge_clears_after_turn(void) {
   TEST_BEGIN("recharge: recharge state clears after skipped turn");
-  srand(0);
+  sim_srand(0);
   Battle *b = make_1v1(SNORLAX, HYPER_BEAM_MOVE_ID,
                        SNORLAX, SPLASH_MOVE_ID);
   b->p1.active_pokemon.recharge_counter = 1;
@@ -749,7 +749,7 @@ static void test_dream_eater_heals_on_sleeping_target(void) {
     b->p2.active_pokemon.pokemon->hp = defender_hp_before;
     b->p1.active_pokemon.pokemon->hp = attacker_hp_before;
     b->p1.active_pokemon.moves[0].pp = 15;
-    srand(seed);
+    sim_srand(seed);
     int result = attack(b,
                         &b->p1.active_pokemon,
                         &b->p2.active_pokemon,
@@ -782,7 +782,7 @@ static void test_dream_eater_heal_caps_at_max_hp(void) {
     b->p1.active_pokemon.pokemon->hp = b->p1.active_pokemon.pokemon->max_hp - 1;
     b->p2.active_pokemon.pokemon->hp = b->p2.active_pokemon.pokemon->max_hp;
     b->p1.active_pokemon.moves[0].pp = 15;
-    srand(seed);
+    sim_srand(seed);
     int result = attack(b,
                         &b->p1.active_pokemon,
                         &b->p2.active_pokemon,
@@ -819,7 +819,7 @@ static void test_freeze_blocks_move(void) {
 
 static void test_fire_thaws_freeze(void) {
   TEST_BEGIN("freeze: Fire-type move thaws the frozen attacker (Gen 1 quirk)");
-  srand(0);
+  sim_srand(0);
   // In Gen 1, using a Fire move while frozen thaws you.
   Battle *b = make_1v1(CHARIZARD, FLAMETHROWER_MOVE_ID,
                        SNORLAX,   TACKLE_MOVE_ID);
@@ -843,7 +843,7 @@ static void test_fire_thaws_freeze(void) {
 
 static void test_confusion_can_hurt_self(void) {
   TEST_BEGIN("confusion: confused Pokemon may hurt itself");
-  srand(42);
+  sim_srand(42);
   Battle *b = make_1v1(SNORLAX, CONFUSE_RAY_MOVE_ID,
                        SNORLAX, TACKLE_MOVE_ID);
   b->p2.active_pokemon.confusion_counter = 3;
@@ -986,7 +986,7 @@ static void test_disable_counter_decrements(void) {
 
 static void test_substitute_absorbs_damage(void) {
   TEST_BEGIN("substitute: damage hits substitute before Pokemon");
-  srand(0);
+  sim_srand(0);
   Battle *b = make_1v1(SNORLAX, TACKLE_MOVE_ID,
                        SNORLAX, TACKLE_MOVE_ID);
   b->p2.active_pokemon.substitute_hp = 500;
@@ -1092,7 +1092,7 @@ static void test_struggle_when_no_pp(void) {
 
 static void test_quick_attack_goes_first(void) {
   TEST_BEGIN("priority: Quick Attack (priority +1) goes before normal moves");
-  srand(0);
+  sim_srand(0);
   // Use a fast Pokemon with Quick Attack vs a slow Pokemon with normal move.
   Battle *b = make_1v1(PIKACHU, QUICK_ATTACK_MOVE_ID,
                        SNORLAX, TACKLE_MOVE_ID);
@@ -1116,7 +1116,7 @@ static void test_thunder_wave_hit_distribution(void) {
   TEST_BEGIN("miss: Thunder Wave lands near 229/256 over 1000 trials");
   int hits = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(1000 + i);
+    sim_srand(1000 + i);
     Battle *b = make_1v1(PIKACHU, THUNDER_WAVE_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     attack(b,
@@ -1137,7 +1137,7 @@ static void test_thunder_hit_distribution(void) {
   TEST_BEGIN("miss: Thunder lands near 178/256 over 1000 trials");
   int hits = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(2000 + i);
+    sim_srand(2000 + i);
     Battle *b = make_1v1(PIKACHU, THUNDER_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     int dmg = p1_attack_once_damage(b);
@@ -1160,7 +1160,7 @@ static void test_critical_distribution_normal_move(void) {
   // Snorlax base speed is low, so this should be a low but non-zero crit rate.
   int crit_like = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(3000 + i);
+    sim_srand(3000 + i);
     Battle *b = make_1v1(SNORLAX, BODY_SLAM_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     int max_noncrit = noncrit_max_damage(&b->p1.active_pokemon,
@@ -1182,7 +1182,7 @@ static void test_critical_distribution_high_crit_move(void) {
   // Persian + Slash should produce a very high crit rate in Gen 1-style logic.
   int crit_like = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(4000 + i);
+    sim_srand(4000 + i);
     Battle *b = make_1v1(PERSIAN, SLASH_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     int max_noncrit = noncrit_max_damage(&b->p1.active_pokemon,
@@ -1209,7 +1209,7 @@ static void test_night_shade_fixed_damage_distribution(void) {
   int miss_count = 0;
   int other_damage = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(5000 + i);
+    sim_srand(5000 + i);
     Battle *b = make_1v1(GENGAR, NIGHT_SHADE_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     int level = b->p1.active_pokemon.pokemon->stats.level;
@@ -1237,7 +1237,7 @@ static void test_seismic_toss_fixed_damage_distribution(void) {
   int miss_count = 0;
   int other_damage = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(6000 + i);
+    sim_srand(6000 + i);
     Battle *b = make_1v1(MACHAMP, SEISMIC_TOSS_MOVE_ID,
                          SNORLAX, SPLASH_MOVE_ID);
     int level = b->p1.active_pokemon.pokemon->stats.level;
@@ -1269,7 +1269,7 @@ static void test_bide_duration_distribution(void) {
   int three_turn = 0;
   int non_start = 0;
   for (int i = 0; i < RNG_TRIALS; i++) {
-    srand(7000 + i);
+    sim_srand(7000 + i);
     Battle *b = make_1v1(KANGASKHAN, BIDE_MOVE_ID,
                          SNORLAX, TACKLE_MOVE_ID);
     attack(b,
@@ -1296,7 +1296,7 @@ static void test_bide_duration_distribution(void) {
 
   static void test_bide_first_use_enters_charge_state(void) {
     TEST_BEGIN("bide: first use enters recharge tracking state");
-    srand(7111);
+    sim_srand(7111);
     Battle *b = make_1v1(KANGASKHAN, BIDE_MOVE_ID,
           SNORLAX, TACKLE_MOVE_ID);
     attack(b,
@@ -1584,7 +1584,7 @@ static void print_moves(const Player *p, int player_num) {
 }
 
 static void run_matchup(void) {
-  srand((unsigned)time(NULL));
+  sim_srand((unsigned)time(NULL));
 
   printf("\n========================================\n");
   printf("  POKEMON MATCHUP MODE\n");
@@ -1651,7 +1651,7 @@ static void run_matchup(void) {
 // ============================================================================
 
 static void run_all_tests(void) {
-  srand(0);
+  sim_srand(0);
   printf("\n=== SWITCHING TESTS ===\n");
   test_switch_normal();
   test_switch_invalid_same_slot();

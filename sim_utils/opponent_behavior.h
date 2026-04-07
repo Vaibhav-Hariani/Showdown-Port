@@ -9,16 +9,16 @@
 #include "switch.h"
 
 // Forward declarations
-int valid_choice(int player_num, Player p, unsigned int input, int mode);
+int valid_choice(int player_num, const Player* p, unsigned int input, int mode);
 
 // Get highest damage move index (simple damage calculation)
-int get_highest_damage_move_index(Player* player) {
+static inline int get_highest_damage_move_index(Player* player) {
   BattlePokemon* active_pokemon = &player->active_pokemon;
   int best_move_index = -1;
   int max_damage = -1;
   // Iterate through the Pokémon's moves
   for (int i = 0; i < 4; i++) {
-    Move* move = &active_pokemon->pokemon->poke_moves[i];
+    Move* move = &active_pokemon->moves[i];
     // Check if the move has PP left
     if (move->pp > 0) {
       int damage = move->power;  // Simplified damage calculation
@@ -33,17 +33,18 @@ int get_highest_damage_move_index(Player* player) {
 }
 
 // Select best move considering type effectiveness, STAB, and move power
-int gen1_ai_move(Player* user, Player* opponent) {
+static inline int gen1_ai_move(Player* user, Player* opponent) {
   BattlePokemon* opponent_active = &opponent->active_pokemon;
 
   BattlePokemon* active_pokemon = &user->active_pokemon;
+
   int best_move_index = -1;
   uint32_t max_effective_damage = 0;
 
   // Iterate through the Pokémon's moves and score them. Include STAB (1.5x)
   // for moves whose type matches the user's type1 or type2.
   for (int i = 0; i < 4; i++) {
-    Move* move = &active_pokemon->pokemon->poke_moves[i];
+    Move* move = &active_pokemon->moves[i];
     if (!move || move->pp <= 0 || move->power <= 0) continue;
 
     uint32_t base_damage = (uint32_t)move->power;
@@ -79,15 +80,57 @@ int gen1_ai_move(Player* user, Player* opponent) {
     return 6 + best_move_index;  // encode as move input [6..9]
   }
   // Fallback: random move
-  return 6 + (rand() % 4);
+  return 6 + (sim_rand() % 4);
 }
 
 // Select a valid switch index [0..NUM_POKE-1]
-int select_valid_switch_choice(Player p) {
+static inline int select_valid_switch_choice(const Player* p) {
   for (int i = 0; i < NUM_POKE; ++i) {
     if (valid_switch(p, i)) return i;
   }
   // Crash state
+  return 0;
+}
+
+// Select an action input for the current mode using the Gen1 heuristic.
+// Returns either switch slot [0..NUM_POKE-1] or move input [6..9].
+static inline int choose_gen1_ai_action(int player_num,
+                                        Player* user,
+                                        Player* opponent,
+                                        int mode) {
+  if (mode == player_num || mode == 3) {
+    return select_valid_switch_choice(user);
+  }
+
+  // Gen1-style preference: if possible, repeat the last used move.
+  Move* last = user->active_pokemon.last_used;
+  if (last != NULL) {
+    int idx = last - user->active_pokemon.moves;
+    if (idx < 4) {
+      int repeat_choice = 6 + (int)idx;
+      if (valid_choice(player_num, user, (unsigned int)repeat_choice, mode)) {
+        return repeat_choice;
+      }
+    }
+  }
+
+  int choice = gen1_ai_move(user, opponent);
+  if (valid_choice(player_num, user, (unsigned int)choice, mode)) {
+    return choice;
+  }
+
+  for (int i = 6; i <= 9; i++) {
+    if (valid_choice(player_num, user, (unsigned int)i, mode)) {
+      return i;
+    }
+  }
+
+  for (int i = 0; i < NUM_POKE; i++) {
+    if (valid_choice(player_num, user, (unsigned int)i, mode)) {
+      return i;
+    }
+  }
+
   return 0;
 }
 

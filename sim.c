@@ -85,7 +85,7 @@ static int prompt_choice(Player* p, int player_num, int mode) {
       choice = read_int_prompt("Choose action [0-5 switch, 6-9 move]: ", -1);
     }
     if (choice >= low && choice <= high &&
-        valid_choice(player_num, *p, (unsigned int)choice, mode)) {
+        valid_choice(player_num, p, (unsigned int)choice, mode)) {
       return choice;
     }
     printf("Invalid choice. Try again.\n");
@@ -95,21 +95,21 @@ static int prompt_choice(Player* p, int player_num, int mode) {
 static int ai_best_choice(Sim* sim, int mode) {
   Battle* b = sim->battle;
   if (mode == 2 || mode == 3) {
-    return select_valid_switch_choice(b->p2);
+    return select_valid_switch_choice(&b->p2);
   }
 
   int choice = gen1_ai_move(&b->p2, &b->p1);
-  if (valid_choice(2, b->p2, (unsigned int)choice, mode)) {
+  if (valid_choice(2, &b->p2, (unsigned int)choice, mode)) {
     return choice;
   }
 
   for (int i = 6; i <= 9; i++) {
-    if (valid_choice(2, b->p2, (unsigned int)i, mode)) {
+    if (valid_choice(2, &b->p2, (unsigned int)i, mode)) {
       return i;
     }
   }
   for (int i = 0; i < NUM_POKE; i++) {
-    if (valid_choice(2, b->p2, (unsigned int)i, mode)) {
+    if (valid_choice(2, &b->p2, (unsigned int)i, mode)) {
       return i;
     }
   }
@@ -144,7 +144,7 @@ static void free_cli_sim(Sim* sim) {
 
 int main(void) {
   unsigned int seed = (unsigned int)time(NULL);
-  srand(seed);
+  sim_srand(seed);
 
   printf("Showdown-Port CLI\n");
   printf("Seed: %u\n", seed);

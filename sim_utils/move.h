@@ -10,12 +10,13 @@
 #include "../data_sim/pokedex.h"
 #include "../data_sim/stat_modifiers.h"
 #include "battle_structs.h"
+#include "fast_rng.h"
 #include "move_structs.h"
 #include "poke_structs.h"
 #include "queue_structs.h"
 #include "utils.h"
-// for memset
-#include "string.h"
+
+static inline int get_team_index(const Player* player, const Pokemon* pokemon);
 
 static inline int is_high_crit_move(MOVE_IDS move_id) {
   switch (move_id) {
@@ -41,7 +42,7 @@ static inline int roll_critical_hit(BattlePokemon* attacker, Move* used_move) {
     crit_threshold *= 8;
   }
   crit_threshold = min(crit_threshold, 255);
-  return (rand() % 256) < crit_threshold;
+  return (sim_rand() % 256) < crit_threshold;
 }
 
 static inline int is_special_type_gen1(TYPE type) {
@@ -58,7 +59,8 @@ int calculate_damage(BattlePokemon* attacker,
                      Move* used_move) {
   // Base power of the move
   int power = used_move->power;
-  int use_special_split = is_special_type_gen1(used_move->type);
+  TYPE move_type = used_move->type;
+  int use_special_split = is_special_type_gen1(move_type);
 
   // Attack and Defense stats
   // Only if SPECIAL attack
@@ -71,43 +73,54 @@ int calculate_damage(BattlePokemon* attacker,
   // Critical hits ignore stat-stage modifiers and screens. Focus Energy is
   // still not implemented in engine state, so only move/high-crit behavior
   // is applied here.
-  int is_critical = 0;
-  if (power > 0) {
-    is_critical = roll_critical_hit(attacker, used_move);
-  }
+  int is_critical = roll_critical_hit(attacker, used_move);
 
   // Get stat modifiers as fixed-point values (256 = 1.0x)
   if (use_special_split) {
     attack_stat = base_attacker->stats.base_stats[STAT_SPECIAL_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_SPECIAL_DEFENSE];
+
     if (!is_critical) {
-      // Apply stat modifier using fixed-point arithmetic
-      attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
-      // Specials use stat_special_defence: this should always be the same as
-      // their stat_special
-      defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.specD)) >> 8;
-      if (defender->light_screen) {
-        defense_stat *= 2;  // Light Screen doubles special defense
-        if (defense_stat > 1024) {
-          defense_stat -= defense_stat % 1024;
+      // Common-path fast lane: no stage modifiers and no screen.
+      if (attacker->stat_mods.specA != 0 || defender->stat_mods.specD != 0 ||
+          defender->light_screen) {
+        // Apply stat modifier using fixed-point arithmetic
+        attack_stat =
+            (attack_stat * get_stat_modifier(attacker->stat_mods.specA)) >> 8;
+        // Specials use stat_special_defence: this should always be the same as
+        // their stat_special
+        defense_stat =
+            (defense_stat * get_stat_modifier(defender->stat_mods.specD)) >> 8;
+        if (defender->light_screen) {
+          defense_stat *= 2;  // Light Screen doubles special defense
+          if (defense_stat > 1024) {
+            defense_stat -= defense_stat % 1024;
+          }
         }
       }
     }
   } else {
     attack_stat = base_attacker->stats.base_stats[STAT_ATTACK];
     defense_stat = base_defender->stats.base_stats[STAT_DEFENSE];
+
     if (!is_critical) {
-      if (attacker->pokemon->status.burn) {
-        // Burn halves physical attack for non-critical damage checks.
-        attack_stat /= 2;
-      }
-      attack_stat = (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
-      defense_stat = (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
-      if (defender->reflect) {
-        defense_stat *= 2;  // Reflect doubles physical defense
-      }
-      if (defense_stat > 1024) {
-        defense_stat -= defense_stat % 1024;
+      // Common-path fast lane: no burn, no stage modifiers, no reflect.
+      if (base_attacker->status.burn || attacker->stat_mods.attack != 0 ||
+          defender->stat_mods.defense != 0 || defender->reflect) {
+        if (base_attacker->status.burn) {
+          // Burn halves physical attack for non-critical damage checks.
+          attack_stat /= 2;
+        }
+        attack_stat =
+            (attack_stat * get_stat_modifier(attacker->stat_mods.attack)) >> 8;
+        defense_stat =
+            (defense_stat * get_stat_modifier(defender->stat_mods.defense)) >> 8;
+        if (defender->reflect) {
+          defense_stat *= 2;  // Reflect doubles physical defense
+        }
+        if (defense_stat > 1024) {
+          defense_stat -= defense_stat % 1024;
+        }
       }
     }
   }
@@ -131,14 +144,13 @@ int calculate_damage(BattlePokemon* attacker,
 
   // Type effectiveness in fixed-point arithmetic (256 = 1.0x).
   // Keep each type multiplier separate so we can floor per-step.
-  uint16_t type_effectiveness_1 = damage_chart[used_move->type][defender->type1];
-  uint16_t type_effectiveness_2 = damage_chart[used_move->type][defender->type2];
+  uint16_t type_effectiveness_1 = damage_chart[move_type][defender->type1];
+  uint16_t type_effectiveness_2 = damage_chart[move_type][defender->type2];
 
   // STAB (Same-Type Attack Bonus): 1.5x = 384/256, 1.0x = 256/256
-  uint16_t stab =
-      (attacker->type1 == used_move->type || attacker->type2 == used_move->type)
-          ? 384  // 1.5x in fixed-point
-          : 256; // 1.0x in fixed-point
+  uint16_t stab = (attacker->type1 == move_type || attacker->type2 == move_type)
+                      ? 384  // 1.5x in fixed-point
+                      : 256; // 1.0x in fixed-point
   
   // Damage formula with fixed-point arithmetic
   // Base damage calculation (integer portion)
@@ -153,13 +165,13 @@ int calculate_damage(BattlePokemon* attacker,
   // than one should anything happen.
   if (damage <= 1) {
     if (damage == 0) {
-      DLOG("%s's attack missed!", get_pokemon_name(attacker->pokemon->id));
+      DLOG("%s's attack missed!", get_pokemon_name(base_attacker->id));
     }
     return damage;  // return 0 for failure
   }
   // Random factor (Exactly as specified by bulbapedia)
   // Use integer arithmetic: multiply then divide to avoid float
-  int random_factor = rand() % 39 + 217;  // 217-255 range
+  int random_factor = sim_rand() % 39 + 217;  // 217-255 range
   return (damage * random_factor) / 255;
 }
 
@@ -190,7 +202,7 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     attacker->confusion_counter--;
     DLOG("%s is confused!", get_pokemon_name(attacker->pokemon->id));
     // 50% chance to hurt itself
-    if (rand() % 2 == 0) {
+    if ((sim_rand() & 1) == 0) {
       // Gen 1 confusion self-damage: 40 base power typeless physical attack
       int level = attacker->pokemon->stats.level;
       int atk = attacker->pokemon->stats.base_stats[STAT_ATTACK];
@@ -200,7 +212,7 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
       }
       int damage = (((2 * level / 5 + 2) * 40 * atk / def) / 50 + 2);
       // Use integer arithmetic: multiply then divide to avoid float
-      int random_factor = rand() % 39 + 217;  // 217-255 range
+      int random_factor = sim_rand() % 39 + 217;  // 217-255 range
       damage = (damage * random_factor) / 255;
       attacker->pokemon->hp -= damage;
       attacker->pokemon->hp = max(attacker->pokemon->hp, 0);
@@ -233,14 +245,8 @@ static inline int pre_move_check(BattlePokemon* attacker, Move* used_move) {
     regular_return = 0;
   }
   // Check for PP (except Struggle and if locked into Rage)
-  // printf("VALUES %d %p %p\n", regular_return, attacker, used_move);
-  // printf("RAGE %p\n", attacker->rage);
-  // printf("STRUGGLE %d\n", used_move->id == STRUGGLE_MOVE_ID);
   if (regular_return && attacker->rage == NULL &&
       used_move->id != STRUGGLE_MOVE_ID) {
-    // Do not block here for PP exhaustion; attack() will handle replacing
-    // no-PP moves with Struggle so that we can still proceed when all
-    // moves are out of PP. If move has PP, consume one.
     if (used_move->pp > 0) {
       used_move->pp--;
     } else {
@@ -260,15 +266,19 @@ static inline int attack(Battle* b,
   if (used_move == NULL) {
     DLOG("Attempt to use invalid move");
   }
+
+  Pokemon* attacker_pokemon = attacker->pokemon;
+  Pokemon* defender_pokemon = defender->pokemon;
+
   if (attacker->rage != NULL && used_move->id != RAGE_MOVE_ID) {
-    DLOG("%s is locked into Rage!", get_pokemon_name(attacker->pokemon->id));
+    DLOG("%s is locked into Rage!", get_pokemon_name(attacker_pokemon->id));
     used_move = attacker->rage;
   }
 
   // If the selected move has no PP (and is not Struggle), replace it with
   // a temporary Struggle move so the attack proceeds as Struggle.
   if (used_move->pp <= 0 && used_move->id != STRUGGLE_MOVE_ID) {
-    used_move = &attacker->pokemon->struggle;
+    used_move = &attacker_pokemon->struggle;
     b->lastMove = used_move;
     used_move->revealed = 1;
     attacker->last_used = used_move;
@@ -295,8 +305,11 @@ static inline int attack(Battle* b,
   used_move->revealed = 1;
   attacker->last_used = used_move;
 
+  MOVE_IDS move_id = used_move->id;
+  int is_seismic_toss = (move_id == SEISMIC_TOSS_MOVE_ID);
+
   int is_solar_beam_charge =
-      (!is_recharge_turn && used_move->id == SOLAR_BEAM_MOVE_ID &&
+      (!is_recharge_turn && move_id == SOLAR_BEAM_MOVE_ID &&
        attacker->recharge_counter == 0 && attacker->recharge_len == 0);
 
   if (is_solar_beam_charge) {
@@ -311,22 +324,22 @@ static inline int attack(Battle* b,
   int accuracy = ((int)used_move->accuracy * 
                   get_stat_modifier(attacker->stat_mods.accuracy) *
                   get_evasion_modifier(defender->stat_mods.evasion)) >> 16;
-  int accuracy_random = (rand() % 256);
+  int accuracy_random = (sim_rand() % 256);
   if (accuracy_random >= accuracy) {
-    if (!is_seismic_toss_move(used_move)) {
+    if (!is_seismic_toss) {
       DLOG("%s's attack %s missed!",
-           get_pokemon_name(attacker->pokemon->id),
+           get_pokemon_name(attacker_pokemon->id),
            get_move_name(used_move->id));
     }
 
-    if (used_move->id == HIGH_JUMP_KICK_MOVE_ID) {
-      attacker->pokemon->hp = max(attacker->pokemon->hp - 1, 0);
+    if (move_id == HIGH_JUMP_KICK_MOVE_ID) {
+      attacker_pokemon->hp = max(attacker_pokemon->hp - 1, 0);
     }
-    if (used_move->id == RAGE_MOVE_ID) {
+    if (move_id == RAGE_MOVE_ID) {
       attacker->no_switch = SWITCH_STOP_RAGE;
       attacker->rage = used_move;
     }
-    if (used_move->id == SOLAR_BEAM_MOVE_ID) {
+    if (move_id == SOLAR_BEAM_MOVE_ID) {
       attacker->recharge_counter = 0;
       attacker->recharge_len = 0;
       attacker->recharge_src = (Move){0};
@@ -338,20 +351,19 @@ static inline int attack(Battle* b,
   }
 
   // Gen 1 Dream Eater fails unless the target is asleep.
-  if (used_move->id == DREAM_EATER_MOVE_ID &&
-      defender->sleep_ctr == 0 && defender->pokemon->status.sleep == 0) {
+  if (move_id == DREAM_EATER_MOVE_ID &&
+      defender->sleep_ctr == 0 && defender_pokemon->status.sleep == 0) {
     DLOG("%s's Dream Eater failed!",
-         get_pokemon_name(attacker->pokemon->id));
+         get_pokemon_name(attacker_pokemon->id));
     return 0;
   }
 
   int damage = 0;
-  int skip_damage = (used_move->id == SOLAR_BEAM_MOVE_ID);
-  if (!skip_damage && used_move->power != 0 &&
+  if (move_id != SOLAR_BEAM_MOVE_ID && used_move->power != 0 &&
       attacker->recharge_counter == attacker->recharge_len) {
-    if (!is_seismic_toss_move(used_move)) {
+    if (!is_seismic_toss) {
       DLOG("%s used %s!",
-           get_pokemon_name(attacker->pokemon->id),
+           get_pokemon_name(attacker_pokemon->id),
            get_move_name(used_move->id));
     }
 
@@ -370,8 +382,8 @@ static inline int attack(Battle* b,
           damage = 0;
         }
       } else {
-        defender->pokemon->hp -= damage;
-        defender->pokemon->hp = max(defender->pokemon->hp, 0);
+        defender_pokemon->hp -= damage;
+        defender_pokemon->hp = max(defender_pokemon->hp, 0);
       }
       if (had_substitute) {
         damage_to_pokemon = 0;
@@ -379,10 +391,10 @@ static inline int attack(Battle* b,
 
       // Gen 1 Dream Eater heals the user by 50% of damage dealt
       // (minimum 1 HP when damage is dealt), capped at max HP.
-      if (used_move->id == DREAM_EATER_MOVE_ID && damage_to_pokemon > 0) {
+      if (move_id == DREAM_EATER_MOVE_ID && damage_to_pokemon > 0) {
         int heal_amount = max(1, damage_to_pokemon / 2);
-        attacker->pokemon->hp =
-            min(attacker->pokemon->hp + heal_amount, attacker->pokemon->max_hp);
+        attacker_pokemon->hp =
+        min(attacker_pokemon->hp + heal_amount, attacker_pokemon->max_hp);
       }
 
       defender->dmg_counter += damage;
@@ -394,23 +406,23 @@ static inline int attack(Battle* b,
     used_move->movePtr(b, attacker, defender);
   }
 
-  if (used_move->id == HYPER_BEAM_MOVE_ID) {
+  if (move_id == HYPER_BEAM_MOVE_ID) {
     used_move->power = 0;
   }
 
-  if (defender->pokemon->status.freeze && used_move->type == FIRE &&
-      used_move->id != FIRE_SPIN_MOVE_ID) {
-    attacker->pokemon->status.freeze = 0;
-    DLOG("%s thawed out!", get_pokemon_name(attacker->pokemon->id));
+  if (defender_pokemon->status.freeze && used_move->type == FIRE &&
+      move_id != FIRE_SPIN_MOVE_ID) {
+    attacker_pokemon->status.freeze = 0;
+    DLOG("%s thawed out!", get_pokemon_name(attacker_pokemon->id));
   }
   return 1;
 }
 
-int valid_move(Player* user, int move_index) {
+int valid_move(const Player* user, int move_index) {
   if (user->active_pokemon_index < 0) {
     return 0;
   }
-  Move* move = &user->active_pokemon.moves[move_index];
+  const Move* move = &user->active_pokemon.moves[move_index];
   if (move == NULL || move->id == NO_MOVE) {
     DLOG("Attempt to use invalid move slot %d", move_index);
     return 0;
@@ -426,7 +438,7 @@ int valid_move(Player* user, int move_index) {
   if (move->pp <= 0 && move->id != STRUGGLE_MOVE_ID) {
     DLOG("Move %s has no PP left!", get_move_name(move->id));
     for (int i = 0; i < 4; i++) {
-      Move* m = &user->active_pokemon.moves[i];
+      const Move* m = &user->active_pokemon.moves[i];
       if (m && m->id != NO_MOVE && m->pp > 0) {
         return 0;
       }
@@ -456,7 +468,6 @@ int add_move_to_queue(Battle* battle,
   if (battle->action_queue.q_size < ACTION_QUEUE_MAX) {
     Action* action_ptr =
         &battle->action_queue.queue[battle->action_queue.q_size];
-    memset(action_ptr, 0, sizeof(Action));  // Clear any previous data
     action_ptr->action_type = move_action;
     action_ptr->action_d.m = move;
     action_ptr->User = user;
@@ -470,7 +481,12 @@ int add_move_to_queue(Battle* battle,
     if (battle_poke->pokemon->status.paralyzed) {
       action_ptr->speed /= 4;
     }
-    action_ptr->origLoc = user->active_pokemon_index;
+    int orig_loc =
+      get_team_index(user, user->active_pokemon.pokemon);
+    action_ptr->origLoc =
+      (uint8_t)(orig_loc >= 0 ? orig_loc : user->active_pokemon_index);
+    battle->action_queue.q_size++;
+    
     DLOG("Added move %s to queue for %s.",
          get_move_name(move->id),
          get_pokemon_name(battle_poke->pokemon->id));

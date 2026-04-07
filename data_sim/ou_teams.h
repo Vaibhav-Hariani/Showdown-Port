@@ -592,7 +592,7 @@ const size_t num_ou_teams = sizeof(ou_teams) / sizeof(ou_teams[0]);
 void load_team_from_ou(Player* p, int team_index) {
   // If team_index is negative, select a random team
   if (team_index < 0) {
-    team_index = rand() % num_ou_teams;
+    team_index = sim_rand() % num_ou_teams;
   }
   // Load 6 pokemon for the team
   for (int i = 0; i < 6; i++) {

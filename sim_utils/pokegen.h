@@ -8,12 +8,27 @@
 #include "../data_sim/pokedex.h"
 #include "move_structs.h"
 #include "poke_structs.h"
+#include "fast_rng.h"
 #include "string.h"
 
 #define NUM_POKEMON ((int)LAST_POKEMON)
 
 // DV * 15 + floor(statexp/4)
 #define MAX_CONST_STATBOOST 93
+
+static inline int get_team_index(const Player* player, const Pokemon* pokemon) {
+  if (player == NULL || pokemon == NULL) {
+    return -1;
+  }
+  int idx = (int)(pokemon - player->team);
+  if (idx < 0 || idx >= 6) {
+    return -1;
+  }
+  if (&player->team[idx] != pokemon) {
+    return -1;
+  }
+  return idx;
+}
 
 void generate_moveset(MOVE_IDS out_moves[4],
                       const MOVE_IDS* learnset,
@@ -23,7 +38,7 @@ void generate_moveset(MOVE_IDS out_moves[4],
   MOVE_IDS selected[4] = {NO_MOVE, NO_MOVE, NO_MOVE, NO_MOVE};
   int num_selected = 0;
   while (num_selected < 4 && num_selected < learnset_len) {
-    int random_index = rand() % learnset_len;
+    int random_index = sim_rand() % learnset_len;
     MOVE_IDS move = learnset[random_index];
     // check if move is already selected
     MOVE_IDS already_selected = 0;
@@ -51,7 +66,7 @@ void load_pokemon(Pokemon* ret, MOVE_IDS* move_ids, int n_moves, POKEDEX_IDS pok
   // 1. Lookup base stats/types
 
   while (poke_id == MISSINGNO) {
-    poke_id = rand() % NUM_POKEMON;
+    poke_id = sim_rand() % NUM_POKEMON;
   }
   const poke_ref* base = &POKEMON_BASE[poke_id];
   ret->id = poke_id;
