@@ -18,3 +18,5 @@ package.json
 damage-calc/
 trained_models/
 testing_framework/move_tests
+
+wandb

@@ -7,7 +7,6 @@ import wandb
 
 wandb.login()
 
-
 # from pufferlib.vector import autotune
 if __name__ == "__main__":
     args = pufferl.load_config("showdown")
@@ -18,9 +17,9 @@ if __name__ == "__main__":
     env_args = [1024, 2]
     env = pufferlib.vector.make(
         Showdown,
-        num_envs=4,
+        num_envs=16,
         env_args=env_args,
-        batch_size=4,
+        batch_size=16,
         backend=pufferlib.vector.Multiprocessing,
     )
     env.reset(seed=42)
@@ -38,14 +37,10 @@ if __name__ == "__main__":
     # with torch.no_grad():
     with wandb.init(project="showdown", config=args["train"]) as run:
         trainer = pufferl.PuffeRL(args["train"], env, policy=policy)
-        for epoch in range(100):
+        for epoch in range(250):
             trainer.evaluate()
             logs = trainer.train()
             if logs:
                 wandb.log(logs)
         trainer.print_dashboard()
         trainer.close()
-        # generate wandb artifacts to step through model
-        print("Evaluating trained model over 30 games...")
-        tables = eval(policy, config=args["train"], n_games=30)
-        wandb.log(tables)

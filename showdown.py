@@ -99,9 +99,7 @@ if __name__ == "__main__":
     while time.time() - start < 10:
         obs, rewards, terminals, trunc, info_tmp = env.step(actions[i % CACHE])
         steps += env.num_agents
-        # if info_tmp:
-        #     info = info_tmp
-        # # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
+        # print('%s steps in %s seconds' % (steps, time.time() - start), end='\r')
     duration = time.time() - start
     sps = steps / duration
     ms_per_move = 1000.0 / sps
