@@ -1647,6 +1647,235 @@ static void run_matchup(void) {
 }
 
 // ============================================================================
+// OBSERVATION STATE TESTS
+// ============================================================================
+
+static void test_obs_pack_hp_percent(void) {
+  TEST_BEGIN("obs: pack_hp_percent full/half/zero/null");
+  Pokemon p = {0};
+  p.max_hp = 100;
+  p.hp = 100;
+  EXPECT(pack_hp_percent(&p) == 1000, "full HP should be 1000");
+  p.hp = 50;
+  EXPECT(pack_hp_percent(&p) == 500, "half HP should be 500");
+  p.hp = 0;
+  EXPECT(pack_hp_percent(&p) == 0, "zero HP should be 0");
+  EXPECT(pack_hp_percent(NULL) == 0, "NULL should be 0");
+  p.max_hp = 0;
+  p.hp = 0;
+  EXPECT(pack_hp_percent(&p) == 0, "max_hp=0 should be 0");
+  TEST_END();
+}
+
+static void test_obs_pack_move_basic(void) {
+  TEST_BEGIN("obs: pack_move basic encoding");
+  Move m = {0};
+  m.id = 1;
+  m.pp = 10;
+  int16_t packed = pack_move(&m, 0);
+  EXPECT((packed & 0xFF) == 1, "move id in bits 0-7");
+  EXPECT(((packed >> 8) & 0x3F) == 10, "pp in bits 8-13");
+  EXPECT(((packed >> 14) & 0x1) == 0, "disabled bit should be 0");
+  TEST_END();
+}
+
+static void test_obs_pack_move_disabled(void) {
+  TEST_BEGIN("obs: pack_move disabled flag");
+  Move m = {0};
+  m.id = 5;
+  m.pp = 3;
+  int16_t packed = pack_move(&m, 1);
+  EXPECT(((packed >> 14) & 0x1) == 1, "disabled bit should be 1");
+  EXPECT((packed & 0xFF) == 5, "move id preserved with disabled");
+  TEST_END();
+}
+
+static void test_obs_pack_move_zero_pp_becomes_struggle(void) {
+  TEST_BEGIN("obs: pack_move zero PP becomes Struggle");
+  Move m = {0};
+  m.id = 33;  // some non-Struggle move
+  m.pp = 0;
+  int16_t packed = pack_move(&m, 0);
+  EXPECT((packed & 0xFF) == STRUGGLE_MOVE_ID, "zero PP move becomes Struggle");
+  EXPECT(((packed >> 8) & 0x3F) == 0, "Struggle PP is 0");
+  TEST_END();
+}
+
+static void test_obs_pack_move_pp_clamped(void) {
+  TEST_BEGIN("obs: pack_move PP clamped at 63");
+  Move m = {0};
+  m.id = 2;
+  m.pp = 100;
+  int16_t packed = pack_move(&m, 0);
+  EXPECT(((packed >> 8) & 0x3F) == 63, "PP > 63 clamped to 63");
+  TEST_END();
+}
+
+static void test_obs_pack_move_null(void) {
+  TEST_BEGIN("obs: pack_move NULL returns 0");
+  EXPECT(pack_move(NULL, 0) == 0, "NULL move should return 0");
+  TEST_END();
+}
+
+static void test_obs_pack_stat_mods_zero(void) {
+  TEST_BEGIN("obs: pack stat mods at zero stage");
+  stat_mods mods = {0};
+  int16_t atk_def = pack_attack_def_specA_specD(&mods);
+  // Each +6 offset nibble: 6=0x6, so packed = 0x6666
+  EXPECT((atk_def & 0xF) == 6, "attack stage 0 → nibble 6");
+  EXPECT(((atk_def >> 4) & 0xF) == 6, "defense stage 0 → nibble 6");
+  EXPECT(((atk_def >> 8) & 0xF) == 6, "specA stage 0 → nibble 6");
+  EXPECT(((atk_def >> 12) & 0xF) == 6, "specD stage 0 → nibble 6");
+  int16_t spd_acc = pack_stat_acc_eva(&mods);
+  EXPECT((spd_acc & 0xF) == 6, "speed stage 0 → nibble 6");
+  EXPECT(((spd_acc >> 4) & 0xF) == 6, "accuracy stage 0 → nibble 6");
+  EXPECT(((spd_acc >> 8) & 0xF) == 6, "evasion stage 0 → nibble 6");
+  TEST_END();
+}
+
+static void test_obs_pack_stat_mods_nonzero(void) {
+  TEST_BEGIN("obs: pack stat mods non-zero stage");
+  stat_mods mods = {0};
+  mods.attack = 3;    // +3 → nibble 9
+  mods.defense = -2;  // -2 → nibble 4
+  mods.specA = 6;     // max → nibble 12
+  mods.specD = -6;    // min → nibble 0
+  int16_t packed = pack_attack_def_specA_specD(&mods);
+  EXPECT((packed & 0xF) == 9, "attack +3 → nibble 9");
+  EXPECT(((packed >> 4) & 0xF) == 4, "defense -2 → nibble 4");
+  EXPECT(((packed >> 8) & 0xF) == 12, "specA +6 → nibble 12");
+  EXPECT(((packed >> 12) & 0xF) == 0, "specD -6 → nibble 0");
+  TEST_END();
+}
+
+static void test_obs_pack_status_clear(void) {
+  TEST_BEGIN("obs: pack_status_and_volatiles all clear");
+  Player player = {0};
+  player.active_pokemon_index = 0;
+  player.active_pokemon.badly_poisoned_ctr = 0;
+  // team[0] status all clear
+  int16_t packed = pack_status_and_volatiles(&player, 0);
+  EXPECT(packed == 0, "all clear statuses should pack to 0");
+  TEST_END();
+}
+
+static void test_obs_pack_status_flags(void) {
+  TEST_BEGIN("obs: pack_status_and_volatiles individual flags");
+  Player player = {0};
+  player.active_pokemon_index = 0;
+
+  player.team[0].status.paralyzed = 1;
+  EXPECT((pack_status_and_volatiles(&player, 0) & 0x1) == 1, "PAR sets bit 0");
+  player.team[0].status.paralyzed = 0;
+
+  player.team[0].status.burn = 1;
+  EXPECT(((pack_status_and_volatiles(&player, 0) >> 1) & 0x1) == 1, "BRN sets bit 1");
+  player.team[0].status.burn = 0;
+
+  player.team[0].status.freeze = 1;
+  EXPECT(((pack_status_and_volatiles(&player, 0) >> 2) & 0x1) == 1, "FRZ sets bit 2");
+  player.team[0].status.freeze = 0;
+
+  player.team[0].status.poison = 1;
+  EXPECT(((pack_status_and_volatiles(&player, 0) >> 3) & 0x1) == 1, "PSN sets bit 3");
+  player.team[0].status.poison = 0;
+
+  player.team[0].status.sleep = 3;
+  EXPECT(((pack_status_and_volatiles(&player, 0) >> 4) & 0x1) == 1, "SLP sets bit 4");
+  player.team[0].status.sleep = 0;
+
+  // TOX: only when poke_index == active_pokemon_index and badly_poisoned_ctr > 0
+  player.active_pokemon.badly_poisoned_ctr = 2;
+  EXPECT(((pack_status_and_volatiles(&player, 0) >> 5) & 0x1) == 1, "TOX sets bit 5 for active");
+  // Non-active slot should NOT see TOX even if ctr set
+  EXPECT(((pack_status_and_volatiles(&player, 1) >> 5) & 0x1) == 0, "TOX not set for non-active slot");
+  TEST_END();
+}
+
+static void test_obs_pack_battle_header(void) {
+  TEST_BEGIN("obs: pack_battle header encodes stat mods");
+  Battle *b = make_1v1(BULBASAUR, TACKLE_MOVE_ID, CHARMANDER, SCRATCH_MOVE_ID);
+  b->p1.active_pokemon.stat_mods.attack = 2;
+  b->p2.active_pokemon.stat_mods.defense = -1;
+  int16_t obs[PACK_TOTAL_INTS] = {0};
+  pack_battle(b, &b->p1, &b->p2, obs);
+  // Header[0] = observer (p1) attack/def/specA/specD
+  EXPECT(((obs[0]) & 0xF) == (2 + 6), "p1 attack +2 in header[0] bits 0-3");
+  // Header[2] = opponent (p2) attack/def/specA/specD
+  EXPECT((((obs[2]) >> 4) & 0xF) == (-1 + 6), "p2 defense -1 in header[2] bits 4-7");
+  free(b);
+  TEST_END();
+}
+
+static void test_obs_pack_battle_active_species_negated(void) {
+  TEST_BEGIN("obs: pack_battle active pokemon species is negated");
+  Battle *b = make_1v1(BULBASAUR, TACKLE_MOVE_ID, CHARMANDER, SCRATCH_MOVE_ID);
+  b->p1.shown_pokemon = 0x1;  // reveal p2 slot 0 so we can read its species
+  int16_t obs[PACK_TOTAL_INTS] = {0};
+  pack_battle(b, &b->p1, &b->p2, obs);
+  int p1_offset = PACK_HEADER_INTS;
+  int p2_offset = PACK_HEADER_INTS + PACK_POKE_INTS;
+  EXPECT(obs[p1_offset] == -(int16_t)BULBASAUR, "p1 active species is negated");
+  EXPECT(obs[p2_offset] == -(int16_t)CHARMANDER, "p2 active species is negated");
+  // Non-active slots (slots 1-5) should not be negated; for a 1v1 they are all 0
+  EXPECT(obs[p1_offset + PACK_POKE_INTS * 2] >= 0, "non-active p1 slot 1 species not negated");
+  free(b);
+  TEST_END();
+}
+
+static void test_obs_pack_battle_hidden_opponent(void) {
+  TEST_BEGIN("obs: pack_battle hides unrevealed opponent pokemon");
+  Battle *b = make_1v1(BULBASAUR, TACKLE_MOVE_ID, CHARMANDER, SCRATCH_MOVE_ID);
+  b->p1.shown_pokemon = 0;
+
+  // Pre-fill with a sentinel to confirm pack_poke actively writes HP=1000
+  // (not just relying on zero-initialization). The hidden branch in pack_poke
+  // only sets row[5]=1000; all other fields are left at whatever the caller
+  // initialized. Expected usage is a caller-zeroed buffer.
+  int16_t obs[PACK_TOTAL_INTS];
+  for (int i = 0; i < PACK_TOTAL_INTS; i++) obs[i] = 999;
+
+  pack_battle(b, &b->p1, &b->p2, obs);
+  int opp_offset = PACK_HEADER_INTS + PACK_POKE_INTS;
+
+  // Only HP is guaranteed written by the hidden branch
+  EXPECT(obs[opp_offset + 5] == 1000, "hidden opponent HP actively set to 1000");
+
+  // Observer slot must be fully packed regardless of hidden state
+  int obs_offset = PACK_HEADER_INTS;
+  EXPECT(obs[obs_offset] == -(int16_t)BULBASAUR, "observer slot always packed");
+  EXPECT(obs[obs_offset + 5] != 999, "observer HP was written (not sentinel)");
+
+  free(b);
+  TEST_END();
+}
+
+static void test_obs_pack_battle_revealed_opponent(void) {
+  TEST_BEGIN("obs: pack_battle reveals shown opponent pokemon");
+  Battle *b = make_1v1(BULBASAUR, TACKLE_MOVE_ID, CHARMANDER, SCRATCH_MOVE_ID);
+  b->p1.shown_pokemon = 0x1;  // p1 has seen p2 slot 0
+  // Set p2 active pokemon HP to half
+  b->p2.team[0].hp = b->p2.team[0].max_hp / 2;
+  int16_t obs[PACK_TOTAL_INTS] = {0};
+  pack_battle(b, &b->p1, &b->p2, obs);
+  int opp_offset = PACK_HEADER_INTS + PACK_POKE_INTS;
+  // Species should be negated (active) and equal to CHARMANDER
+  EXPECT(obs[opp_offset] == -(int16_t)CHARMANDER, "revealed active opponent species negated");
+  // HP should be ~500
+  EXPECT(obs[opp_offset + 5] >= 490 && obs[opp_offset + 5] <= 510, "revealed opponent HP ~500");
+  free(b);
+  TEST_END();
+}
+
+static void test_obs_total_size(void) {
+  TEST_BEGIN("obs: PACK_TOTAL_INTS = header + 12 pokemon * 7");
+  EXPECT(PACK_TOTAL_INTS == PACK_HEADER_INTS + PACK_TOTAL_POKEMON * PACK_POKE_INTS,
+         "total ints = 4 + 12*7 = 88");
+  EXPECT(PACK_TOTAL_INTS == 88, "total ints is 88");
+  TEST_END();
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -1761,6 +1990,23 @@ static void run_all_tests(void) {
   test_poison_damages_each_turn();
   test_burn_damages_each_turn();
   test_toxic_escalates_damage();
+
+  printf("\n=== OBSERVATION STATE TESTS ===\n");
+  test_obs_pack_hp_percent();
+  test_obs_pack_move_basic();
+  test_obs_pack_move_disabled();
+  test_obs_pack_move_zero_pp_becomes_struggle();
+  test_obs_pack_move_pp_clamped();
+  test_obs_pack_move_null();
+  test_obs_pack_stat_mods_zero();
+  test_obs_pack_stat_mods_nonzero();
+  test_obs_pack_status_clear();
+  test_obs_pack_status_flags();
+  test_obs_pack_battle_header();
+  test_obs_pack_battle_active_species_negated();
+  test_obs_pack_battle_hidden_opponent();
+  test_obs_pack_battle_revealed_opponent();
+  test_obs_total_size();
 
   printf("\n========================================\n");
   printf("  Results: %d passed, %d failed\n", g_pass, g_fail);

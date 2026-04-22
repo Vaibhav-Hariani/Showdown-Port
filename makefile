@@ -4,9 +4,6 @@ COMMON_FLAGS ?= -Werror
 RELEASE_FLAGS ?= -O3 -march=native -flto
 DEBUG_FLAGS ?= -O2
 
-sim.out: 
-	$(CC) $(INCLUDES) $(COMMON_FLAGS) $(RELEASE_FLAGS) sim.c -o sim.out
-
 profile_sim.out:
 	$(CC) $(INCLUDES) $(COMMON_FLAGS) $(RELEASE_FLAGS) testing/profile_sim.c -o profile_sim.out
 
@@ -16,7 +13,7 @@ clean:
 debug_sim: clean 
 	$(CC) -fdiagnostics-color=always $(INCLUDES) $(COMMON_FLAGS) $(DEBUG_FLAGS) -g -DDEBUG sim.c -o debug_sim.out
 
-testing: debug_sim
+testing: clean
 	$(CC) -fdiagnostics-color=always $(INCLUDES) $(COMMON_FLAGS) $(DEBUG_FLAGS) -g -DDEBUG testing/move_tests.c -o testing.out
 
 damage_tests: debug_sim

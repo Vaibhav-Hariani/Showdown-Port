@@ -17,7 +17,7 @@
 
 static inline int get_team_index(const Player* player, const Pokemon* pokemon);
 
-typedef enum { RANDOM = 0, GEN1_AI = 1 } OpponentType;
+typedef enum { RANDOM_AI = 1, MAX_DAMAGE_AI = 2, GEN1_AI = 3 } OpponentType;
 
 typedef struct {
   Log log;
@@ -25,9 +25,9 @@ typedef struct {
   int* actions;
   float* rewards;
   unsigned char* terminals;
-  int num_agents;  // Number of agents (1 = P1 only, 2 = both P1 and P2)
-  int opp_type;    // If num_agents==1, this specifies the AI: 0 is random, 1 is
-                   // similar to the gen1 AI
+  int num_agents;   // Number of agents (1 = policy vs AI, 2 = both externally controlled)
+  int opp_type;     // If num_agents==1, choose fixed AI: 1=random, 2=max-power, 3=gen1
+  int max_gametype; // Curriculum cap: sample from TeamConfig [0, max_gametype-1]
   int gametype;
   Battle* battle;
   int tick;
@@ -40,25 +40,17 @@ typedef struct {
 void c_reset(Sim* sim);
 static inline void set_active(Player* p);
 
-void sim_init(Sim* sim, int* poke_array) {
+void sim_init(Sim* sim) {
   sim_srand((unsigned int)rand());
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
-  if (poke_array) {
-      // Right now, this is 4 elements. Pokemon, move. Pokemon, move.
-      Player* p1 = &sim->battle->p1;
-      POKEDEX_IDS p1_poke = poke_array[0];
-      MOVE_IDS move_id = poke_array[1];
-      //Important: Not currently checking if a pokemon index is valid, or if a move is in a pokemons learnset
-      // Can add those checks in later.
-      load_pokemon(p1->team, &move_id, 1, p1_poke);  // Load same pokemon for all slots for now
-      set_active(p1);
-
-      Player* p2 = &sim->battle->p2;
-      POKEDEX_IDS p2_poke = poke_array[2];
-      MOVE_IDS move2_id = poke_array[3];
-      load_pokemon(p2->team, &move2_id, 1, p2_poke);  // Load same pokemon for all slots for now
-      set_active(p2);
-      return;
+  if (sim->num_agents < 1 || sim->num_agents > 2) {
+    sim->num_agents = 1;
+  }
+  if (sim->opp_type < RANDOM_AI || sim->opp_type > GEN1_AI) {
+    sim->opp_type = GEN1_AI;
+  }
+  if (sim->max_gametype < 1 || sim->max_gametype > TEAM_CONFIG_MAX) {
+    sim->max_gametype = TEAM_CONFIG_MAX;
   }
   c_reset(sim);
 }
@@ -171,7 +163,41 @@ static inline int can_player_act(Player* player, int choice) {
 // Helper function to get AI player choice (P2)
 static inline int ai_choice(Sim* sim, int mode) {
   Battle* b = sim->battle;
-  int action = choose_gen1_ai_action(2, &b->p2, &b->p1, mode);
+  int action = 0;
+  if (sim->opp_type == RANDOM_AI) {
+    if (mode == 2 || mode == 3) {
+      action = select_valid_switch_choice(&b->p2);
+    } else {
+      int move_candidates[4] = {0};
+      int move_count = 0;
+      for (int i = 6; i <= 9; i++) {
+        if (valid_choice(2, &b->p2, (unsigned int)i, mode)) {
+          move_candidates[move_count++] = i;
+        }
+      }
+      if (move_count > 0) {
+        action = move_candidates[sim_rand_bounded(move_count)];
+      }
+    }
+  } else if (sim->opp_type == MAX_DAMAGE_AI) {
+    if (mode == 2 || mode == 3) {
+      action = select_valid_switch_choice(&b->p2);
+    } else {
+      int best_move = get_highest_damage_move_index(&b->p2);
+      if (best_move >= 0) {
+        int best_choice = 6 + best_move;
+        if (valid_choice(2, &b->p2, (unsigned int)best_choice, mode)) {
+          action = best_choice;
+        }
+      }
+    }
+  } else {
+    action = choose_gen1_ai_action(2, &b->p2, &b->p1, mode);
+  }
+
+  if (action == 0 || !valid_choice(2, &b->p2, (unsigned int)action, mode)) {
+    action = choose_gen1_ai_action(2, &b->p2, &b->p1, mode);
+  }
   if (action == 0 && !valid_choice(2, &b->p2, 0, mode)) {
     DLOG("No valid actions found for opponent");
   }
@@ -248,7 +274,8 @@ void c_reset(Sim* sim) {
               sim->tick,
               sim->gametype);
   reset_sim(sim);
-  TeamConfig config = sim_rand() % TEAM_CONFIG_MAX;
+  // Curriculum: sample uniformly from [ONE_V_ONE, max_gametype-1].
+  TeamConfig config = (TeamConfig)sim_rand_bounded(sim->max_gametype);
   sim->gametype = (int)config;
   team_generator(&sim->battle->p1, config);
   team_generator(&sim->battle->p2, config);

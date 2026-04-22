@@ -9,17 +9,23 @@ class Showdown(pufferlib.PufferEnv):
         self,
         num_envs=1,
         num_agents=1,
-        opp_type=0,
-        test=False,
+        opp_type=3,
+        gametype_limit=4,
         render_mode=None,
         log_interval=10,
         buf=None,
         seed=0,
     ):
         # Validate num_agents
-        if num_agents > 2:
+        if num_agents not in (1, 2):
             raise pufferlib.APIUsageError(
-                "Showdown supports at most 2 agents (player 1 and player 2)"
+                "Showdown supports up to 2 agents"
+            )
+        if opp_type not in (1, 2, 3):
+            raise pufferlib.APIUsageError("opp_type must be 1 (random), 2 (max-damage), or 3 (gen1)")
+        if gametype_limit not in (1, 2, 3, 4):
+            raise pufferlib.APIUsageError(
+                "gametype_limit must be 1..4 (1v1, 2v2, 6v6, OU)"
             )
 
         # Observation layout v2: header (4 ints: p1_statmods_word1, p1_statmods_word2, p2_statmods_word1, p2_statmods_word2)
@@ -47,8 +53,8 @@ class Showdown(pufferlib.PufferEnv):
                 self.truncations[i * num_agents : (i + 1) * num_agents],
                 seed + i,
                 num_agents=num_agents,
-                test=test,
-                opp_type=opp_type,  # Pass num_agents to C binding
+                opp_type=opp_type,
+                gametype_limit=gametype_limit,
             )
             c_envs.append(c_env)
 
@@ -84,7 +90,7 @@ class Showdown(pufferlib.PufferEnv):
 if __name__ == "__main__":
     N = 12
     num_agents = 1  # Test with 2 agents to see P2 moves
-    env = Showdown(num_envs=N, test=False)
+    env = Showdown(num_envs=N)
 
     env.reset(seed=42)
     steps = 0

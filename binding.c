@@ -5,22 +5,31 @@
 
 static int my_init(Env* env, PyObject* args, PyObject* kwargs) {
   (void)args;
-  env->num_agents = unpack(kwargs, "num_agents");
-
-  ///Team Loading: we can check if a custom_load kwarg exists. 
-  // If it does, we load in two pokemon, with a given move. 4 kwargs.
-  // Minor problem is that we can't specify a full board, will talk to joseph about easier ways to implement this.
-  if (unpack(kwargs, "test")) {
-    int poke_array[4] = {0};
-    poke_array[0] = unpack(kwargs, "load_poke1");
-    poke_array[1] = unpack(kwargs, "load_move1");
-
-    poke_array[2] = unpack(kwargs, "load_poke2");
-    poke_array[3] = unpack(kwargs, "load_move2");
-    sim_init(env, poke_array);
-    return 0;
+  int num_agents = unpack(kwargs, "num_agents");
+  if (num_agents < 1 || num_agents > 2) {
+    num_agents = 1;
   }
-  sim_init(env, NULL);
+  env->num_agents = num_agents;
+
+  int gametype_limit = unpack(kwargs, "gametype_limit");
+  if (gametype_limit <= 0) {
+    gametype_limit = unpack(kwargs, "max_pokemon");
+  }
+  if (gametype_limit <= 0) {
+    gametype_limit = unpack(kwargs, "max_gametype");
+  }
+  if (gametype_limit < 1 || gametype_limit > TEAM_CONFIG_MAX) {
+    gametype_limit = TEAM_CONFIG_MAX;
+  }
+  env->max_gametype = gametype_limit;
+
+  int opp_type = unpack(kwargs, "opp_type");
+  if (opp_type < 1 || opp_type > 3) {
+    opp_type = 3;
+  }
+  env->opp_type = opp_type;
+
+  sim_init(env);
   return 0;
 }
 
