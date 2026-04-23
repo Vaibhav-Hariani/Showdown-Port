@@ -27,7 +27,7 @@ static inline int16_t pack_status_and_volatiles(Player* player, int poke_index);
 static inline int16_t pack_hp_percent(Pokemon* p);
 // player_index: 1 for p1 (observer perspective), 2 for p2; used to gate hidden
 // info
-static inline void pack_poke(int16_t* row,
+static inline void pack_poke(int* row,
                              Player* player,
                              int player_index,
                              int poke_index,
@@ -35,10 +35,10 @@ static inline void pack_poke(int16_t* row,
                              int hidden);
 
 // Pack observation for a specific player's perspective
-void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out);
+void pack_battle(Battle* b, Player* observer, Player* opponent, int* out);
 
 // Pack observations for all agents (up to 2 agents)
-void pack_all_agents(Battle* b, int num_agents, int16_t* out);
+void pack_all_agents(Battle* b, int num_agents, int* out);
 
 // ============================================================================
 // Implementation
@@ -123,7 +123,7 @@ static inline int16_t pack_status_and_volatiles(Player* player,
   return packed;
 }
 
-static inline void pack_poke(int16_t* row,
+static inline void pack_poke(int* row,
                              Player* player,
                              int player_index,
                              int poke_index,
@@ -178,7 +178,7 @@ static inline void pack_poke(int16_t* row,
 }
 
 // Pack observation from observer's perspective (opponent's unrevealed Pokemon are hidden)
-void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
+void pack_battle(Battle* b, Player* observer, Player* opponent, int* out) {
   // Header: stat mods for observer (first 2 ints) then opponent (next 2 ints)
   stat_mods* observer_mods = &observer->active_pokemon.stat_mods;
   stat_mods* opponent_mods = &opponent->active_pokemon.stat_mods;
@@ -220,7 +220,7 @@ void pack_battle(Battle* b, Player* observer, Player* opponent, int16_t* out) {
 }
 
 // Pack observations for all agents (up to 2 agents)
-void pack_all_agents(Battle* b, int num_agents, int16_t* out) {
+void pack_all_agents(Battle* b, int num_agents, int* out) {
   // Pack from P1's perspective
   pack_battle(b, &b->p1, &b->p2, out);
 

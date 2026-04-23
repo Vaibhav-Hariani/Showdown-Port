@@ -123,10 +123,10 @@ static void init_cli_sim(Sim* sim, TeamConfig cfg, int num_agents) {
   sim->gametype = cfg;
 
   int obs_size = PACK_TOTAL_INTS * ((num_agents == 2) ? 2 : 1);
-  sim->observations = (int16_t*)calloc((size_t)obs_size, sizeof(int16_t));
-  sim->actions = (int*)calloc((size_t)num_agents, sizeof(int));
+  sim->observations = (int*)calloc((size_t)obs_size, sizeof(int));
+  sim->actions = (float*)calloc((size_t)num_agents, sizeof(float));
   sim->rewards = (float*)calloc((size_t)num_agents, sizeof(float));
-  sim->terminals = (unsigned char*)calloc((size_t)num_agents, sizeof(unsigned char));
+  sim->terminals = (float*)calloc((size_t)num_agents, sizeof(float));
 
   team_generator(&sim->battle->p1, cfg);
   team_generator(&sim->battle->p2, cfg);

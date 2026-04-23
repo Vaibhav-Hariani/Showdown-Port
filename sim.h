@@ -20,11 +20,12 @@ static inline int get_team_index(const Player* player, const Pokemon* pokemon);
 typedef enum { RANDOM_AI = 1, MAX_DAMAGE_AI = 2, GEN1_AI = 3 } OpponentType;
 
 typedef struct {
+  unsigned int rng;
   Log log;
-  int16_t* observations;
-  int* actions;
+  int* observations;
+  float* actions;
   float* rewards;
-  unsigned char* terminals;
+  float* terminals;
   int num_agents;   // Number of agents (1 = policy vs AI, 2 = both externally controlled)
   int opp_type;     // If num_agents==1, choose fixed AI: 1=random, 2=max-power, 3=gen1
   int max_gametype; // Curriculum cap: sample from TeamConfig [0, max_gametype-1]
@@ -41,7 +42,7 @@ void c_reset(Sim* sim);
 static inline void set_active(Player* p);
 
 void sim_init(Sim* sim) {
-  sim_srand((unsigned int)rand());
+  sim_srand(sim->rng);
   sim->battle = (Battle*)calloc(1, sizeof(Battle));
   if (sim->num_agents < 1 || sim->num_agents > 2) {
     sim->num_agents = 1;
@@ -258,7 +259,7 @@ void reset_sim(Sim* s) {
   // Reset rewards and terminals for all agents
   for (int i = 0; i < s->num_agents; i++) {
     s->rewards[i] = 0.0f;
-    s->terminals[i] = 0;
+    s->terminals[i] = 0.0f;
     s->accumulated_invalid_penalty[i] = 0.0f;
   }
   s->episode_valid_moves = 0;
@@ -295,7 +296,7 @@ void c_step(Sim* sim) {
   if (sim->terminals[0]) {
     c_reset(sim);
     for (int i = 0; i < sim->num_agents; i++) {
-      sim->terminals[i] = 0;
+      sim->terminals[i] = 0.0f;
     }
     return;
   }
@@ -306,8 +307,8 @@ void c_step(Sim* sim) {
   int selfplay = (sim->num_agents == 1);
   int mode = battle->mode;
 
-  int raw_choice_p1 = sim->actions[0];
-  int raw_choice_p2 = selfplay ? ai_choice(sim, mode) : sim->actions[1];
+  int raw_choice_p1 = (int)sim->actions[0];
+  int raw_choice_p2 = selfplay ? ai_choice(sim, mode) : (int)sim->actions[1];
 
   if (!valid_choice(1, &battle->p1, raw_choice_p1, mode)) {
     // Invalid move penalty for P1
@@ -351,10 +352,10 @@ void c_step(Sim* sim) {
   if (r == 1.0f || r == -1.0f) {
     // Terminal: P1 wins (+1) or loses (-1)
     sim->rewards[0] = r;
-    sim->terminals[0] = 1;
+    sim->terminals[0] = 1.0f;
     if (!selfplay) {
       sim->rewards[1] = -r;  // P2 gets opposite reward
-      sim->terminals[1] = 1;
+      sim->terminals[1] = 1.0f;
     }
   } else {
     // Non-terminal: apply accumulated penalty per agent
